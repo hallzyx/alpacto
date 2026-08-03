@@ -1,6 +1,6 @@
 {
   "rust-analyzer.linkedProjects": [
-    "./packages/stylus/contracts/your-contract/Cargo.toml"
+    "./packages/contracts/contracts/your-contract/Cargo.toml"
   ],
   "rust-analyzer.cargo.buildScripts.enable": true,
   "rust-analyzer.cargo.features": "all"

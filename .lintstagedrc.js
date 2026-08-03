@@ -1,21 +1,18 @@
 const path = require("path");
 
-const buildNextEslintCommand = (filenames) =>
-  `yarn workspace @ss/nextjs eslint --fix ${filenames
-    .map((f) => path.relative(path.join("packages", "nextjs"), f))
+const buildWebEslintCommand = (filenames) =>
+  `yarn workspace @alpacto/web eslint --fix ${filenames
+    .map((f) => path.relative(path.join("apps", "web"), f))
     .join(" ")}`;
 
-const checkTypesNextCommand = () => "yarn next:check-types";
+const checkTypesWebCommand = () => "yarn web:check-types";
 
-const buildStylusEslintCommand = (filenames) =>
+const buildContractsEslintCommand = (filenames) =>
   `yarn stylus:lint --fix ${filenames
-    .map((f) => path.relative(path.join("packages", "stylus"), f))
+    .map((f) => path.relative(path.join("packages", "contracts"), f))
     .join(" ")}`;
 
 module.exports = {
-  "packages/nextjs/**/*.{ts,tsx}": [
-    buildNextEslintCommand,
-    checkTypesNextCommand,
-  ],
-  "packages/stylus/**/*.{ts,tsx}": [buildStylusEslintCommand],
+  "apps/web/**/*.{ts,tsx}": [buildWebEslintCommand, checkTypesWebCommand],
+  "packages/contracts/**/*.{ts,tsx}": [buildContractsEslintCommand],
 };
