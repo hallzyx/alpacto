@@ -21,3 +21,13 @@
 - **`fundOrder`:** Platform admin; unique `paymentReferenceHash`; IERC20 `transferFrom` caller → contract.
 - **Deploy:** `yarn deploy` deploys `mock-usdc` then `alpacto-core(admin, mockUsdc)`. Demo scripts: `yarn phase1` / `yarn phase1 -- --flow=reweigh`.
 - **Deploy tooling:** `executeCommand` treats cargo-stylus stderr as success when exit code is 0 unless a real rustc `error` is present (address logs live on stderr).
+
+## 2026-08-03 — Phase 2 backend and DB
+
+- **Checkpoint:** API-operable flow without AI or ZeroDev (PRD §25 Fase 2).
+- **Auth:** `POST /auth/demo-login` with JWT (HS256, `JWT_SECRET`). Passkeys deferred to Phase 3.
+- **Offchain-first:** Postgres is source of truth for Phase 2; `onchain_*` and `tx_hash` columns nullable until later phases wire chain writes.
+- **Schema:** Full PRD §13.1 tables in Drizzle now (including `funding_intents`, `audit_*`, `settlements`) to avoid rework; Stripe/Ayni endpoints not exposed yet.
+- **Infra:** `infra/docker/docker-compose.yml` — Postgres 16, Redis 7, MinIO (`alpacto-evidence` bucket).
+- **Jobs:** BullMQ scaffold (`ping`, `evidence.finalize`); Stripe/Ayni workers in Phases 4–5.
+- **Money:** Integer-only helpers in `@alpacto/domain`; API validation via `@alpacto/shared-schemas` (Zod).

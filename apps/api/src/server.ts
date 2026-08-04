@@ -1,13 +1,9 @@
-import Fastify from "fastify";
+import { buildApp } from "./app.js";
+import { config } from "./config.js";
 
-const app = Fastify({ logger: true });
+const { app } = await buildApp();
 
-app.get("/health", async () => ({ status: "ok", service: "alpacto-api" }));
-
-const port = Number(process.env.PORT ?? 4000);
-const host = process.env.HOST ?? "0.0.0.0";
-
-app.listen({ port, host }).catch((error) => {
+app.listen({ port: config.port, host: config.host }).catch((error) => {
   app.log.error(error);
   process.exit(1);
 });

@@ -2,29 +2,21 @@
 
 *Un pacto justo por cada fibra.*
 
-Web 2.5 platform for transparent alpaca fiber settlement. Phase 1 delivers the onchain domain (`AlpactoCore` + local `mock-usdc`) on the Scaffold-Stylus pipeline.
+Web 2.5 platform for transparent alpaca fiber settlement. Phase 2 adds the Fastify API, PostgreSQL, Redis, and MinIO on top of the Phase 1 onchain domain.
 
 ## Repository layout
 
 ```text
 apps/
   web/           Next.js frontend (Scaffold-Stylus, includes /debug)
-  api/           Fastify API stub
+  api/           Fastify API (Phase 2)
   ayni-worker/   Agent worker stub
 packages/
   contracts/     Stylus contracts and deploy tooling
-  contract-abi/  ABI package stub
-  contract-client/
-  database/
-  domain/
-  shared-schemas/
-  ui/
-  zero-dev/
-  config/
-infra/
-  docker/
-  deployment/
-  scripts/
+  database/      Drizzle ORM + migrations + seed
+  domain/        Integer money helpers
+  shared-schemas/ Zod API schemas
+infra/docker/    Postgres, Redis, MinIO
 docs/
 ```
 
@@ -32,42 +24,55 @@ docs/
 
 - Node.js 22+
 - Yarn 3.2.3 (repo-pinned)
-- Rust 1.91.0
-- cargo-stylus 0.10.8
-- Docker Desktop (Nitro devnode)
-- Foundry (`cast`) for local chain scripts
-- solc 0.8.30 (ABI export)
+- Docker Desktop (Postgres/Redis/MinIO + Nitro for contracts)
+- Rust 1.91.0 + cargo-stylus 0.10.8 (Phase 1 only)
+- Foundry (`cast`) + solc 0.8.30 (Phase 1 only)
 
-## Quick start
+## Quick start — Phase 2 API
 
 ```bash
 yarn install
-git submodule update --init --recursive
+cp .env.example .env
+
+yarn docker:up
+yarn db:generate   # first time only
+yarn db:migrate
+yarn db:seed
 
 # Terminal 1
-yarn chain
+yarn api:dev
 
 # Terminal 2
-yarn deploy
-
-# Optional: full Phase 1 flows (roles, mint, settle)
-yarn phase1
-yarn phase1 -- --flow=reweigh
-
-# Unit tests (cargo) for Stylus crates
-yarn stylus:test
-
-# Terminal 3
-yarn start
+yarn phase2
 ```
 
-Open `http://localhost:3000/debug` to interact with `alpacto-core` / `mock-usdc` (and the example `your-contract`).
+API health: `http://localhost:4000/health/ready`
+
+## Quick start — Phase 1 contracts (optional)
+
+```bash
+git submodule update --init --recursive
+yarn chain          # Terminal 1
+yarn deploy         # Terminal 2
+yarn phase1
+yarn stylus:test
+yarn start          # Terminal 3 — http://localhost:3000/debug
+```
+
+## Tests
+
+```bash
+yarn test           # domain + api + stylus
+yarn domain:test
+yarn api:test
+```
 
 ## Phase status
 
-- **Phase 0:** Bootstrap complete — Rust → WASM → deploy → ABI → frontend.
-- **Phase 1:** `AlpactoCore` domain + `mock-usdc`, cargo tests §21.1, `yarn phase1` scripts.
-- **Phase 2+:** See `ALPACTO_PRD.md`.
+- **Phase 0:** Bootstrap complete.
+- **Phase 1:** `AlpactoCore` + `mock-usdc`, `yarn phase1`.
+- **Phase 2:** Backend/DB, `yarn phase2` checkpoint.
+- **Phase 3+:** See `ALPACTO_PRD.md`.
 
 ## Docs
 
