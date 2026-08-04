@@ -23,6 +23,33 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const passkeyCredentials = pgTable(
+  "passkey_credentials",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id),
+    credentialId: text("credential_id").notNull().unique(),
+    publicKey: text("public_key").notNull(),
+    counter: bigint("counter", { mode: "bigint" }).notNull(),
+    deviceType: varchar("device_type", { length: 32 }),
+    backedUp: boolean("backed_up").notNull().default(false),
+    transports: text("transports"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+);
+
+export const ayniSessionKeys = pgTable("ayni_session_keys", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  smartAccountAddress: varchar("smart_account_address", { length: 42 }).notNull(),
+  sessionPublicAddress: varchar("session_public_address", { length: 42 }).notNull(),
+  serializedSession: text("serialized_session"),
+  status: varchar("status", { length: 32 }).notNull().default("active"),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const organizations = pgTable("organizations", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),

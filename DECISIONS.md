@@ -31,3 +31,15 @@
 - **Infra:** `infra/docker/docker-compose.yml` — Postgres 16, Redis 7, MinIO (`alpacto-evidence` bucket).
 - **Jobs:** BullMQ scaffold (`ping`, `evidence.finalize`); Stripe/Ayni workers in Phases 4–5.
 - **Money:** Integer-only helpers in `@alpacto/domain`; API validation via `@alpacto/shared-schemas` (Zod).
+
+## 2026-08-03 — Phase 3 ZeroDev
+
+- **Network:** Arbitrum Sepolia (`421614`). Nitro is not used for AA.
+- **USDC:** Circle native test USDC `0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d`.
+- **Deploy:** `yarn deploy --network sepolia` deploys only `alpacto-core(admin, usdc)` (no mock-usdc).
+- **Admin/owner:** EOA from `PRIVATE_KEY_SEPOLIA` / `TREASURY_PRIVATE_KEY` receives `DEFAULT_ADMIN_ROLE`.
+- **Package:** `@alpacto/zero-dev` — Kernel v3.1 + EntryPoint 0.7, ECDSA validators, call-policy session keys, paymaster client.
+- **Paymaster:** Prefer ZeroDev gas policy. If policy missing, Phase 3 demo funds smart accounts with ETH from admin and sends UserOps without paymaster (still no MetaMask).
+- **Passkeys:** API routes `@simplewebauthn/server` under `/auth/passkey/*`; links Kernel ECDSA smart account address on register. Browser passkey-validator wiring deferred to UX phase.
+- **Ayni:** Session key generated in `yarn phase3`, stored as `AYNI_SESSION_KEY`; `AUDITOR_AGENT_ROLE` granted; revoke via `POST /admin/ayni/session-key/revoke`.
+- **Checkpoint:** `yarn phase3` — producer `requestReweighing` via Kernel UserOp.

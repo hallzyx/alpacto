@@ -1085,6 +1085,802 @@ const deployedContracts = {
       ],
     },
   },
+  "421614": {
+    "alpacto-core": {
+      address: "0x8dc078ce37800b26e728952b08bd1e040e231991",
+      txHash: "0x12bc2fd869f875ffb3122756e6fd00fe65ea55b0533ef17b266f1decdfe04e56",
+      abi: [
+        {
+          inputs: [],
+          name: "AccessControlBadConfirm",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          name: "AccessControlError",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          name: "AlreadySettled",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+            {
+              internalType: "uint32",
+              name: "",
+              type: "uint32",
+            },
+          ],
+          name: "AttestationExists",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint8",
+              name: "",
+              type: "uint8",
+            },
+          ],
+          name: "AttestationNotAcceptable",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+            {
+              internalType: "uint32",
+              name: "",
+              type: "uint32",
+            },
+          ],
+          name: "AttestationNotFound",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+            {
+              internalType: "uint32",
+              name: "",
+              type: "uint32",
+            },
+          ],
+          name: "InspectionExists",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          name: "InsufficientOrderBalance",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "InvalidAmount",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint8",
+              name: "",
+              type: "uint8",
+            },
+          ],
+          name: "InvalidAuditResult",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+            {
+              internalType: "uint32",
+              name: "",
+              type: "uint32",
+            },
+            {
+              internalType: "uint32",
+              name: "",
+              type: "uint32",
+            },
+          ],
+          name: "InvalidInspectionVersion",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+            {
+              internalType: "uint8",
+              name: "",
+              type: "uint8",
+            },
+          ],
+          name: "InvalidLotStatus",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+            {
+              internalType: "uint8",
+              name: "",
+              type: "uint8",
+            },
+          ],
+          name: "InvalidOrderStatus",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          name: "LotExists",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          name: "LotNotFound",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+          ],
+          name: "NotProducer",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          name: "OrderExists",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          name: "OrderNotFound",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          name: "PaymentRefUsed",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          name: "SplitMismatch",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "TokenTransferFailed",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          name: "Unauthorized",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint32",
+              name: "",
+              type: "uint32",
+            },
+            {
+              internalType: "uint32",
+              name: "",
+              type: "uint32",
+            },
+          ],
+          name: "VersionMismatch",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "ZeroAddress",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "lot_id",
+              type: "uint256",
+            },
+            {
+              internalType: "uint32",
+              name: "version",
+              type: "uint32",
+            },
+            {
+              internalType: "bytes32",
+              name: "quote_hash",
+              type: "bytes32",
+            },
+            {
+              internalType: "uint256",
+              name: "net_pen_minor",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "producer_usdc_units",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "association_usdc_units",
+              type: "uint256",
+            },
+          ],
+          name: "acceptSettlement",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "associationRole",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "auditorAgentRole",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "buyerRole",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "order_id",
+              type: "uint256",
+            },
+            {
+              internalType: "address",
+              name: "buyer",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "association",
+              type: "address",
+            },
+            {
+              internalType: "bytes32",
+              name: "pricing_policy_hash",
+              type: "bytes32",
+            },
+            {
+              internalType: "uint256",
+              name: "budget_usdc_units",
+              type: "uint256",
+            },
+          ],
+          name: "createOrder",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "order_id",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "amount",
+              type: "uint256",
+            },
+            {
+              internalType: "bytes32",
+              name: "payment_reference_hash",
+              type: "bytes32",
+            },
+          ],
+          name: "fundOrder",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "lot_id",
+              type: "uint256",
+            },
+            {
+              internalType: "uint32",
+              name: "version",
+              type: "uint32",
+            },
+          ],
+          name: "getAuditAttestation",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+            {
+              internalType: "uint8",
+              name: "",
+              type: "uint8",
+            },
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "lot_id",
+              type: "uint256",
+            },
+            {
+              internalType: "uint32",
+              name: "version",
+              type: "uint32",
+            },
+          ],
+          name: "getInspection",
+          outputs: [
+            {
+              internalType: "uint64",
+              name: "",
+              type: "uint64",
+            },
+            {
+              internalType: "uint32",
+              name: "",
+              type: "uint32",
+            },
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "lot_id",
+              type: "uint256",
+            },
+          ],
+          name: "getLot",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+            {
+              internalType: "uint8",
+              name: "",
+              type: "uint8",
+            },
+            {
+              internalType: "uint32",
+              name: "",
+              type: "uint32",
+            },
+            {
+              internalType: "uint32",
+              name: "",
+              type: "uint32",
+            },
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "order_id",
+              type: "uint256",
+            },
+          ],
+          name: "getOrder",
+          outputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+            {
+              internalType: "uint8",
+              name: "",
+              type: "uint8",
+            },
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "inspectorRole",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "platformAdminRole",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "order_id",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "lot_id",
+              type: "uint256",
+            },
+            {
+              internalType: "address",
+              name: "producer_account",
+              type: "address",
+            },
+          ],
+          name: "registerLot",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "lot_id",
+              type: "uint256",
+            },
+            {
+              internalType: "bytes32",
+              name: "reason_hash",
+              type: "bytes32",
+            },
+          ],
+          name: "requestReweighing",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "lot_id",
+              type: "uint256",
+            },
+          ],
+          name: "settleLot",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "lot_id",
+              type: "uint256",
+            },
+            {
+              internalType: "uint32",
+              name: "version",
+              type: "uint32",
+            },
+            {
+              internalType: "bytes32",
+              name: "report_hash",
+              type: "bytes32",
+            },
+            {
+              internalType: "uint8",
+              name: "result",
+              type: "uint8",
+            },
+          ],
+          name: "submitAuditAttestation",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "lot_id",
+              type: "uint256",
+            },
+            {
+              internalType: "uint32",
+              name: "version",
+              type: "uint32",
+            },
+            {
+              internalType: "uint64",
+              name: "weight_grams",
+              type: "uint64",
+            },
+            {
+              internalType: "uint32",
+              name: "category_code",
+              type: "uint32",
+            },
+            {
+              internalType: "bytes32",
+              name: "evidence_hash",
+              type: "bytes32",
+            },
+          ],
+          name: "submitInspectionReference",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "usdcToken",
+          outputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+      ],
+    },
+  },
 } as const;
 
 export default deployedContracts satisfies GenericContractsDeclaration;

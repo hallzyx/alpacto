@@ -23,6 +23,7 @@
     "lint:fix": "eslint scripts --ext .ts --fix",
     "new-module": "bash scripts/new_module.sh",
     "phase1": "ts-node scripts/phase1/demo.ts",
+    "phase3": "ts-node --esm scripts/phase3/demo.ts",
     "start": "node dist/index.js",
     "test": "ts-node scripts/test.ts"
   },

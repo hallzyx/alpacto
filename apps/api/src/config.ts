@@ -8,6 +8,7 @@ dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
 export const config = {
   port: Number(process.env["PORT"] ?? 4000),
   host: process.env["HOST"] ?? "0.0.0.0",
+  appUrl: process.env["APP_URL"] ?? "http://localhost:3000",
   databaseUrl:
     process.env["DATABASE_URL"] ??
     "postgresql://alpacto:alpacto@localhost:5432/alpacto",

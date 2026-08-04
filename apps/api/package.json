@@ -3,20 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "scripts": {
-    "dev": "tsx watch src/server.ts",
-    "build": "tsc",
-    "start": "node dist/server.js",
-    "test": "vitest run",
-    "phase2": "tsx scripts/phase2-demo.ts"
-  },
   "dependencies": {
     "@alpacto/database": "workspace:*",
     "@alpacto/domain": "workspace:*",
     "@alpacto/shared-schemas": "workspace:*",
+    "@alpacto/zero-dev": "workspace:*",
     "@aws-sdk/client-s3": "^3.758.0",
     "@aws-sdk/s3-request-presigner": "^3.758.0",
     "@fastify/cors": "^11.0.0",
+    "@simplewebauthn/server": "^13.1.1",
     "bullmq": "^5.41.0",
     "dotenv": "^16.4.7",
     "drizzle-orm": "^0.40.1",
@@ -24,6 +19,13 @@
     "ioredis": "^5.5.0",
     "jose": "^6.0.8",
     "zod": "^3.24.2"
+  },
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "test": "vitest run",
+    "phase2": "tsx scripts/phase2-demo.ts"
   },
   "devDependencies": {
     "@types/node": "^24",
