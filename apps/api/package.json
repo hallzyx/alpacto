@@ -28,7 +28,8 @@
     "start": "node dist/server.js",
     "test": "vitest run",
     "phase2": "tsx scripts/phase2-demo.ts",
-    "phase4": "tsx scripts/phase4-demo.ts"
+    "phase4": "tsx scripts/phase4-demo.ts",
+    "phase6": "tsx scripts/phase6-smoke.ts"
   },
   "devDependencies": {
     "@types/node": "^24",

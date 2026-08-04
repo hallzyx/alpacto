@@ -18,6 +18,7 @@ import {
 } from "./modules/funding/routes.js";
 import { registerAuditRoutes } from "./modules/audits/routes.js";
 import { registerSettlementRoutes } from "./modules/settlements/routes.js";
+import { registerPricingRoutes } from "./modules/pricing/routes.js";
 
 export type AppDeps = {
   startWorkers?: boolean;
@@ -49,8 +50,9 @@ export async function buildApp(deps: AppDeps = {}) {
     return { status: "ready", database: true };
   });
 
-  await registerAuthRoutes(app, db);
+  await registerAuthRoutes(app, db, authenticate);
   await registerCampaignRoutes(app, db, authenticate);
+  await registerPricingRoutes(app, db, authenticate);
   await registerOrderRoutes(app, db, authenticate);
   await registerFundingRoutes(app, db, authenticate, queues);
   await registerStripeWebhookRoutes(app, db, queues);

@@ -43,7 +43,11 @@ function rpName() {
   return "Alpacto";
 }
 
-export async function registerAuthRoutes(app: FastifyInstance, db: Database) {
+export async function registerAuthRoutes(
+  app: FastifyInstance,
+  db: Database,
+  authenticate?: (req: unknown, reply: unknown) => Promise<void>,
+) {
   app.post("/auth/demo-login", async (request) => {
     const body = demoLoginSchema.parse(request.body);
     const [user] = await db.select().from(users).where(eq(users.email, body.email)).limit(1);
@@ -353,6 +357,87 @@ export async function registerAuthRoutes(app: FastifyInstance, db: Database) {
       }
 
       return { revoked: targets.length };
+    },
+  );
+
+  /** Link ZeroDev producer wallet to app JWT session (Google / Email OTP / Passkey). */
+  app.post("/auth/producer/session", async (request) => {
+    const body = z
+      .object({
+        email: z.string().email(),
+        name: z.string().min(1).max(255),
+        smartAccountAddress: z
+          .string()
+          .regex(/^0x[a-fA-F0-9]{40}$/),
+        authMethod: z.enum(["google", "email_otp", "passkey"]),
+      })
+      .parse(request.body);
+
+    let [user] = await db.select().from(users).where(eq(users.email, body.email)).limit(1);
+    if (!user) {
+      const [created] = await db
+        .insert(users)
+        .values({
+          email: body.email,
+          name: body.name,
+          role: "producer",
+          status: "active",
+          smartAccountAddress: body.smartAccountAddress,
+        })
+        .returning();
+      user = created!;
+    } else {
+      if (user.role !== "producer" && user.role !== "admin") {
+        throw new ApiError(409, "Email already registered with another role");
+      }
+      const [updated] = await db
+        .update(users)
+        .set({
+          name: body.name,
+          smartAccountAddress: body.smartAccountAddress,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, user.id))
+        .returning();
+      user = updated!;
+    }
+
+    const token = await signToken({
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      name: user.name,
+    });
+
+    return {
+      token,
+      authMethod: body.authMethod,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        name: user.name,
+        smartAccountAddress: user.smartAccountAddress,
+      },
+    };
+  });
+
+  app.get(
+    "/auth/me",
+    { preHandler: authenticate ?? (async (_r, reply) => reply.code(500).send({ error: "auth missing" })) },
+    async (request) => {
+      const user = request.user as AuthUser;
+      const [row] = await db.select().from(users).where(eq(users.id, user.id)).limit(1);
+      if (!row) throw new ApiError(401, "User not found");
+      return {
+        user: {
+          id: row.id,
+          email: row.email,
+          role: row.role,
+          name: row.name,
+          smartAccountAddress: row.smartAccountAddress,
+        },
+      };
     },
   );
 }

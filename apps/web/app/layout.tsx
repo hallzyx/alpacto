@@ -1,10 +1,23 @@
-import { Inter, Orbitron } from "next/font/google";
+import { Fraunces, Source_Sans_3, Inter, Orbitron } from "next/font/google";
 import "@rainbow-me/rainbowkit/styles.css";
 import { Metadata } from "next";
-import { ScaffoldEthAppWithProviders } from "~~/components/ScaffoldEthAppWithProviders";
 import { ThemeProvider } from "~~/components/ThemeProvider";
+import { AuthProvider } from "~~/components/alpacto/AuthProvider";
 import "~~/styles/globals.css";
 
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  variable: "--font-fraunces",
+  weight: ["400", "500", "600", "700"],
+});
+
+const sourceSans = Source_Sans_3({
+  subsets: ["latin"],
+  variable: "--font-source-sans",
+  weight: ["400", "500", "600", "700"],
+});
+
+/** Kept for Scaffold debug / blockexplorer surfaces. */
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
@@ -21,9 +34,9 @@ const baseUrl = process.env.VERCEL_URL
   : `http://localhost:${process.env.PORT || 3000}`;
 const imageUrl = `${baseUrl}/thumbnail.jpg`;
 
-const title = "Create Stylus Dapp";
-const titleTemplate = "%s | Create Stylus Dapp";
-const description = "Built with 🏗 Scaffold-Stylus";
+const title = "Alpacto";
+const titleTemplate = "%s · Alpacto";
+const description = "Un pacto justo por cada fibra.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(baseUrl),
@@ -38,11 +51,7 @@ export const metadata: Metadata = {
       template: titleTemplate,
     },
     description,
-    images: [
-      {
-        url: imageUrl,
-      },
-    ],
+    images: [{ url: imageUrl }],
   },
   twitter: {
     card: "summary_large_image",
@@ -58,16 +67,19 @@ export const metadata: Metadata = {
   },
 };
 
-const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {
+const RootLayout = ({ children }: { children: React.ReactNode }) => {
   return (
     <html suppressHydrationWarning>
-      <body className={`${inter.variable} ${orbitron.variable} font-sans`} suppressHydrationWarning>
-        <ThemeProvider>
-          <ScaffoldEthAppWithProviders>{children}</ScaffoldEthAppWithProviders>
+      <body
+        className={`${fraunces.variable} ${sourceSans.variable} ${inter.variable} ${orbitron.variable} font-body`}
+        suppressHydrationWarning
+      >
+        <ThemeProvider enableSystem={false} defaultTheme="light">
+          <AuthProvider>{children}</AuthProvider>
         </ThemeProvider>
       </body>
     </html>
   );
 };
 
-export default ScaffoldEthApp;
+export default RootLayout;

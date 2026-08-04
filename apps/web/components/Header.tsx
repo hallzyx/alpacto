@@ -17,15 +17,15 @@ type HeaderMenuLink = {
   icon?: React.ReactNode;
 };
 
+/** Dev-only links (scaffold). Not used in product primary nav. */
 export const menuLinks: HeaderMenuLink[] = [
   {
-    label: "Home",
-    href: "/",
+    label: "Debug",
+    href: "/debug",
   },
   {
-    label: "Debug Contracts",
-    href: "/debug",
-    // icon: <BugAntIcon className="h-4 w-4" />,
+    label: "Explorer",
+    href: "/blockexplorer",
   },
 ];
 

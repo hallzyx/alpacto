@@ -39,4 +39,8 @@ Before sending images to OpenAI:
 
 ## Settlement gate
 
-`POST /lots/:id/settlement/accept` is rejected unless the latest audit `result_code` is `pass` or `warning`. `review_required` and `unreadable` block settlement.
+`POST /lots/:id/settlement/accept` is rejected unless the latest audit `result_code` is `pass` or `warning`. `review_required` and `unreadable` block settlement. Producers (lot owners) may accept; buyers/admins may also accept for ops demos.
+
+## Phase 6 producer auth (ZeroDev)
+
+UI exposes Google, Email OTP, and Passkey. None use MetaMask. App session is Alpacto JWT via `POST /auth/producer/session` after wallet/auth proof. Password auth is not offered (ZeroDev has no native password).

@@ -1,11 +1,14 @@
 import type { FastifyInstance } from "fastify";
-import { asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import {
+  auditRuns,
   evidenceFiles,
+  fundingIntents,
   inspections,
   lots,
   orders,
   reweighRequests,
+  settlements,
   users,
   type Database,
 } from "@alpacto/database";
@@ -16,6 +19,7 @@ import {
 } from "@alpacto/shared-schemas";
 import type { AuthUser } from "../../plugins/auth.js";
 import { ApiError } from "../../lib/errors.js";
+import { z } from "zod";
 
 function serializeLot(row: typeof lots.$inferSelect) {
   return {
@@ -51,6 +55,37 @@ export async function registerLotRoutes(
   db: Database,
   authenticate: (req: unknown, reply: unknown) => Promise<void>,
 ) {
+  app.get("/lots", { preHandler: authenticate }, async (request) => {
+    const user = request.user as AuthUser;
+    const query = z
+      .object({
+        producerId: z.string().uuid().optional(),
+        orderId: z.string().uuid().optional(),
+        status: z.string().optional(),
+      })
+      .parse(request.query ?? {});
+
+    const conditions = [];
+    if (user.role === "producer") {
+      conditions.push(eq(lots.producerId, user.id));
+    } else if (query.producerId) {
+      conditions.push(eq(lots.producerId, query.producerId));
+    }
+    if (query.orderId) conditions.push(eq(lots.orderId, query.orderId));
+    if (query.status) conditions.push(eq(lots.status, query.status));
+
+    const rows =
+      conditions.length > 0
+        ? await db
+            .select()
+            .from(lots)
+            .where(and(...conditions))
+            .orderBy(desc(lots.updatedAt))
+        : await db.select().from(lots).orderBy(desc(lots.updatedAt));
+
+    return { lots: rows.map(serializeLot) };
+  });
+
   app.post("/lots", { preHandler: authenticate }, async (request) => {
     const user = request.user as AuthUser;
     if (!["association", "inspector", "admin"].includes(user.role)) {
@@ -102,6 +137,77 @@ export async function registerLotRoutes(
       .where(eq(reweighRequests.lotId, id))
       .orderBy(desc(reweighRequests.createdAt));
 
+    const auditRows = await db
+      .select()
+      .from(auditRuns)
+      .where(eq(auditRuns.lotId, id))
+      .orderBy(desc(auditRuns.inspectionVersion));
+
+    const settlementRows = await db
+      .select()
+      .from(settlements)
+      .where(eq(settlements.lotId, id));
+
+    const [order] = await db.select().from(orders).where(eq(orders.id, lot.orderId)).limit(1);
+    const fundingRows = order
+      ? await db.select().from(fundingIntents).where(eq(fundingIntents.orderId, order.id))
+      : [];
+
+    const events: Array<{
+      type: string;
+      at: string;
+      label: string;
+      meta?: Record<string, string | null>;
+    }> = [];
+
+    events.push({
+      type: "lot_registered",
+      at: lot.createdAt.toISOString(),
+      label: "Lote registrado",
+    });
+
+    for (const insp of inspectionRows) {
+      events.push({
+        type: "inspection",
+        at: insp.submittedAt.toISOString(),
+        label: `Inspección v${insp.version} — ${insp.weightGrams.toString()} g · ${insp.categoryCode}`,
+        meta: { version: String(insp.version), status: insp.status },
+      });
+    }
+    for (const r of reweighRows) {
+      events.push({
+        type: "reweigh_request",
+        at: r.createdAt.toISOString(),
+        label: `Solicitud de nuevo pesaje — ${r.reasonCode}`,
+      });
+    }
+    for (const a of auditRows) {
+      events.push({
+        type: "audit",
+        at: (a.completedAt ?? a.startedAt ?? lot.updatedAt).toISOString(),
+        label: `Ayni: ${a.resultCode ?? a.status}`,
+        meta: { resultCode: a.resultCode, status: a.status },
+      });
+    }
+    for (const f of fundingRows) {
+      events.push({
+        type: "funding",
+        at: f.createdAt.toISOString(),
+        label: `Fondeo ${f.status}`,
+        meta: { status: f.status },
+      });
+    }
+    for (const s of settlementRows) {
+      events.push({
+        type: "settlement",
+        at: (s.acceptedAt ?? s.settledAt ?? lot.updatedAt).toISOString(),
+        label: `Liquidación ${s.status}`,
+        meta: { status: s.status, netPenMinor: s.netPenMinor.toString() },
+      });
+    }
+
+    events.sort((a, b) => a.at.localeCompare(b.at));
+
     return {
       lot: serializeLot(lot),
       inspections: inspectionRows.map(serializeInspection),
@@ -111,6 +217,14 @@ export async function registerLotRoutes(
         reasonText: r.reasonText,
         createdAt: r.createdAt.toISOString(),
       })),
+      audits: auditRows.map((a) => ({
+        id: a.id,
+        status: a.status,
+        resultCode: a.resultCode,
+        inspectionVersion: a.inspectionVersion,
+        completedAt: a.completedAt?.toISOString() ?? null,
+      })),
+      events,
     };
   });
 

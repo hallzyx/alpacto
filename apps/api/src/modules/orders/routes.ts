@@ -66,6 +66,19 @@ export async function registerOrderRoutes(
     return serializeOrder(row);
   });
 
+  app.get("/orders", { preHandler: authenticate }, async (request) => {
+    const user = request.user as AuthUser;
+    if (user.role === "buyer") {
+      const rows = await db.select().from(orders).where(eq(orders.buyerId, user.id));
+      return { orders: rows.map(serializeOrder) };
+    }
+    if (user.role === "admin" || user.role === "association") {
+      const rows = await db.select().from(orders);
+      return { orders: rows.map(serializeOrder) };
+    }
+    throw new ApiError(403, "Forbidden");
+  });
+
   app.get("/orders/:id", { preHandler: authenticate }, async (request) => {
     const { id } = request.params as { id: string };
     const [row] = await db.select().from(orders).where(eq(orders.id, id)).limit(1);

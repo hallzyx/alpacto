@@ -169,11 +169,13 @@ __metadata:
   dependencies:
     "@heroicons/react": ^2.2.0
     "@rainbow-me/rainbowkit": 2.2.9
+    "@simplewebauthn/browser": ^13.3.0
     "@tailwindcss/postcss": ^4.2.4
     "@tanstack/react-query": ^5.59.15
     "@trivago/prettier-plugin-sort-imports": ^4.3.0
     "@types/node": ^24
     "@types/react": ^19.2.14
+    "@zerodev/wallet-react": ^0.0.5
     abitype: 1.0.6
     bgipfs: ^0.0.12
     blo: ^2.0.0
@@ -6182,6 +6184,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@simplewebauthn/browser@npm:^13.3.0":
+  version: 13.3.0
+  resolution: "@simplewebauthn/browser@npm:13.3.0"
+  checksum: 752b374e5c14fa15301affe61ad72c11127fdc6d31a4fc7121b34b2d287c27ebd6bcf3872a98595ed3f8247e4fdcd54fe4cfb49cbafc15d446533f13cc5f66ec
+  languageName: node
+  linkType: hard
+
 "@simplewebauthn/browser@npm:^8.3.4":
   version: 8.3.7
   resolution: "@simplewebauthn/browser@npm:8.3.7"
@@ -9690,6 +9699,41 @@ __metadata:
   peerDependencies:
     viem: ^2.28.0
   checksum: 3eb6b9b4debc8df5017bea17d496e187cdab9dbb86cf072a8a4166b31155168048edc0d77cae09689b3f7cfb6bfb79ed6d5a90da559343be3a862909e1b90591
+  languageName: node
+  linkType: hard
+
+"@zerodev/wallet-react@npm:^0.0.5":
+  version: 0.0.5
+  resolution: "@zerodev/wallet-react@npm:0.0.5"
+  dependencies:
+    ox: ~0.14.20
+  peerDependencies:
+    "@tanstack/react-query": ^5.0.0
+    "@wagmi/core": ^2.22.0 || ^3.0.0
+    "@zerodev/ecdsa-validator": ^5.4.9
+    "@zerodev/sdk": 5.5.4
+    "@zerodev/wallet-core": 0.0.3
+    expo-linking: ">=7.0.0"
+    expo-web-browser: ">=14.0.0"
+    react: ^18.0.0 || ^19.0.0
+    react-native: ">=0.73.0"
+    react-native-webview: ">=13.0.0"
+    uuid: ">=11.0.0"
+    viem: ^2.47.18
+    wagmi: ^2.19.0 || ^3.0.0
+    zustand: ^5.0.3
+  peerDependenciesMeta:
+    expo-linking:
+      optional: true
+    expo-web-browser:
+      optional: true
+    react-native:
+      optional: true
+    react-native-webview:
+      optional: true
+    uuid:
+      optional: true
+  checksum: c4fa4f31cb12dd2c2a00c22da25eb05d6b92fbe9413bdbd450df3b1fced619fecbe178981e41c8698da9cb12e75df42aa04478616484af23e5a4aaa308d3b724
   languageName: node
   linkType: hard
 
@@ -18370,7 +18414,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ox@npm:0.14.33":
+"ox@npm:0.14.33, ox@npm:~0.14.20":
   version: 0.14.33
   resolution: "ox@npm:0.14.33"
   dependencies:

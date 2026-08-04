@@ -10,6 +10,7 @@
   },
   "scripts": {
     "phase3": "tsx scripts/phase3-demo.ts",
+    "ayni:session": "tsx scripts/ayni-session-env.ts",
     "test": "vitest run"
   },
   "dependencies": {

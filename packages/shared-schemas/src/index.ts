@@ -80,6 +80,15 @@ export const fundingSessionResponseSchema = z.object({
 export type FundingIntentStatus = z.infer<typeof fundingIntentStatusSchema>;
 export type FundingSessionResponse = z.infer<typeof fundingSessionResponseSchema>;
 
+export const producerSessionSchema = z.object({
+  email: z.string().email(),
+  name: z.string().min(1).max(255),
+  smartAccountAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
+  authMethod: z.enum(["google", "email_otp", "passkey"]),
+});
+
+export type ProducerSessionInput = z.infer<typeof producerSessionSchema>;
+
 export const auditResultCodeSchema = z.enum([
   "pass",
   "warning",

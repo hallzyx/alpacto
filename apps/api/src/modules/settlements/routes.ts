@@ -4,6 +4,7 @@ import {
   auditRuns,
   campaigns,
   inspections,
+  localPayouts,
   lots,
   orders,
   pricingCategories,
@@ -120,10 +121,16 @@ export async function registerSettlementRoutes(
 
   app.post("/lots/:id/settlement/accept", { preHandler: authenticate }, async (request) => {
     const user = request.user as AuthUser;
-    if (!["buyer", "admin"].includes(user.role)) {
+    if (!["buyer", "admin", "producer"].includes(user.role)) {
       throw new ApiError(403, "Forbidden");
     }
     const { id: lotId } = request.params as { id: string };
+
+    const [lotCheck] = await db.select().from(lots).where(eq(lots.id, lotId)).limit(1);
+    if (!lotCheck) throw new ApiError(404, "Lot not found");
+    if (user.role === "producer" && lotCheck.producerId !== user.id) {
+      throw new ApiError(403, "Only the lot producer may accept settlement");
+    }
 
     const [latestAudit] = await db
       .select()
@@ -202,5 +209,104 @@ export async function registerSettlementRoutes(
       .limit(1);
     if (!row) throw new ApiError(404, "Settlement not found");
     return serializeSettlement(row);
+  });
+
+  app.post("/lots/:id/local-payout/simulate", { preHandler: authenticate }, async (request) => {
+    if (process.env["DEMO_LOCAL_PAYOUT_ENABLED"] === "false") {
+      throw new ApiError(400, "Local payout simulation disabled");
+    }
+    const user = request.user as AuthUser;
+    if (!["association", "admin", "producer", "buyer"].includes(user.role)) {
+      throw new ApiError(403, "Forbidden");
+    }
+    const { id: lotId } = request.params as { id: string };
+    const [settlement] = await db
+      .select()
+      .from(settlements)
+      .where(eq(settlements.lotId, lotId))
+      .orderBy(desc(settlements.acceptedAt))
+      .limit(1);
+    if (!settlement) throw new ApiError(404, "Settlement not found — accept first");
+
+    const [existing] = await db
+      .select()
+      .from(localPayouts)
+      .where(eq(localPayouts.settlementId, settlement.id))
+      .limit(1);
+    if (existing) {
+      return {
+        id: existing.id,
+        settlementId: existing.settlementId,
+        provider: existing.provider,
+        isSimulation: existing.isSimulation,
+        amountPenMinor: existing.amountPenMinor.toString(),
+        status: existing.status,
+        reference: existing.reference,
+        createdAt: existing.createdAt.toISOString(),
+        label: "Simulación de pago local en soles (no es transferencia real)",
+      };
+    }
+
+    const [row] = await db
+      .insert(localPayouts)
+      .values({
+        settlementId: settlement.id,
+        provider: "demo_local",
+        isSimulation: true,
+        amountPenMinor: settlement.netPenMinor,
+        status: "simulated_paid",
+        reference: `SIM-PEN-${Date.now()}`,
+      })
+      .returning();
+
+    await db
+      .update(lots)
+      .set({ status: "settled", updatedAt: new Date() })
+      .where(eq(lots.id, lotId));
+
+    await db
+      .update(settlements)
+      .set({ status: "settled", settledAt: new Date() })
+      .where(eq(settlements.id, settlement.id));
+
+    return {
+      id: row!.id,
+      settlementId: row!.settlementId,
+      provider: row!.provider,
+      isSimulation: row!.isSimulation,
+      amountPenMinor: row!.amountPenMinor.toString(),
+      status: row!.status,
+      reference: row!.reference,
+      createdAt: row!.createdAt.toISOString(),
+      label: "Simulación de pago local en soles (no es transferencia real)",
+    };
+  });
+
+  app.get("/lots/:id/local-payout", { preHandler: authenticate }, async (request) => {
+    const { id: lotId } = request.params as { id: string };
+    const [settlement] = await db
+      .select()
+      .from(settlements)
+      .where(eq(settlements.lotId, lotId))
+      .orderBy(desc(settlements.acceptedAt))
+      .limit(1);
+    if (!settlement) throw new ApiError(404, "Settlement not found");
+    const [payout] = await db
+      .select()
+      .from(localPayouts)
+      .where(eq(localPayouts.settlementId, settlement.id))
+      .limit(1);
+    if (!payout) throw new ApiError(404, "Local payout not found");
+    return {
+      id: payout.id,
+      settlementId: payout.settlementId,
+      provider: payout.provider,
+      isSimulation: payout.isSimulation,
+      amountPenMinor: payout.amountPenMinor.toString(),
+      status: payout.status,
+      reference: payout.reference,
+      createdAt: payout.createdAt.toISOString(),
+      label: "Simulación de pago local en soles (no es transferencia real)",
+    };
   });
 }

@@ -2,16 +2,15 @@
 
 *Un pacto justo por cada fibra.*
 
-Web 2.5 platform for transparent alpaca fiber settlement. Phase 5 adds the Ayni audit agent with settlement gate.
+Web 2.5 platform for transparent alpaca fiber settlement. Phase 6 adds role-based UX and producer ZeroDev auth.
 
 ## Repository layout
 
 ```text
 apps/
-  web/           Next.js frontend (Scaffold-Stylus, includes /debug)
-  api/           Fastify API (Phase 2–5 auth, Stripe, audits)
-  ayni-worker/   BullMQ agent worker (Phase 5)
-  ayni-worker/   Agent worker stub
+  web/           Next.js product UX + Scaffold /debug
+  api/           Fastify API (auth, Stripe, audits, settlements)
+  ayni-worker/   BullMQ Ayni agent worker
 packages/
   contracts/     Stylus contracts and deploy tooling
   database/      Drizzle ORM + migrations + seed
@@ -19,7 +18,7 @@ packages/
   shared-schemas/ Zod API schemas
   zero-dev/      Kernel / paymaster / session-key helpers
 infra/docker/    Postgres, Redis, MinIO
-docs/
+docs/            demo-script.md, agent-security.md
 ```
 
 ## Prerequisites
@@ -59,6 +58,21 @@ yarn phase5       # Terminal 3
 ```
 
 `yarn phase5` submits a 42.5 kg inspection, runs Ayni (fixture vision), detects 41.5 kg mismatch, and blocks settlement accept.
+
+## Quick start — Phase 6 (UX)
+
+```bash
+yarn docker:up && yarn db:migrate && yarn db:seed
+# .env: NEXT_PUBLIC_API_URL=http://127.0.0.1:4000
+
+yarn api:dev      # Terminal 1
+yarn ayni:dev     # Terminal 2 (for audit in full demo)
+yarn web:dev      # Terminal 3 → http://localhost:3000
+yarn phase6       # API smoke for UX surfaces
+```
+
+Landing: role seed login + producer registration (Google · Email OTP · Passkey).  
+Full narrative: [`docs/demo-script.md`](docs/demo-script.md). `/debug` remains for engineering only.
 
 ## Quick start — Phase 3 (ZeroDev / Sepolia)
 
@@ -104,7 +118,8 @@ yarn test           # domain + api + stylus
 - **Phase 3:** ZeroDev Kernel on Sepolia, `yarn phase3`.
 - **Phase 4:** Stripe sandbox → USDC escrow, `yarn phase4`.
 - **Phase 5:** Ayni audit agent + settlement gate, `yarn phase5`.
-- **Phase 6+:** See `ALPACTO_PRD.md`.
+- **Phase 6:** Role UX + producer ZeroDev auth, `yarn phase6` + `docs/demo-script.md`.
+- **Later:** See `ALPACTO_PRD.md`.
 
 ## Docs
 

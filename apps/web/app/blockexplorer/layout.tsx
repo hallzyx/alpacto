@@ -1,12 +1,7 @@
-import { getMetadata } from "~~/utils/scaffold-eth/getMetadata";
+"use client";
 
-export const metadata = getMetadata({
-  title: "Block Explorer",
-  description: "Block Explorer created with 🏗 Scaffold-Stylus",
-});
+import { ScaffoldEthAppWithProviders } from "~~/components/ScaffoldEthAppWithProviders";
 
-const BlockExplorerLayout = ({ children }: { children: React.ReactNode }) => {
-  return <>{children}</>;
-};
-
-export default BlockExplorerLayout;
+export default function BlockExplorerLayout({ children }: { children: React.ReactNode }) {
+  return <ScaffoldEthAppWithProviders>{children}</ScaffoldEthAppWithProviders>;
+}

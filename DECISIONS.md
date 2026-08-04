@@ -64,3 +64,13 @@
 - **Settlement gate:** `POST /lots/:id/settlement/accept` rejects unless audit is `pass` or `warning`.
 - **Attestation:** ZeroDev session key (`AYNI_SESSION_KEY` + `AYNI_SERIALIZED_SESSION` from `yarn phase3`) → `submitAuditAttestation` when `onchain_lot_id` present; offchain attestation otherwise.
 - **Checkpoint:** `yarn phase5` — 42.5 kg declared vs 41.5 kg fixture → settlement blocked.
+
+## 2026-08-03 — Phase 6 UX (Web 2.5)
+
+- **Visual:** “Altiplano contemporáneo” — Fraunces + Source Sans 3; night indigo/teal atmosphere; brand-first landing.
+- **Roles seed:** buyer/inspector/association/admin via `demo-login` from landing.
+- **Producer auth:** three ZeroDev-oriented paths in UI — Google, Email OTP, Passkey — then `POST /auth/producer/session` → JWT. Video uses one path; all three remain for accessibility/docs. Local Google/OTP may use demo smart-account helper when dashboard OAuth/OTP not configured; OTP demo code `123456`.
+- **Screens:** `/producer`, `/inspector`, `/association`, `/buyer/orders`, `/admin`; `/debug` out of primary nav.
+- **API gaps:** `GET /orders`, `GET /lots`, `GET /pricing-policies/:id`, producer may `settlement/accept`, local payout simulate, enriched lot timeline, producer session.
+- **Docs:** `docs/demo-script.md`; smoke `yarn phase6`.
+- **Checkpoint:** UI demo end-to-end per demo script (API smoke verifies list/session surfaces).
