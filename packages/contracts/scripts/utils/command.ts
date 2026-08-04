@@ -150,15 +150,19 @@ export function executeCommand(
 
     // Handle process completion
     childProcess.on("close", (code: number | null) => {
-      // this can extract and detect errors from docker logs because it not throw error code
-      const errors = extractErrorLines(errorLines);
+      const combined = `${output}\n${errorOutput}`;
+      const hasCompileError = errorLines.some(
+        (line) =>
+          /error\[E\d+\]/i.test(line) || /^\s*error:/i.test(line),
+      );
 
-      if (code === 0 && !errors) {
+      if (code === 0 && !hasCompileError) {
         console.log(`\n✅ ${description} completed successfully!`);
-        resolve(output);
+        // cargo-stylus logs deployment address on stderr; keep both streams
+        resolve(combined);
       } else {
         console.error(`\n❌ ${description} failed with exit code ${code}`);
-        // Print error output starting from "project metadata hash computed on deployment" or error patterns, or all logs if not found
+        const errors = extractErrorLines(errorLines);
         if (errors) {
           console.error(errors);
           if (

@@ -32,6 +32,7 @@
     "stylus:format": "yarn workspace @alpacto/contracts format",
     "stylus:lint": "yarn workspace @alpacto/contracts lint",
     "stylus:test": "yarn workspace @alpacto/contracts test",
+    "phase1": "yarn workspace @alpacto/contracts phase1",
     "test": "yarn stylus:test",
     "vercel": "yarn workspace @alpacto/web vercel",
     "vercel:yolo": "yarn workspace @alpacto/web vercel:yolo",

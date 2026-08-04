@@ -2,7 +2,7 @@
 
 *Un pacto justo por cada fibra.*
 
-Web 2.5 platform for transparent alpaca fiber settlement. Phase 0 provides the Scaffold-Stylus pipeline inside the Alpacto monorepo.
+Web 2.5 platform for transparent alpaca fiber settlement. Phase 1 delivers the onchain domain (`AlpactoCore` + local `mock-usdc`) on the Scaffold-Stylus pipeline.
 
 ## Repository layout
 
@@ -50,19 +50,28 @@ yarn chain
 # Terminal 2
 yarn deploy
 
+# Optional: full Phase 1 flows (roles, mint, settle)
+yarn phase1
+yarn phase1 -- --flow=reweigh
+
+# Unit tests (cargo) for Stylus crates
+yarn stylus:test
+
 # Terminal 3
 yarn start
 ```
 
-Open `http://localhost:3000/debug` to interact with the example Stylus contract.
+Open `http://localhost:3000/debug` to interact with `alpacto-core` / `mock-usdc` (and the example `your-contract`).
 
 ## Phase status
 
 - **Phase 0:** Bootstrap complete — Rust → WASM → deploy → ABI → frontend.
-- **Phase 1+:** See `ALPACTO_PRD.md`.
+- **Phase 1:** `AlpactoCore` domain + `mock-usdc`, cargo tests §21.1, `yarn phase1` scripts.
+- **Phase 2+:** See `ALPACTO_PRD.md`.
 
 ## Docs
 
 - Product requirements: `ALPACTO_PRD.md`
+- Contract spec: `docs/contract-spec.md`
 - Technical decisions: `DECISIONS.md`
 - Environment template: `.env.example`
