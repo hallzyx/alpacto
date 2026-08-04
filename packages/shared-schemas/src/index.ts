@@ -61,4 +61,21 @@ export type CreateOrderInput = z.infer<typeof createOrderSchema>;
 export type CreateLotInput = z.infer<typeof createLotSchema>;
 export type CreateInspectionInput = z.infer<typeof createInspectionSchema>;
 export type ReweighRequestInput = z.infer<typeof reweighRequestSchema>;
-export type EvidenceUploadUrlInput = z.infer<typeof evidenceUploadUrlSchema>;
+export const fundingIntentStatusSchema = z.enum([
+  "pending",
+  "paid",
+  "funding",
+  "funded",
+  "failed",
+]);
+
+export const fundingSessionResponseSchema = z.object({
+  fundingIntentId: z.string().uuid(),
+  sessionId: z.string(),
+  url: z.string().url().nullable(),
+  usdCents: z.string(),
+  usdcUnits: z.string(),
+});
+
+export type FundingIntentStatus = z.infer<typeof fundingIntentStatusSchema>;
+export type FundingSessionResponse = z.infer<typeof fundingSessionResponseSchema>;

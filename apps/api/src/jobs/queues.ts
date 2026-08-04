@@ -1,10 +1,13 @@
 import { Queue, Worker } from "bullmq";
 import IORedis from "ioredis";
+import { createDb } from "@alpacto/database";
 import { config } from "../config.js";
+import { markFundOrderFailed, processFundOrderJob } from "./fund-order.js";
 
 export const QUEUE_NAMES = {
   ping: "alpacto-ping",
   evidenceFinalize: "alpacto-evidence-finalize",
+  fundOrder: "alpacto-fund-order",
 } as const;
 
 let connection: IORedis | null = null;
@@ -21,6 +24,7 @@ export function createQueues() {
   return {
     ping: new Queue(QUEUE_NAMES.ping, { connection: conn }),
     evidenceFinalize: new Queue(QUEUE_NAMES.evidenceFinalize, { connection: conn }),
+    fundOrder: new Queue(QUEUE_NAMES.fundOrder, { connection: conn }),
   };
 }
 
@@ -28,6 +32,8 @@ export type Queues = ReturnType<typeof createQueues>;
 
 export function startWorkers(onLog: (msg: string) => void) {
   const conn = getRedisConnection();
+  const { db, pool } = createDb(config.databaseUrl);
+
   const pingWorker = new Worker(
     QUEUE_NAMES.ping,
     async (job) => {
@@ -36,6 +42,7 @@ export function startWorkers(onLog: (msg: string) => void) {
     },
     { connection: conn },
   );
+
   const evidenceWorker = new Worker(
     QUEUE_NAMES.evidenceFinalize,
     async (job) => {
@@ -44,5 +51,35 @@ export function startWorkers(onLog: (msg: string) => void) {
     },
     { connection: conn },
   );
-  return { pingWorker, evidenceWorker };
+
+  const fundOrderWorker = new Worker(
+    QUEUE_NAMES.fundOrder,
+    async (job) => {
+      const fundingIntentId = String(job.data.fundingIntentId ?? "");
+      onLog(`fund-order start intent=${fundingIntentId}`);
+      try {
+        const result = await processFundOrderJob(db, fundingIntentId, onLog);
+        onLog(`fund-order done tx=${result.txHash}`);
+        return result;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        onLog(`fund-order failed: ${message}`);
+        if (job.attemptsMade + 1 >= (job.opts.attempts ?? 1)) {
+          await markFundOrderFailed(db, fundingIntentId, message);
+        }
+        throw err;
+      }
+    },
+    { connection: conn },
+  );
+
+  fundOrderWorker.on("error", (err) => {
+    onLog(`fund-order worker error: ${err.message}`);
+  });
+
+  const closeDb = async () => {
+    await pool.end();
+  };
+
+  return { pingWorker, evidenceWorker, fundOrderWorker, closeDb };
 }

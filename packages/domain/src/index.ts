@@ -11,3 +11,8 @@ export {
   type SettlementPreviewInput,
   type UsdcUnits,
 } from "./money.js";
+
+export {
+  assertWithinDemoMaxUsdc,
+  usdCentsToUsdcUnits,
+} from "./funding.js";

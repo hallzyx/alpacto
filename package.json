@@ -35,6 +35,7 @@
     "phase1": "yarn workspace @alpacto/contracts phase1",
     "phase2": "yarn workspace @alpacto/api phase2",
     "phase3": "yarn workspace @alpacto/zero-dev phase3",
+    "phase4": "yarn workspace @alpacto/api phase4",
     "docker:up": "docker compose -f infra/docker/docker-compose.yml up -d",
     "docker:down": "docker compose -f infra/docker/docker-compose.yml down",
     "db:generate": "yarn workspace @alpacto/database generate",

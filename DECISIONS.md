@@ -43,3 +43,14 @@
 - **Passkeys:** API routes `@simplewebauthn/server` under `/auth/passkey/*`; links Kernel ECDSA smart account address on register. Browser passkey-validator wiring deferred to UX phase.
 - **Ayni:** Session key generated in `yarn phase3`, stored as `AYNI_SESSION_KEY`; `AUDITOR_AGENT_ROLE` granted; revoke via `POST /admin/ayni/session-key/revoke`.
 - **Checkpoint:** `yarn phase3` — producer `requestReweighing` via Kernel UserOp.
+
+## 2026-08-03 — Phase 4 Stripe sandbox
+
+- **Checkout:** Stripe Checkout Session (test mode), `STRIPE_PRICE_MODE=demo`.
+- **Conversion:** Demo 1:1 — `usdc_units = usd_cents × 10_000` (6-decimal USDC). Cap `DEMO_MAX_FUNDING_USDC` (whole USDC).
+- **Webhook:** `POST /webhooks/stripe` verifies `Stripe-Signature` on raw body; handles `checkout.session.completed`.
+- **Idempotency:** Unique `stripe_event_id` / `stripe_session_id` on `funding_intents`; duplicate events return 200.
+- **Worker:** BullMQ `alpacto-fund-order` — treasury EOA (`TREASURY_PRIVATE_KEY`) `approve` + `fundOrder` on Arbitrum Sepolia.
+- **Onchain:** Worker assigns `onchain_order_id`, calls `createOrder` if missing, then funds escrow. Addresses from `users.smart_account_address` or `DEMO_*_SMART_ACCOUNT` env.
+- **Local webhook:** `stripe listen --forward-to localhost:4000/webhooks/stripe`.
+- **Checkpoint:** `yarn phase4` — test USD → test USDC in escrow (simulated webhook + onchain fund).
