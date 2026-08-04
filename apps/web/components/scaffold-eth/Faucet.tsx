@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { Address as AddressType, createWalletClient, http, parseEther } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { useAccount } from "wagmi";
-import { useTheme } from "next-themes";
+import { useTheme } from "~~/components/ThemeProvider";
 import { BanknotesIcon } from "@heroicons/react/24/outline";
 import { AngularBorder } from "~~/components/AngularBorder";
 import { Address, AddressInput, Balance, EtherInput } from "~~/components/scaffold-eth";

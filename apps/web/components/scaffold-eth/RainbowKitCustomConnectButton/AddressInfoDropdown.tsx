@@ -17,7 +17,7 @@ import { BlockieAvatar, isENS } from "~~/components/scaffold-eth";
 import { useCopyToClipboard, useOutsideClick } from "~~/hooks/scaffold-eth";
 import { getTargetNetworks } from "~~/utils/scaffold-stylus";
 import { arbitrumNitro } from "~~/utils/scaffold-stylus/supportedChains";
-import { useTheme } from "next-themes";
+import { useTheme } from "~~/components/ThemeProvider";
 
 const BURNER_WALLET_ID = "burnerWallet";
 

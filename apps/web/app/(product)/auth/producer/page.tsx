@@ -1,15 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { startAuthentication, startRegistration } from "@simplewebauthn/browser";
 import { ErrorBanner, useAuth } from "~~/components/alpacto";
+import { ProducerEmailOtpForm } from "~~/components/alpacto/ProducerEmailOtpForm";
+import { ProducerGoogleAuthForm } from "~~/components/alpacto/ProducerGoogleAuthForm";
 import { apiFetch } from "~~/lib/api";
 import { demoSmartAccountAddress } from "~~/lib/demo-account";
 
 type AuthTab = "google" | "email" | "passkey";
-
-const ZERODEV_PROJECT_ID = process.env.NEXT_PUBLIC_ZERODEV_PROJECT_ID ?? "";
-const DEMO_OTP = "123456";
 
 export default function ProducerAuthPage() {
   const { producerSession, demoLogin } = useAuth();
@@ -17,22 +16,10 @@ export default function ProducerAuthPage() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  // Google path
-  const [googleEmail, setGoogleEmail] = useState("");
-  const [googleName, setGoogleName] = useState("");
-
-  // Email OTP path
-  const [otpEmail, setOtpEmail] = useState("");
-  const [otpName, setOtpName] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
-  const [otpCode, setOtpCode] = useState("");
-
   // Passkey path
   const [passkeyEmail, setPasskeyEmail] = useState("");
   const [passkeyName, setPasskeyName] = useState("");
   const [passkeyMode, setPasskeyMode] = useState<"register" | "login">("register");
-
-  const zerodevConfigured = useMemo(() => Boolean(ZERODEV_PROJECT_ID.trim()), []);
 
   const run = async (fn: () => Promise<void>) => {
     setError("");
@@ -44,40 +31,6 @@ export default function ProducerAuthPage() {
     } finally {
       setBusy(false);
     }
-  };
-
-  const completeGoogle = async () => {
-    const email = googleEmail.trim().toLowerCase();
-    const name = googleName.trim() || email.split("@")[0] || "Productor";
-    if (!email) throw new Error("Ingresa tu correo");
-    // ZeroDev Google social requires dashboard OAuth client setup.
-    // Localhost demo: create session with deterministic smart account.
-    await producerSession({
-      email,
-      name,
-      smartAccountAddress: demoSmartAccountAddress(email),
-      authMethod: "google",
-    });
-  };
-
-  const sendOtp = async () => {
-    const email = otpEmail.trim().toLowerCase();
-    if (!email) throw new Error("Ingresa tu correo");
-    setOtpSent(true);
-  };
-
-  const verifyOtp = async () => {
-    const email = otpEmail.trim().toLowerCase();
-    const name = otpName.trim() || email.split("@")[0] || "Productor";
-    if (otpCode.trim() !== DEMO_OTP) {
-      throw new Error(`Código incorrecto. En demo usa ${DEMO_OTP}`);
-    }
-    await producerSession({
-      email,
-      name,
-      smartAccountAddress: demoSmartAccountAddress(email),
-      authMethod: "email_otp",
-    });
   };
 
   const registerPasskey = async () => {
@@ -190,102 +143,9 @@ export default function ProducerAuthPage() {
       </div>
 
       <div className="alp-panel alp-auth-paths">
-        {tab === "google" ? (
-          <form
-            className="alp-form"
-            onSubmit={e => {
-              e.preventDefault();
-              void run(completeGoogle);
-            }}
-          >
-            <p className="alp-note">
-              {zerodevConfigured
-                ? "ZeroDev project detectado. Google social completo requiere OAuth en el dashboard de ZeroDev; en localhost usamos sesión demo vinculada."
-                : "Configura NEXT_PUBLIC_ZERODEV_PROJECT_ID para ZeroDev. Mientras, usamos sesión demo local."}
-            </p>
-            <div className="alp-field">
-              <label htmlFor="g-email">Correo</label>
-              <input
-                id="g-email"
-                type="email"
-                autoComplete="email"
-                value={googleEmail}
-                onChange={e => setGoogleEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div className="alp-field">
-              <label htmlFor="g-name">Nombre</label>
-              <input
-                id="g-name"
-                value={googleName}
-                onChange={e => setGoogleName(e.target.value)}
-                placeholder="Martina Quispe"
-              />
-            </div>
-            <button type="submit" className="alp-btn alp-btn--primary" disabled={busy}>
-              {busy ? "Entrando…" : "Continuar con Google (demo)"}
-            </button>
-          </form>
-        ) : null}
+        {tab === "google" ? <ProducerGoogleAuthForm busy={busy} setBusy={setBusy} setError={setError} /> : null}
 
-        {tab === "email" ? (
-          <form
-            className="alp-form"
-            onSubmit={e => {
-              e.preventDefault();
-              void run(otpSent ? verifyOtp : sendOtp);
-            }}
-          >
-            <p className="alp-note">
-              Demo OTP: tras enviar, usa el código <strong>{DEMO_OTP}</strong>. Luego se llama a{" "}
-              <code>/auth/producer/session</code>.
-            </p>
-            <div className="alp-field">
-              <label htmlFor="o-email">Correo</label>
-              <input
-                id="o-email"
-                type="email"
-                value={otpEmail}
-                onChange={e => setOtpEmail(e.target.value)}
-                required
-                disabled={otpSent}
-              />
-            </div>
-            <div className="alp-field">
-              <label htmlFor="o-name">Nombre</label>
-              <input id="o-name" value={otpName} onChange={e => setOtpName(e.target.value)} disabled={otpSent} />
-            </div>
-            {otpSent ? (
-              <div className="alp-field">
-                <label htmlFor="o-code">Código</label>
-                <input
-                  id="o-code"
-                  inputMode="numeric"
-                  value={otpCode}
-                  onChange={e => setOtpCode(e.target.value)}
-                  placeholder={DEMO_OTP}
-                  required
-                />
-              </div>
-            ) : null}
-            <button type="submit" className="alp-btn alp-btn--primary" disabled={busy}>
-              {busy ? "…" : otpSent ? "Verificar y entrar" : "Enviar código"}
-            </button>
-            {otpSent ? (
-              <button
-                type="button"
-                className="alp-link-btn"
-                onClick={() => {
-                  setOtpSent(false);
-                  setOtpCode("");
-                }}
-              >
-                Cambiar correo
-              </button>
-            ) : null}
-          </form>
-        ) : null}
+        {tab === "email" ? <ProducerEmailOtpForm busy={busy} setBusy={setBusy} setError={setError} /> : null}
 
         {tab === "passkey" ? (
           <form

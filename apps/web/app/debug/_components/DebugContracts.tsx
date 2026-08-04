@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo } from "react";
 import { useSessionStorage } from "usehooks-ts";
-import { useTheme } from "next-themes";
+import { useTheme } from "~~/components/ThemeProvider";
 import { BarsArrowUpIcon } from "@heroicons/react/20/solid";
 import { ContractUI } from "~~/app/debug/_components/contract";
 import { ContractName, GenericContract } from "~~/utils/scaffold-eth/contract";

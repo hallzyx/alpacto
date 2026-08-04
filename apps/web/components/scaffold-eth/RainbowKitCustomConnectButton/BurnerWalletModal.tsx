@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { BlockieAvatar } from "..";
-import { useTheme } from "next-themes";
+import { useTheme } from "~~/components/ThemeProvider";
 import { useOutsideClick } from "~~/hooks/scaffold-eth/useOutsideClick";
 import { arbitrumNitro } from "~~/utils/scaffold-stylus/supportedChains";
 

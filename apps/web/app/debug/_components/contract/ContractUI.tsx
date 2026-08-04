@@ -2,7 +2,7 @@
 
 // @refresh reset
 import { useReducer, useState, useMemo } from "react";
-import { useTheme } from "next-themes";
+import { useTheme } from "~~/components/ThemeProvider";
 import { ContractReadMethods } from "./ContractReadMethods";
 import { ContractVariables } from "./ContractVariables";
 import { ContractWriteMethods } from "./ContractWriteMethods";

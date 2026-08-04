@@ -1,4 +1,4 @@
-import { useTheme } from "next-themes";
+import { useTheme } from "~~/components/ThemeProvider";
 import { useSelectedNetwork } from "~~/hooks/scaffold-eth";
 import { AllowedChainIds, ChainWithAttributes } from "~~/utils/scaffold-stylus";
 

@@ -15,6 +15,8 @@ import { KERNEL_V3_1, getEntryPoint } from "@zerodev/sdk/constants";
 import {
   createPublicClient,
   http,
+  keccak256,
+  toBytes,
   type Address,
   type Chain,
   type Hex,
@@ -208,6 +210,16 @@ export async function sendSponsoredCall(opts: {
 
 export function generateOwnerKey(): Hex {
   return generatePrivateKey();
+}
+
+/**
+ * Deterministic ECDSA owner key for demo seed wallets (Arbitrum Sepolia).
+ * Same DEMO_WALLET_SEED + email → same Kernel address across runs.
+ */
+export function deriveDemoOwnerKey(masterSeed: string, email: string): Hex {
+  return keccak256(
+    toBytes(`alpacto-demo-wallet-v1:${masterSeed}:${email.trim().toLowerCase()}`),
+  );
 }
 
 export type AyniSessionSetup = {

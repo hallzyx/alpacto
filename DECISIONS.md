@@ -69,7 +69,8 @@
 
 - **Visual:** “Altiplano contemporáneo” — Fraunces + Source Sans 3; night indigo/teal atmosphere; brand-first landing.
 - **Roles seed:** buyer/inspector/association/admin via `demo-login` from landing.
-- **Producer auth:** three ZeroDev-oriented paths in UI — Google, Email OTP, Passkey — then `POST /auth/producer/session` → JWT. Video uses one path; all three remain for accessibility/docs. Local Google/OTP may use demo smart-account helper when dashboard OAuth/OTP not configured; OTP demo code `123456`.
+- **Seed wallets:** `yarn seed:wallets` creates deterministic ZeroDev Kernel ECDSA accounts on Arbitrum Sepolia for every seed user, persists `users.smart_account_address`, writes owner keys to `.secrets/demo-wallets.json`, updates `DEMO_*_SMART_ACCOUNT`, and (when contract+treasury set) grants on-chain roles + dust ETH. Blockchain demo paths must be Sepolia-verifiable.
+- **Producer auth:** three ZeroDev-oriented paths in UI — Google, Email OTP, Passkey — then `POST /auth/producer/session` → JWT. Video prefers Martina seed (real SA) for on-chain; live Google/OTP remain for Web 2.5 UX.
 - **Screens:** `/producer`, `/inspector`, `/association`, `/buyer/orders`, `/admin`; `/debug` out of primary nav.
 - **API gaps:** `GET /orders`, `GET /lots`, `GET /pricing-policies/:id`, producer may `settlement/accept`, local payout simulate, enriched lot timeline, producer session.
 - **Docs:** `docs/demo-script.md`; smoke `yarn phase6`.

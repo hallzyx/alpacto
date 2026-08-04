@@ -5,6 +5,9 @@ node_modules
 !.env.example
 !**/.env.example
 
+# Demo Kernel owner keys (yarn seed:wallets)
+.secrets/
+
 # dependencies, yarn, etc
 # yarn / eslint
 .yarn/*
@@ -32,4 +35,5 @@ node_modules
 
 # cdp-with-wallet skill run state (Chrome PIDs/ports/disabled-extension
 # records for detached processes) -- machine-local, never committed
-.claude/skills/cdp-with-wallet/.cdp-wallet-state.jsonpackages/nextjs/.next/
+.claude/skills/cdp-with-wallet/.cdp-wallet-state.json
+packages/nextjs/.next/

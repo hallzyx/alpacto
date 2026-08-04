@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import Link from "next/link";
-import { useTheme } from "next-themes";
+import { useTheme } from "~~/components/ThemeProvider";
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 //import { HeartIcon } from "@heroicons/react/24/outline";
 //import { BuidlGuidlLogo } from "~~/components/assets/BuidlGuidlLogo";

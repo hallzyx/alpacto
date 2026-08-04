@@ -1,4 +1,4 @@
-import { useTheme } from "next-themes";
+import { useTheme } from "~~/components/ThemeProvider";
 import { useAccount, useSwitchChain } from "wagmi";
 import { ArrowsRightLeftIcon } from "@heroicons/react/24/solid";
 import { getNetworkColor } from "~~/hooks/scaffold-eth";

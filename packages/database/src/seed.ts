@@ -212,6 +212,9 @@ async function main() {
   console.log("  campaign:", campaign.id);
   console.log("  order ALP-2026-001:", order.id);
   console.log("  demo logins:", SEED_USERS.map((u) => u.email).join(", "));
+  console.log(
+    "  → Next: yarn seed:wallets  # real Kernel SAs on Arbitrum Sepolia for each seed user",
+  );
 
   await pool.end();
 }

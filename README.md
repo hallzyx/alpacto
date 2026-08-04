@@ -63,7 +63,8 @@ yarn phase5       # Terminal 3
 
 ```bash
 yarn docker:up && yarn db:migrate && yarn db:seed
-# .env: NEXT_PUBLIC_API_URL=http://127.0.0.1:4000
+yarn seed:wallets # real Kernel SAs on Arbitrum Sepolia for seed users
+# .env: NEXT_PUBLIC_API_URL=http://127.0.0.1:4000, DEMO_WALLET_SEED, ZeroDev
 
 yarn api:dev      # Terminal 1
 yarn ayni:dev     # Terminal 2 (for audit in full demo)
@@ -71,8 +72,8 @@ yarn web:dev      # Terminal 3 → http://localhost:3000
 yarn phase6       # API smoke for UX surfaces
 ```
 
-Landing: role seed login + producer registration (Google · Email OTP · Passkey).  
-Full narrative: [`docs/demo-script.md`](docs/demo-script.md). `/debug` remains for engineering only.
+Landing: role seed login (each seed has a real Kernel address after `seed:wallets`) + producer registration (Google · Email OTP · Passkey).  
+Full narrative + **addresses de este demo local**: [`docs/demo-script.md`](docs/demo-script.md). `/debug` remains for engineering only.
 
 ## Quick start — Phase 3 (ZeroDev / Sepolia)
 

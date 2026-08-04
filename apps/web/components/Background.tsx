@@ -1,5 +1,5 @@
 import React from "react";
-import { useTheme } from "next-themes";
+import { useTheme } from "~~/components/ThemeProvider";
 
 export const BackGround = () => {
   const { resolvedTheme } = useTheme();
