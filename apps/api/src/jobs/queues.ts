@@ -8,6 +8,7 @@ export const QUEUE_NAMES = {
   ping: "alpacto-ping",
   evidenceFinalize: "alpacto-evidence-finalize",
   fundOrder: "alpacto-fund-order",
+  ayniAudit: "alpacto-ayni-audit",
 } as const;
 
 let connection: IORedis | null = null;
@@ -25,6 +26,7 @@ export function createQueues() {
     ping: new Queue(QUEUE_NAMES.ping, { connection: conn }),
     evidenceFinalize: new Queue(QUEUE_NAMES.evidenceFinalize, { connection: conn }),
     fundOrder: new Queue(QUEUE_NAMES.fundOrder, { connection: conn }),
+    ayniAudit: new Queue(QUEUE_NAMES.ayniAudit, { connection: conn }),
   };
 }
 

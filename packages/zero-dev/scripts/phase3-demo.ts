@@ -127,6 +127,7 @@ async function main() {
   });
   writeEnvKey(path.join(root, ".env"), "AYNI_SESSION_KEY", ayni.sessionPrivateKey);
   writeEnvKey(path.join(root, ".env"), "AYNI_SMART_ACCOUNT", ayni.ayniSmartAccountAddress);
+  writeEnvKey(path.join(root, ".env"), "AYNI_SERIALIZED_SESSION", ayni.serializedSession);
   console.log("🤖 Ayni SA:", ayni.ayniSmartAccountAddress);
 
   const [buyerRole, associationRole, inspectorRole, auditorRole, platformAdminRole] =

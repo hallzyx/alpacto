@@ -2,14 +2,15 @@
 
 *Un pacto justo por cada fibra.*
 
-Web 2.5 platform for transparent alpaca fiber settlement. Phase 4 adds Stripe sandbox funding to Sepolia USDC escrow.
+Web 2.5 platform for transparent alpaca fiber settlement. Phase 5 adds the Ayni audit agent with settlement gate.
 
 ## Repository layout
 
 ```text
 apps/
   web/           Next.js frontend (Scaffold-Stylus, includes /debug)
-  api/           Fastify API (Phase 2–4 auth, passkeys, Stripe funding)
+  api/           Fastify API (Phase 2–5 auth, Stripe, audits)
+  ayni-worker/   BullMQ agent worker (Phase 5)
   ayni-worker/   Agent worker stub
 packages/
   contracts/     Stylus contracts and deploy tooling
@@ -45,6 +46,19 @@ yarn phase4     # Terminal 3
 ```
 
 `yarn phase4` creates a $10 order, opens Checkout, simulates `checkout.session.completed`, and polls until USDC is in escrow on Sepolia.
+
+## Quick start — Phase 5 (Ayni audit)
+
+```bash
+yarn docker:up && yarn db:migrate && yarn db:seed
+# .env: DEEPSEEK_*, OPENAI_*, AYNI_* (run yarn phase3 for session keys)
+
+yarn api:dev      # Terminal 1
+yarn ayni:dev     # Terminal 2
+yarn phase5       # Terminal 3
+```
+
+`yarn phase5` submits a 42.5 kg inspection, runs Ayni (fixture vision), detects 41.5 kg mismatch, and blocks settlement accept.
 
 ## Quick start — Phase 3 (ZeroDev / Sepolia)
 
@@ -89,7 +103,8 @@ yarn test           # domain + api + stylus
 - **Phase 2:** Backend/DB, `yarn phase2`.
 - **Phase 3:** ZeroDev Kernel on Sepolia, `yarn phase3`.
 - **Phase 4:** Stripe sandbox → USDC escrow, `yarn phase4`.
-- **Phase 5+:** See `ALPACTO_PRD.md`.
+- **Phase 5:** Ayni audit agent + settlement gate, `yarn phase5`.
+- **Phase 6+:** See `ALPACTO_PRD.md`.
 
 ## Docs
 

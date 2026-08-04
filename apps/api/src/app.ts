@@ -16,6 +16,8 @@ import {
   registerFundingRoutes,
   registerStripeWebhookRoutes,
 } from "./modules/funding/routes.js";
+import { registerAuditRoutes } from "./modules/audits/routes.js";
+import { registerSettlementRoutes } from "./modules/settlements/routes.js";
 
 export type AppDeps = {
   startWorkers?: boolean;
@@ -53,6 +55,8 @@ export async function buildApp(deps: AppDeps = {}) {
   await registerFundingRoutes(app, db, authenticate, queues);
   await registerStripeWebhookRoutes(app, db, queues);
   await registerLotRoutes(app, db, authenticate);
+  await registerAuditRoutes(app, db, authenticate, queues);
+  await registerSettlementRoutes(app, db, authenticate);
   await registerEvidenceRoutes(app, db, authenticate, queues);
 
   app.setErrorHandler((error, _request, reply) => {

@@ -16,3 +16,16 @@ export {
   assertWithinDemoMaxUsdc,
   usdCentsToUsdcUnits,
 } from "./funding.js";
+
+export {
+  auditResultCodeToOnchain,
+  compareAuditValues,
+  DEFAULT_WEIGHT_TOLERANCE_BPS,
+  isSettlementAllowed,
+  kgToGramsFromNumber,
+  weightDeltaBps,
+  type AuditFinding,
+  type AuditResultCode,
+  type CompareAuditInput,
+  type CompareAuditResult,
+} from "./audit.js";

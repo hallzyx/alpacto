@@ -79,3 +79,53 @@ export const fundingSessionResponseSchema = z.object({
 
 export type FundingIntentStatus = z.infer<typeof fundingIntentStatusSchema>;
 export type FundingSessionResponse = z.infer<typeof fundingSessionResponseSchema>;
+
+export const auditResultCodeSchema = z.enum([
+  "pass",
+  "warning",
+  "review_required",
+  "unreadable",
+]);
+
+export const scaleEvidenceSchema = z.object({
+  readingDetected: z.boolean(),
+  weightValueKg: z.number().nullable(),
+  weightUnit: z.enum(["kg", "g", "lb"]).default("kg"),
+  displayReadable: z.boolean(),
+  confidence: z.number().min(0).max(1),
+  warnings: z.array(z.string()).default([]),
+});
+
+export const classificationDocSchema = z.object({
+  documentReadable: z.boolean(),
+  lotReference: z.string().nullable(),
+  classification: z.string().nullable(),
+  inspectorName: z.string().nullable(),
+  inspectionDate: z.string().nullable(),
+  confidence: z.number().min(0).max(1),
+  missingFields: z.array(z.string()).default([]),
+});
+
+export const auditFindingSchema = z.object({
+  code: z.string(),
+  severity: z.enum(["info", "warning", "critical"]),
+  declaredValue: z.string(),
+  observedValue: z.string(),
+  explanation: z.string(),
+});
+
+export const compareResultSchema = z.object({
+  resultCode: auditResultCodeSchema,
+  findings: z.array(auditFindingSchema),
+  weightDeltaBps: z.number().nullable(),
+});
+
+export const createAuditSchema = z.object({
+  inspectionVersion: z.coerce.number().int().positive().optional(),
+});
+
+export type ScaleEvidence = z.infer<typeof scaleEvidenceSchema>;
+export type ClassificationDoc = z.infer<typeof classificationDocSchema>;
+export type CompareResult = z.infer<typeof compareResultSchema>;
+export type AuditResultCode = z.infer<typeof auditResultCodeSchema>;
+export type CreateAuditInput = z.infer<typeof createAuditSchema>;

@@ -54,3 +54,13 @@
 - **Onchain:** Worker assigns `onchain_order_id`, calls `createOrder` if missing, then funds escrow. Addresses from `users.smart_account_address` or `DEMO_*_SMART_ACCOUNT` env.
 - **Local webhook:** `stripe listen --forward-to localhost:4000/webhooks/stripe`.
 - **Checkpoint:** `yarn phase4` — test USD → test USDC in escrow (simulated webhook + onchain fund).
+
+## 2026-08-03 — Phase 5 Ayni
+
+- **Orchestrator:** DeepSeek `deepseek-v4-flash` (OpenAI-compatible API) with thinking disabled; closed tool loop.
+- **Vision:** OpenAI `gpt-5.6-luna` for scale/doc OCR; `AYNI_USE_FIXTURE_VISION=true` for deterministic local demos.
+- **Worker:** `apps/ayni-worker` consumes BullMQ `alpacto-ayni-audit`; API enqueues via `POST /lots/:id/audits`.
+- **Compare:** `@alpacto/domain` `compareAuditValues` — weight delta > 1% → `review_required` + `WEIGHT_MISMATCH`.
+- **Settlement gate:** `POST /lots/:id/settlement/accept` rejects unless audit is `pass` or `warning`.
+- **Attestation:** ZeroDev session key (`AYNI_SESSION_KEY` + `AYNI_SERIALIZED_SESSION` from `yarn phase3`) → `submitAuditAttestation` when `onchain_lot_id` present; offchain attestation otherwise.
+- **Checkpoint:** `yarn phase5` — 42.5 kg declared vs 41.5 kg fixture → settlement blocked.
