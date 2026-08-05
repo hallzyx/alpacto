@@ -48,7 +48,7 @@ export const RainbowKitCustomConnectButton = () => {
                 if (!connected) {
                   return (
                     <button
-                      className="btn bg-secondary btn-sm"
+                      className="btn bg-scaffold-gradient btn-sm"
                       onClick={handleConnect}
                       type="button"
                       data-testid="connect-wallet"

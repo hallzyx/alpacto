@@ -4,6 +4,9 @@ import { useSendOTP, useVerifyOTP } from "@zerodev/wallet-react";
 import { useConfig } from "wagmi";
 import { useState } from "react";
 import { useAuth } from "~~/components/alpacto/AuthProvider";
+import { Button } from "~~/components/ui/button";
+import { Field, FieldGroup, FieldLabel } from "~~/components/ui/field";
+import { Input } from "~~/components/ui/input";
 import { demoSmartAccountAddress } from "~~/lib/demo-account";
 import { isZeroDevConfigured, resolveZeroDevSmartAccountAddress } from "~~/lib/zerodev-wagmi";
 
@@ -19,6 +22,12 @@ type Props = {
   setBusy: (v: boolean) => void;
   setError: (msg: string) => void;
 };
+
+function FormNote({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="rounded-md border-l-2 border-ring/60 bg-muted px-3 py-2 text-sm text-muted-foreground">{children}</p>
+  );
+}
 
 export function ProducerEmailOtpForm(props: Props) {
   if (isZeroDevConfigured()) {
@@ -65,55 +74,61 @@ function ProducerEmailOtpDemoForm({ busy, setBusy, setError }: Props) {
   };
 
   return (
-    <form className="alp-form" onSubmit={e => void onSubmit(e)}>
-      <p className="alp-note">
-        Demo OTP: tras enviar, usa el código <strong>{DEMO_OTP}</strong>. Configura{" "}
-        <code>NEXT_PUBLIC_ZERODEV_PROJECT_ID</code> para correo real.
-      </p>
-      <div className="alp-field">
-        <label htmlFor="o-email">Correo</label>
-        <input
-          id="o-email"
-          type="email"
-          autoComplete="email"
-          value={otpEmail}
-          onChange={e => setOtpEmail(e.target.value)}
-          required
-          disabled={otpSent}
-        />
-      </div>
-      <div className="alp-field">
-        <label htmlFor="o-name">Nombre</label>
-        <input id="o-name" value={otpName} onChange={e => setOtpName(e.target.value)} disabled={otpSent} />
-      </div>
-      {otpSent ? (
-        <div className="alp-field">
-          <label htmlFor="o-code">Código</label>
-          <input
-            id="o-code"
-            inputMode="numeric"
-            value={otpCode}
-            onChange={e => setOtpCode(e.target.value)}
-            placeholder={DEMO_OTP}
+    <form onSubmit={e => void onSubmit(e)}>
+      <FieldGroup className="gap-4">
+        <FormNote>
+          Demo OTP: tras enviar, usa el código <strong>{DEMO_OTP}</strong>. Configura{" "}
+          <code>NEXT_PUBLIC_ZERODEV_PROJECT_ID</code> para correo real.
+        </FormNote>
+        <Field>
+          <FieldLabel htmlFor="o-email">Correo</FieldLabel>
+          <Input
+            id="o-email"
+            type="email"
+            autoComplete="email"
+            placeholder="martina@ejemplo.pe"
+            value={otpEmail}
+            onChange={e => setOtpEmail(e.target.value)}
             required
+            disabled={otpSent}
           />
-        </div>
-      ) : null}
-      <button type="submit" className="alp-btn alp-btn--primary" disabled={busy}>
-        {busy ? "…" : otpSent ? "Verificar y entrar" : "Enviar código"}
-      </button>
-      {otpSent ? (
-        <button
-          type="button"
-          className="alp-link-btn"
-          onClick={() => {
-            setOtpSent(false);
-            setOtpCode("");
-          }}
-        >
-          Cambiar correo
-        </button>
-      ) : null}
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="o-name">Nombre</FieldLabel>
+          <Input id="o-name" value={otpName} onChange={e => setOtpName(e.target.value)} disabled={otpSent} />
+        </Field>
+        {otpSent ? (
+          <Field>
+            <FieldLabel htmlFor="o-code">Código</FieldLabel>
+            <Input
+              id="o-code"
+              inputMode="numeric"
+              value={otpCode}
+              onChange={e => setOtpCode(e.target.value)}
+              placeholder={DEMO_OTP}
+              required
+            />
+          </Field>
+        ) : null}
+        <Field>
+          <Button type="submit" className="w-full" disabled={busy}>
+            {busy ? "…" : otpSent ? "Verificar y entrar" : "Enviar código"}
+          </Button>
+        </Field>
+        {otpSent ? (
+          <Button
+            type="button"
+            variant="link"
+            className="self-start"
+            onClick={() => {
+              setOtpSent(false);
+              setOtpCode("");
+            }}
+          >
+            Cambiar correo
+          </Button>
+        ) : null}
+      </FieldGroup>
     </form>
   );
 }
@@ -178,66 +193,71 @@ function ProducerEmailOtpLiveForm({ busy, setBusy, setError }: Props) {
   const disabled = busy || sending || verifying;
 
   return (
-    <form className="alp-form" onSubmit={e => void onSubmit(e)}>
-      <p className="alp-note">
-        Te enviaremos un código a tu correo (ZeroDev). Revisa bandeja y spam. Luego vinculamos tu sesión en Alpacto.
-      </p>
-      <div className="alp-field">
-        <label htmlFor="o-email">Correo</label>
-        <input
-          id="o-email"
-          type="email"
-          autoComplete="email"
-          value={otpEmail}
-          onChange={e => setOtpEmail(e.target.value)}
-          required
-          disabled={otpSent}
-        />
-      </div>
-      <div className="alp-field">
-        <label htmlFor="o-name">Nombre</label>
-        <input id="o-name" value={otpName} onChange={e => setOtpName(e.target.value)} disabled={otpSent} />
-      </div>
-      {otpSent ? (
-        <div className="alp-field">
-          <label htmlFor="o-code">Código</label>
-          <input
-            id="o-code"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            value={otpCode}
-            onChange={e => setOtpCode(e.target.value)}
-            placeholder="Código del correo"
+    <form onSubmit={e => void onSubmit(e)}>
+      <FieldGroup className="gap-4">
+        <FormNote>
+          Te enviaremos un código a tu correo (ZeroDev). Revisa bandeja y spam. Luego vinculamos tu sesión en Alpacto.
+        </FormNote>
+        <Field>
+          <FieldLabel htmlFor="o-email">Correo</FieldLabel>
+          <Input
+            id="o-email"
+            type="email"
+            autoComplete="email"
+            value={otpEmail}
+            onChange={e => setOtpEmail(e.target.value)}
             required
+            disabled={otpSent}
           />
-        </div>
-      ) : null}
-      <button type="submit" className="alp-btn alp-btn--primary" disabled={disabled}>
-        {sending
-          ? "Enviando…"
-          : verifying
-            ? "Verificando…"
-            : busy
-              ? "…"
-              : otpSent
-                ? "Verificar y entrar"
-                : "Enviar código"}
-      </button>
-      {otpSent ? (
-        <button
-          type="button"
-          className="alp-link-btn"
-          onClick={() => {
-            setOtpSent(false);
-            setOtpCode("");
-            setPending(null);
-          }}
-        >
-          Cambiar correo
-        </button>
-      ) : null}
-      {sendOTP.isError ? <p className="alp-muted">{sendOTP.error.message}</p> : null}
-      {verifyOTP.isError ? <p className="alp-muted">{verifyOTP.error.message}</p> : null}
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="o-name">Nombre</FieldLabel>
+          <Input id="o-name" value={otpName} onChange={e => setOtpName(e.target.value)} disabled={otpSent} />
+        </Field>
+        {otpSent ? (
+          <Field>
+            <FieldLabel htmlFor="o-code">Código</FieldLabel>
+            <Input
+              id="o-code"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              value={otpCode}
+              onChange={e => setOtpCode(e.target.value)}
+              placeholder="Código del correo"
+              required
+            />
+          </Field>
+        ) : null}
+        <Field>
+          <Button type="submit" className="w-full" disabled={disabled}>
+            {sending
+              ? "Enviando…"
+              : verifying
+                ? "Verificando…"
+                : busy
+                  ? "…"
+                  : otpSent
+                    ? "Verificar y entrar"
+                    : "Enviar código"}
+          </Button>
+        </Field>
+        {otpSent ? (
+          <Button
+            type="button"
+            variant="link"
+            className="self-start"
+            onClick={() => {
+              setOtpSent(false);
+              setOtpCode("");
+              setPending(null);
+            }}
+          >
+            Cambiar correo
+          </Button>
+        ) : null}
+        {sendOTP.isError ? <p className="text-sm text-destructive">{sendOTP.error.message}</p> : null}
+        {verifyOTP.isError ? <p className="text-sm text-destructive">{verifyOTP.error.message}</p> : null}
+      </FieldGroup>
     </form>
   );
 }

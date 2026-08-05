@@ -46,7 +46,7 @@ export const HeaderMenuLinks = () => {
               passHref
               className={`${
                 isActive ? "shadow-md" : ""
-              } hover:bg-secondary hover:shadow-md focus:!bg-secondary active:!text-neutral py-1.5 px-3 text-sm rounded-full gap-2 grid grid-flow-col`}
+              } hover:bg-scaffold-gradient hover:shadow-md focus:!bg-scaffold-gradient active:!text-neutral py-1.5 px-3 text-sm rounded-full gap-2 grid grid-flow-col`}
               style={{
                 color: isActive
                   ? isDarkMode
@@ -107,7 +107,7 @@ export const Header = () => {
       <div className="navbar-start w-auto lg:w-1/2">
         <div className={`lg:hidden dropdown ${isDrawerOpen ? "dropdown-open" : ""}`} ref={burgerMenuRef}>
           <label
-            className={`ml-1 btn btn-ghost ${isDrawerOpen ? "hover:bg-secondary" : "hover:bg-transparent"}`}
+            className={`ml-1 btn btn-ghost ${isDrawerOpen ? "hover:bg-scaffold-gradient" : "hover:bg-transparent"}`}
             onClick={() => {
               setIsDrawerOpen(prevIsOpenState => !prevIsOpenState);
             }}
