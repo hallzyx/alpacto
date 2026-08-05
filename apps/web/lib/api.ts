@@ -105,7 +105,7 @@ export function roleHomePath(role: AuthUser["role"]): string {
     case "inspector":
       return "/inspector";
     case "buyer":
-      return "/buyer/orders";
+      return "/buyer";
     case "association":
       return "/association";
     case "admin":
