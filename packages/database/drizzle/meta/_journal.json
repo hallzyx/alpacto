@@ -29,6 +29,13 @@
       "when": 1785892800000,
       "tag": "0003_platform_fee",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1785948000000,
+      "tag": "0004_lot_disputes",
+      "breakpoints": true
     }
   ]
 }

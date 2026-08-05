@@ -178,9 +178,11 @@ export const lots = pgTable("lots", {
   producerId: uuid("producer_id")
     .notNull()
     .references(() => users.id),
-  status: varchar("status", { length: 32 }).notNull().default("registered"),
+  status: varchar("status", { length: 32 }).notNull().default("awaiting_producer_confirmation"),
   currentInspectionVersion: integer("current_inspection_version").notNull().default(0),
   acceptedInspectionVersion: integer("accepted_inspection_version"),
+  producerConfirmedAt: timestamp("producer_confirmed_at", { withTimezone: true }),
+  producerDeclinedAt: timestamp("producer_declined_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -281,6 +283,25 @@ export const reweighRequests = pgTable("reweigh_requests", {
   reasonCode: varchar("reason_code", { length: 64 }).notNull(),
   reasonText: text("reason_text"),
   onchainTxHash: varchar("onchain_tx_hash", { length: 66 }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Producer declines lot assignment; association resolves in Disputas inbox. */
+export const lotDisputes = pgTable("lot_disputes", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  lotId: uuid("lot_id")
+    .notNull()
+    .references(() => lots.id),
+  openedBy: uuid("opened_by")
+    .notNull()
+    .references(() => users.id),
+  reasonCode: varchar("reason_code", { length: 64 }).notNull(),
+  reasonText: text("reason_text"),
+  status: varchar("status", { length: 32 }).notNull().default("open"),
+  resolutionAction: varchar("resolution_action", { length: 64 }),
+  resolutionNote: text("resolution_note"),
+  resolvedBy: uuid("resolved_by").references(() => users.id),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
