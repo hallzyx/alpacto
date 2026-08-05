@@ -7,6 +7,7 @@ import { apiFetch } from "~~/lib/api";
 import type { Lot } from "~~/lib/types";
 
 const NEEDS_INSPECTION = new Set(["registered", "reweighing_requested"]);
+// awaiting_producer_confirmation / producer_declined are blocked until producer confirms
 
 function InspectorInner() {
   const [lots, setLots] = useState<Lot[]>([]);
