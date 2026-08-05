@@ -71,7 +71,13 @@ export const declineLotSchema = z.object({
 });
 
 export const resolveLotDisputeSchema = z.object({
-  action: z.enum(["correct_and_resubmit", "reassign_producer", "delete_lot"]),
+  action: z.enum([
+    "correct_and_resubmit",
+    "reassign_producer",
+    "delete_lot",
+    "acknowledge",
+    "investigating",
+  ]),
   producerId: z.string().uuid().optional(),
   resolutionNote: z.string().max(2000).optional(),
 });
@@ -179,6 +185,26 @@ export const ayniGuideChatSchema = z.object({
   messages: z.array(ayniGuideChatMessageSchema).min(1).max(40),
 });
 
+export const ayniProducerChatSchema = z.object({
+  messages: z.array(ayniGuideChatMessageSchema).min(1).max(40),
+  contextLotId: z.string().uuid().optional(),
+  contextPath: z.string().max(256).optional(),
+});
+
+export const openIntegrityDisputeSchema = z.object({
+  note: z.string().max(2000).optional(),
+  diffs: z
+    .array(
+      z.object({
+        field: z.string(),
+        postgres: z.string(),
+        onchain: z.string(),
+      }),
+    )
+    .max(20)
+    .optional(),
+});
+
 export type ScaleEvidence = z.infer<typeof scaleEvidenceSchema>;
 export type ClassificationDoc = z.infer<typeof classificationDocSchema>;
 export type CompareResult = z.infer<typeof compareResultSchema>;
@@ -186,3 +212,5 @@ export type AuditResultCode = z.infer<typeof auditResultCodeSchema>;
 export type CreateAuditInput = z.infer<typeof createAuditSchema>;
 export type AyniGuideChatInput = z.infer<typeof ayniGuideChatSchema>;
 export type AyniGuideChatMessage = z.infer<typeof ayniGuideChatMessageSchema>;
+export type AyniProducerChatInput = z.infer<typeof ayniProducerChatSchema>;
+export type OpenIntegrityDisputeInput = z.infer<typeof openIntegrityDisputeSchema>;
