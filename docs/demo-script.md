@@ -7,13 +7,15 @@ Checkpoint Fase 6: demo reproducible de inicio a fin desde la UI.
 ```bash
 yarn docker:up && yarn db:migrate && yarn db:seed
 yarn seed:wallets   # Kernel ECDSA real por seed en Arbitrum Sepolia
+yarn fund-demo-buyer -- --amount 90   # USDC Circle test: tesorería → buyer SA (andes@)
 yarn api:dev          # :4000
 yarn ayni:dev         # audit worker
 yarn start            # web :3000  (workspace @alpacto/web)
 ```
 
-Env: `NEXT_PUBLIC_API_URL`, `DEMO_WALLET_SEED`, ZeroDev/Stripe/Ayni según fases 3–5.  
-Tras `seed:wallets`, cada seed (`martina@`, `andes@`, …) tiene `smart_account_address` real verificable en [Arbiscan Sepolia](https://sepolia.arbiscan.io).
+Env: `NEXT_PUBLIC_API_URL`, `DEMO_WALLET_SEED`, `ALPACTO_CONTRACT_ADDRESS`, ZeroDev/Stripe/Ayni según fases 3–5.  
+Tras `seed:wallets`, cada seed (`martina@`, `andes@`, …) tiene `smart_account_address` real verificable en [Arbiscan Sepolia](https://sepolia.arbiscan.io).  
+Tras `fund-demo-buyer`, el Kernel del comprador tiene USDC de test para fondear el escrow (`buyerFundOrder`).
 
 ## Wallets seed de este demo (máquina local)
 
@@ -29,6 +31,9 @@ Estas Kernel addresses se provisionaron en **esta PC** con `yarn seed:wallets` (
 | Buyer | `andes@demo.alpacto` | `0xefEFE87E4b6BFDDB073B39C761f42c11645d75dA` | [Arbiscan](https://sepolia.arbiscan.io/address/0xefEFE87E4b6BFDDB073B39C761f42c11645d75dA) |
 | Admin | `admin@demo.alpacto` | `0x8c15ADa74e9801DC4B97736a32b768E8E6E64B94` | [Arbiscan](https://sepolia.arbiscan.io/address/0x8c15ADa74e9801DC4B97736a32b768E8E6E64B94) |
 
+**AlpactoCore (Sepolia, fee 0.5% platform):** `0xe651750934308720f305c5dae257d4ea1c013cdf` — [Arbiscan](https://sepolia.arbiscan.io/address/0xe651750934308720f305c5dae257d4ea1c013cdf)  
+Platform treasury: `0x6F21C2155bF93b49348a422A604310F8CCd6ec74` (`setPlatformTreasury`).
+
 Owner keys: solo en `.secrets/demo-wallets.json` (gitignored). No van en el video ni en el repo.
 
 ## Auth en el video
@@ -41,12 +46,13 @@ Roles seed (1 clic): Comprador, Inspector, Asociación, Admin — todos con SA r
 ## Guion
 
 1. **Landing** — Brand Alpacto · tagline. Clic **Comprador** (`andes@demo.alpacto`).
-2. **Buyer** — Abrir orden seed / listado → **Financiar orden** → Stripe test (o status funded si ya fondeada) → “Fondos asegurados”.
-3. **Inspector** — Logout / landing → **Inspector** (`carlos@…`). Registrar lote si hace falta → inspeccionar **42500 g** FINE + foto evidencia → encolar audit.
-4. **Ayni** — Esperar `review_required` / timeline muestra discrepancia (42.5 vs 41.5 fixture).
-5. **Productor** — Landing → **Continuar demo como Martina** (o OTP/Google live) → ver lote → explicación en soles → **Solicitar nuevo pesaje**.
-6. **Re-inspección** — Carlos: **41600 g** + evidencia → audit PASS.
-7. **Liquidación** — Productor **Aceptar** → pantalla settlement → payout local **simulación** (etiqueta clara).
+2. **Buyer** — Crear orden nueva (presupuesto ≤ USDC en wallet buyer; hoy ~$90) → **Financiar orden** → Stripe test → escrow fondeado desde Kernel del comprador → “Fondos asegurados”.
+3. **Asociación** — Logout / landing → **Asociación** (`alpasur@…`). En **Registrar lote**: orden nueva + Martina → **Registrar lote** (estado `registered`).
+4. **Inspector** — Logout / landing → **Inspector** (`carlos@…`). Inspeccionar el lote nuevo → **42500 g** FINE + foto evidencia → encolar audit.
+5. **Ayni** — Esperar `review_required` / timeline muestra discrepancia (42.5 vs 41.5 fixture).
+6. **Productor** — Landing → **Continuar demo como Martina** (o OTP/Google live) → ver lote → explicación en soles → **Solicitar nuevo pesaje**.
+7. **Re-inspección** — Carlos: **41600 g** + evidencia → audit PASS.
+8. **Liquidación** — Productor **Aceptar** → pantalla settlement → payout local **simulación** (etiqueta clara).
 
 ## Qué no decir
 

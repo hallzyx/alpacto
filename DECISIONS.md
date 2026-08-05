@@ -50,10 +50,11 @@
 - **Conversion:** Demo 1:1 — `usdc_units = usd_cents × 10_000` (6-decimal USDC). Cap `DEMO_MAX_FUNDING_USDC` (whole USDC).
 - **Webhook:** `POST /webhooks/stripe` verifies `Stripe-Signature` on raw body; handles `checkout.session.completed`.
 - **Idempotency:** Unique `stripe_event_id` / `stripe_session_id` on `funding_intents`; duplicate events return 200.
-- **Worker:** BullMQ `alpacto-fund-order` — treasury EOA (`TREASURY_PRIVATE_KEY`) `approve` + `fundOrder` on Arbitrum Sepolia.
-- **Onchain:** Worker assigns `onchain_order_id`, calls `createOrder` if missing, then funds escrow. Addresses from `users.smart_account_address` or `DEMO_*_SMART_ACCOUNT` env.
+- **Worker:** BullMQ `alpacto-fund-order` — buyer Kernel SA (`DEMO_WALLET_SEED` / seed wallets) `approve` + `buyerFundOrder` via ZeroDev UserOp. Treasury EOA tops up buyer USDC (`yarn fund-demo-buyer`) and gas fallback.
+- **Onchain:** Worker assigns `onchain_order_id`, buyer SA calls `createOrder` if missing, then funds escrow from buyer USDC. Addresses from `users.smart_account_address` or `DEMO_*_SMART_ACCOUNT` env.
+- **Legacy:** `fundOrder` (PLATFORM_ADMIN) remains for treasury/ops; Phase 4 path uses `buyerFundOrder`.
 - **Local webhook:** `stripe listen --forward-to localhost:4000/webhooks/stripe`.
-- **Checkpoint:** `yarn phase4` — test USD → test USDC in escrow (simulated webhook + onchain fund).
+- **Checkpoint:** `yarn phase4` — test USD → buyer SA USDC → escrow on Sepolia.
 
 ## 2026-08-03 — Phase 5 Ayni
 
@@ -65,7 +66,12 @@
 - **Attestation:** ZeroDev session key (`AYNI_SESSION_KEY` + `AYNI_SERIALIZED_SESSION` from `yarn phase3`) → `submitAuditAttestation` when `onchain_lot_id` present; offchain attestation otherwise.
 - **Checkpoint:** `yarn phase5` — 42.5 kg declared vs 41.5 kg fixture → settlement blocked.
 
-## 2026-08-03 — Phase 6 UX (Web 2.5)
+## 2026-08-05 — Platform fee 0.5% + dust policy
+
+- **Platform fee:** `platformFeeBps = 50` (0.5%) on every lot settlement, stored on `pricing_policies` and applied in `@alpacto/domain` `calculateSettlementPreview`. Split is three-way from gross subtotal: association + platform + producer remainder. Escrow estimate covers all three.
+- **On-chain:** `acceptSettlement` / `settleLot` take `platformUsdcUnits`; USDC pushed to `platform_treasury` (admin-set via `setPlatformTreasury`). Requires contract redeploy after this change.
+- **Dust / close order (agreed, not yet implemented):** when Σ kg of settled lots (Ayni pass/warning) ≥ `targetWeightGrams` (tolerance TBD), sweep remaining escrow USDC to platform and mark order `completed`. If kg target is not met and buyer closes early, remanente returns to buyer — not platform. Cap dust later if remanente grows on large orders.
+- **Association fee:** unchanged demo default 300 bps (3%).
 
 - **Visual:** “Altiplano contemporáneo” — Fraunces + Source Sans 3; night indigo/teal atmosphere; brand-first landing.
 - **Roles seed:** buyer/inspector/association/admin via `demo-login` from landing.
