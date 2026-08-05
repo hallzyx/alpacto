@@ -1,14 +1,11 @@
 import { eq } from "drizzle-orm";
-import { fundingIntents, orders, type Database } from "@alpacto/database";
+import { fundingIntents, orders, users, type Database } from "@alpacto/database";
 import type { Address, Hex } from "viem";
 import {
   assignOnchainOrderId,
   resolveOrderAddresses,
 } from "../lib/funding-helpers.js";
-import {
-  ensureOrderOnchain,
-  fundOrderOnchain,
-} from "../lib/treasury.js";
+import { ensureAndFundOrderAsBuyer } from "../lib/buyer-funding.js";
 
 export async function processFundOrderJob(
   db: Database,
@@ -35,6 +32,13 @@ export async function processFundOrderJob(
     .limit(1);
   if (!order) throw new Error(`Order ${intent.orderId} not found`);
 
+  const [buyer] = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, order.buyerId))
+    .limit(1);
+  if (!buyer?.email) throw new Error(`Buyer user missing for order ${order.id}`);
+
   await db
     .update(fundingIntents)
     .set({ status: "funding" })
@@ -49,24 +53,24 @@ export async function processFundOrderJob(
   const { buyerAddress, associationAddress, policyHash } =
     await resolveOrderAddresses(db, order);
 
-  onLog(`ensureOrderOnchain orderId=${onchainOrderId.toString()}`);
-  await ensureOrderOnchain({
-    onchainOrderId,
-    buyerAddress: buyerAddress as Address,
-    associationAddress: associationAddress as Address,
-    pricingPolicyHash: policyHash as Hex,
-    budgetUsdcUnits: intent.usdcUnits,
-  });
-
   if (!intent.paymentReferenceHash) {
     throw new Error("payment_reference_hash missing on funding intent");
   }
 
-  onLog(`fundOrder amount=${intent.usdcUnits.toString()}`);
-  const txHash = await fundOrderOnchain({
+  onLog(
+    `buyer-fund start order=${onchainOrderId.toString()} buyer=${buyerAddress} email=${buyer.email}`,
+  );
+
+  const txHash = await ensureAndFundOrderAsBuyer({
     onchainOrderId,
+    buyerAddress: buyerAddress as Address,
+    buyerEmail: buyer.email,
+    associationAddress: associationAddress as Address,
+    pricingPolicyHash: policyHash as Hex,
+    budgetUsdcUnits: intent.usdcUnits,
     amount: intent.usdcUnits,
     paymentReferenceHash: intent.paymentReferenceHash as Hex,
+    onLog,
   });
 
   await db

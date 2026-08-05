@@ -56,8 +56,22 @@ export async function registerFundingRoutes(
       const order = await loadOrderForFunding(db, orderId);
       assertBuyerAccess(user, order);
 
-      if (!["draft", "payment_pending"].includes(order.status)) {
+      if (!["draft", "payment_pending", "funding_failed"].includes(order.status)) {
         throw new ApiError(400, "Order is not eligible for funding");
+      }
+
+      // Allow retry after a failed on-chain fund (Stripe can be re-run for a new intent).
+      if (order.status === "funding_failed") {
+        await db
+          .update(orders)
+          .set({
+            status: "draft",
+            fundedUsdcUnits: 0n,
+            remainingUsdcUnits: 0n,
+            txHash: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(orders.id, order.id));
       }
 
       const usdCents = order.budgetUsdCents;
@@ -92,8 +106,8 @@ export async function registerFundingRoutes(
             },
           },
         ],
-        success_url: `${config.appUrl}/orders/${order.id}?funding=success`,
-        cancel_url: `${config.appUrl}/orders/${order.id}?funding=cancelled`,
+        success_url: `${config.appUrl}/buyer/orders/${order.id}?funding=success`,
+        cancel_url: `${config.appUrl}/buyer/orders/${order.id}?funding=cancelled`,
         metadata: {
           orderId: order.id,
           fundingIntentId: intent.id,
