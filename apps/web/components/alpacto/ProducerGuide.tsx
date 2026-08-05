@@ -16,6 +16,7 @@ import {
   ShoppingCart,
   Wallet,
 } from "lucide-react";
+import { AyniGuideChat } from "~~/components/alpacto/AyniGuideChat";
 import { Button } from "~~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~~/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~~/components/ui/tabs";
@@ -164,6 +165,7 @@ const FAQ = [
 export function ProducerGuide() {
   return (
     <div className="flex flex-col gap-6">
+      <AyniGuideChat />
       <div>
         <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">Guía</h1>
         <p className="text-muted-foreground">Entiende cómo funciona tu venta de fibra, en palabras simples.</p>

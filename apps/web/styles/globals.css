@@ -15,6 +15,18 @@
   --animate-pulse-fast: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
+@keyframes ayni-ring {
+  0%,
+  100% {
+    opacity: 0.65;
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--primary) 35%, transparent);
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 10px 2px color-mix(in oklab, var(--primary) 50%, transparent);
+  }
+}
+
 @utility font-display {
   font-family: var(--font-fraunces), Georgia, serif;
 }

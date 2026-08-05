@@ -16,3 +16,4 @@ export { PricingPolicyHelpButton, PricingPolicyPreview } from "./PricingPolicyHe
 export { ProducerOrderContextCard } from "./ProducerOrderContextCard";
 export { ProducerGuide } from "./ProducerGuide";
 export { ProducerGuideLink } from "./ProducerGuideLink";
+export { AyniGuideChat } from "./AyniGuideChat";
