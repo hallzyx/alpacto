@@ -3,20 +3,20 @@
 import Link from "next/link";
 import {
   ArrowRight,
-  BookOpenText,
   Building2,
   CircleHelp,
   ClipboardCheck,
   Coins,
   HandCoins,
   Landmark,
+  MessageCircle,
   Package,
   Scale,
   ShieldCheck,
   ShoppingCart,
   Wallet,
 } from "lucide-react";
-import { AyniGuideChat } from "~~/components/alpacto/AyniGuideChat";
+import { openAyniChat } from "~~/components/alpacto/AyniGuideChat";
 import { Button } from "~~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~~/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~~/components/ui/tabs";
@@ -165,10 +165,27 @@ const FAQ = [
 export function ProducerGuide() {
   return (
     <div className="flex flex-col gap-6">
-      <AyniGuideChat />
-      <div>
-        <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">Guía</h1>
-        <p className="text-muted-foreground">Entiende cómo funciona tu venta de fibra, en palabras simples.</p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">Guía</h1>
+          <p className="text-muted-foreground">Entiende cómo funciona tu venta de fibra, en palabras simples.</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => openAyniChat()}
+          className="flex max-w-md items-start gap-3 rounded-xl border border-primary/25 bg-primary/5 px-3.5 py-3 text-left transition hover:border-primary/40 hover:bg-primary/10"
+        >
+          <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+            <MessageCircle className="h-4 w-4" />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-sm font-medium text-foreground">¿Aún no te queda claro?</span>
+            <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">
+              Pregúntale directo a <span className="font-medium text-primary">Ayni</span>. Haz clic aquí para abrir el
+              chat.
+            </span>
+          </span>
+        </button>
       </div>
 
       <Tabs defaultValue="flujo" className="w-full">

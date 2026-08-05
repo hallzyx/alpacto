@@ -1,13 +1,13 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import { Loader2, SendHorizontal, X } from "lucide-react";
+import { Loader2, SendHorizontal, ShieldAlert, X } from "lucide-react";
 import ayniAvatar from "~~/assets/ayni_avatar.png";
 import ayniIcon from "~~/assets/ayni_icon.png";
+import { AyniMarkdown } from "~~/components/alpacto/AyniMarkdown";
 import { Button } from "~~/components/ui/button";
 import { apiFetch, ApiError } from "~~/lib/api";
 import { cn } from "~~/lib/utils";
@@ -18,7 +18,7 @@ type ChatMessage = {
 };
 
 const WELCOME_CONTENT =
-  "Hola, soy **Ayni**. Puedo explicarte el flujo de tu fibra, palabras como *campaña*, *lote* u *orden*, y qué hacer si algo no cuadra.\n\n¿Qué quieres saber?";
+  "Hola, soy **Ayni**. Puedo explicar el flujo, consultar **tus lotes** (orden, campaña, liquidación), estimar kg disponibles en tus órdenes, y verificar que Postgres y la blockchain coincidan.\n\n¿Qué quieres saber?";
 
 const WELCOME: ChatMessage = {
   role: "assistant",
@@ -29,13 +29,31 @@ function historyForApi(messages: ChatMessage[]): ChatMessage[] {
   return messages.filter((m, i) => !(i === 0 && m.role === "assistant" && m.content === WELCOME_CONTENT));
 }
 
+function lotIdFromPath(pathname: string): string | undefined {
+  const m = pathname.match(/\/producer\/lots\/([0-9a-f-]{36})/i);
+  return m?.[1];
+}
+
+/** Dispatch from any producer page to open the floating Ayni chat. */
+export const AYNI_OPEN_CHAT_EVENT = "ayni:open-chat";
+
+export function openAyniChat() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent(AYNI_OPEN_CHAT_EVENT));
+}
+
+/** Floating Ayni chatbot for all producer routes (portal + scoped data tools). */
 export function AyniGuideChat() {
+  const pathname = usePathname() ?? "";
+  const contextLotId = useMemo(() => lotIdFromPath(pathname), [pathname]);
   const [open, setOpen] = useState(false);
   const [closing, setClosing] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([WELCOME]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [anomaly, setAnomaly] = useState<{ lotId: string; message: string } | null>(null);
+  const [disputeBusy, setDisputeBusy] = useState(false);
   const [mounted, setMounted] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -43,6 +61,16 @@ export function AyniGuideChat() {
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    function onOpenRequest() {
+      closingRef.current = false;
+      setClosing(false);
+      setOpen(true);
+    }
+    window.addEventListener(AYNI_OPEN_CHAT_EVENT, onOpenRequest);
+    return () => window.removeEventListener(AYNI_OPEN_CHAT_EVENT, onOpenRequest);
   }, []);
 
   function closeChat() {
@@ -60,7 +88,7 @@ export function AyniGuideChat() {
     if (!open) return;
     const el = listRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [messages, open, busy]);
+  }, [messages, open, busy, anomaly]);
 
   useEffect(() => {
     if (open && !closing) textareaRef.current?.focus();
@@ -73,7 +101,6 @@ export function AyniGuideChat() {
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- closeChat uses current open/closing via refs
   }, [open, closing]);
 
   useEffect(() => {
@@ -96,11 +123,19 @@ export function AyniGuideChat() {
     setBusy(true);
 
     try {
-      const res = await apiFetch<{ reply: string }>("/ayni/guide-chat", {
-        method: "POST",
-        body: { messages: historyForApi(nextMessages) },
-      });
+      const res = await apiFetch<{ reply: string; anomaly: { lotId: string; message: string } | null }>(
+        "/ayni/producer-chat",
+        {
+          method: "POST",
+          body: {
+            messages: historyForApi(nextMessages),
+            contextLotId,
+            contextPath: pathname,
+          },
+        },
+      );
       setMessages(prev => [...prev, { role: "assistant", content: res.reply }]);
+      if (res.anomaly) setAnomaly(res.anomaly);
     } catch (err) {
       const message =
         err instanceof ApiError ? err.message : err instanceof Error ? err.message : "No pude responder ahora.";
@@ -109,6 +144,30 @@ export function AyniGuideChat() {
       setDraft(text);
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function openIntegrityDispute() {
+    if (!anomaly?.lotId || disputeBusy) return;
+    setDisputeBusy(true);
+    setError("");
+    try {
+      await apiFetch(`/lots/${anomaly.lotId}/integrity-dispute`, {
+        method: "POST",
+        body: { note: anomaly.message },
+      });
+      setMessages(prev => [
+        ...prev,
+        {
+          role: "assistant",
+          content: "Listo: abrí una **disputa de integridad** para este lote. La asociación la verá en **Disputas**.",
+        },
+      ]);
+      setAnomaly(null);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "No se pudo abrir la disputa");
+    } finally {
+      setDisputeBusy(false);
     }
   }
 
@@ -137,7 +196,7 @@ export function AyniGuideChat() {
         {open ? (
           <div
             className={cn(
-              "pointer-events-auto mr-10 flex h-[min(28rem,calc(100dvh-11rem))] w-[min(24rem,calc(100vw-1rem))] origin-bottom-right flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-xl transition-all duration-200 ease-out sm:mr-14",
+              "pointer-events-auto mr-10 flex h-[min(37.4rem,calc(100dvh-11rem))] w-[min(30rem,calc(100vw-1rem))] origin-bottom-right flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-xl transition-all duration-200 ease-out sm:mr-14",
               closing
                 ? "translate-y-2 scale-95 opacity-0"
                 : "translate-y-0 scale-100 opacity-100 animate-in fade-in zoom-in-95 slide-in-from-bottom-2 duration-200",
@@ -151,12 +210,31 @@ export function AyniGuideChat() {
               <Image src={ayniAvatar} alt="" width={36} height={36} className="size-9 rounded-full object-cover" />
               <div className="min-w-0 flex-1">
                 <p className="m-0 truncate text-sm font-semibold leading-tight">Ayni</p>
-                <p className="m-0 truncate text-xs text-muted-foreground">Guía del productor</p>
+                <p className="m-0 truncate text-xs text-muted-foreground">
+                  {contextLotId ? `Lote ${contextLotId.slice(0, 8)}` : "Tu asistente de productor"}
+                </p>
               </div>
               <Button type="button" variant="ghost" size="icon-sm" aria-label="Cerrar chat" onClick={closeChat}>
                 <X className="h-4 w-4" />
               </Button>
             </header>
+
+            {anomaly ? (
+              <div className="flex flex-col gap-2 border-b border-destructive/30 bg-destructive/10 px-3 py-2.5">
+                <p className="m-0 flex items-start gap-2 text-xs text-destructive">
+                  <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>{anomaly.message}</span>
+                </p>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  disabled={disputeBusy}
+                  onClick={() => void openIntegrityDispute()}
+                >
+                  {disputeBusy ? "Abriendo…" : "Abrir disputa de integridad"}
+                </Button>
+              </div>
+            ) : null}
 
             <div ref={listRef} className="flex-1 space-y-3 overflow-y-auto bg-slate-50 px-3 py-3">
               {messages.map((m, i) => (
@@ -175,14 +253,14 @@ export function AyniGuideChat() {
                   ) : null}
                   <div
                     className={cn(
-                      "max-w-[85%] rounded-2xl px-3 py-2 text-sm",
-                      m.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground",
+                      "rounded-2xl px-3 py-2 text-sm",
+                      m.role === "user"
+                        ? "max-w-[85%] bg-primary text-primary-foreground"
+                        : "max-w-[95%] bg-muted text-foreground",
                     )}
                   >
                     {m.role === "assistant" ? (
-                      <div className="ayni-md [&_p]:my-1.5 [&_ul]:my-1.5 [&_ol]:my-1.5 [&_li]:my-0.5 [&_h1]:my-2 [&_h2]:my-2 [&_h3]:my-2 [&_strong]:font-semibold [&_a]:underline">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
-                      </div>
+                      <AyniMarkdown content={m.content} />
                     ) : (
                       <p className="m-0 whitespace-pre-wrap">{m.content}</p>
                     )}
@@ -265,3 +343,6 @@ export function AyniGuideChat() {
   if (!mounted) return null;
   return createPortal(ui, document.body);
 }
+
+/** Alias for producer-wide mounting. */
+export const AyniProducerChat = AyniGuideChat;

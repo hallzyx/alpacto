@@ -1,6 +1,7 @@
 "use client";
 
 import { AppSidebar } from "~~/components/alpacto/AppSidebar";
+import { AyniProducerChat } from "~~/components/alpacto/AyniGuideChat";
 import { useAuth } from "~~/components/alpacto/AuthProvider";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "~~/components/ui/sidebar";
 
@@ -26,6 +27,7 @@ export function AppShell({ children, showNav = true }: { children: React.ReactNo
           <main className="flex-1 p-4 pt-4 md:p-6">{children}</main>
         </SidebarInset>
       </SidebarProvider>
+      {user.role === "producer" ? <AyniProducerChat /> : null}
     </div>
   );
 }
