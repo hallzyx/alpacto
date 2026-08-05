@@ -1116,27 +1116,14 @@ h4 {
   margin: 0;
 }
 
-.alp-skeleton-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
+/* Loading spinner (Skeleton component) — centered, theme-colored. */
+.alp-loader__icon {
+  color: var(--alp-accent) !important;
+  filter: drop-shadow(0 0 0.35rem rgba(42, 157, 143, 0.25));
 }
 
-.alp-skeleton {
-  height: 1rem;
-  border-radius: 0.35rem;
-  background: linear-gradient(90deg, rgba(20, 55, 74, 0.08), rgba(42, 157, 143, 0.12), rgba(20, 55, 74, 0.08));
-  background-size: 200% 100%;
-  animation: alp-shimmer 1.4s ease infinite;
-}
-
-@keyframes alp-shimmer {
-  0% {
-    background-position: 100% 0;
-  }
-  100% {
-    background-position: -100% 0;
-  }
+[data-theme="dark"] .alp-loader__icon {
+  color: var(--alp-accent) !important;
 }
 
 .alp-form {

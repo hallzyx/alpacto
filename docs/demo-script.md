@@ -38,19 +38,19 @@ Owner keys: solo en `.secrets/demo-wallets.json` (gitignored). No van en el vide
 
 ## Auth en el video
 
-**Productor (recomendado para on-chain):** landing → **Continuar demo como Martina** (wallet Kernel real ya provisionada).  
+**Productor (recomendado para on-chain):** `/login` → **Continuar demo como Martina** (wallet Kernel real ya provisionada).  
 Opcional UX Web 2.5: Email OTP / Google live (crea otra wallet ZeroDev distinta de Martina).  
 
 Roles seed (1 clic): Comprador, Inspector, Asociación, Admin — todos con SA real tras `yarn seed:wallets`.
 
 ## Guion
 
-1. **Landing** — Brand Alpacto · tagline. Clic **Comprador** (`andes@demo.alpacto`).
+1. **Login** (`/login`) — Brand Alpacto · tagline. Clic **Comprador** (`andes@demo.alpacto`).
 2. **Buyer** — Crear orden nueva (presupuesto ≤ USDC en wallet buyer; hoy ~$90) → **Financiar orden** → Stripe test → escrow fondeado desde Kernel del comprador → “Fondos asegurados”.
-3. **Asociación** — Logout / landing → **Asociación** (`alpasur@…`). En **Registrar lote**: orden nueva + Martina → **Registrar lote** (estado `registered`).
-4. **Inspector** — Logout / landing → **Inspector** (`carlos@…`). Inspeccionar el lote nuevo → **42500 g** FINE + foto evidencia → encolar audit.
+3. **Asociación** — Logout / `/login` → **Asociación** (`alpasur@…`). En **Registrar lote**: orden nueva + Martina → **Registrar lote** (estado `registered`).
+4. **Inspector** — Logout / `/login` → **Inspector** (`carlos@…`). Inspeccionar el lote nuevo → **42500 g** FINE + foto evidencia → encolar audit.
 5. **Ayni** — Esperar `review_required` / timeline muestra discrepancia (42.5 vs 41.5 fixture).
-6. **Productor** — Landing → **Continuar demo como Martina** (o OTP/Google live) → ver lote → explicación en soles → **Solicitar nuevo pesaje**.
+6. **Productor** — `/login` → **Continuar demo como Martina** (o OTP/Google live) → ver lote → explicación en soles → **Solicitar nuevo pesaje**.
 7. **Re-inspección** — Carlos: **41600 g** + evidencia → audit PASS.
 8. **Liquidación** — Productor **Aceptar** → pantalla settlement → payout local **simulación** (etiqueta clara).
 

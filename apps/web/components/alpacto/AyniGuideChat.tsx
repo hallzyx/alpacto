@@ -17,24 +17,53 @@ type ChatMessage = {
   content: string;
 };
 
-const WELCOME_CONTENT =
-  "Hola, soy **Ayni**. Puedo explicar el flujo, consultar **tus lotes** (orden, campaña, liquidación), estimar kg disponibles en tus órdenes, y verificar que Postgres y la blockchain coincidan.\n\n¿Qué quieres saber?";
-
-const WELCOME: ChatMessage = {
-  role: "assistant",
-  content: WELCOME_CONTENT,
+type AyniChatConfig = {
+  endpoint: string;
+  subtitle: string;
+  welcome: string;
+  /** Show producer integrity-dispute banner when API returns anomaly. */
+  enableIntegrityDispute?: boolean;
+  extractLotId?: (pathname: string) => string | undefined;
+  extractOrderId?: (pathname: string) => string | undefined;
 };
 
-function historyForApi(messages: ChatMessage[]): ChatMessage[] {
-  return messages.filter((m, i) => !(i === 0 && m.role === "assistant" && m.content === WELCOME_CONTENT));
-}
-
-function lotIdFromPath(pathname: string): string | undefined {
+function lotIdFromProducerPath(pathname: string): string | undefined {
   const m = pathname.match(/\/producer\/lots\/([0-9a-f-]{36})/i);
   return m?.[1];
 }
 
-/** Dispatch from any producer page to open the floating Ayni chat. */
+function lotIdFromAnyPath(pathname: string): string | undefined {
+  if (pathname.includes("/lots/")) {
+    const m = pathname.match(/\/lots\/([0-9a-f-]{36})/i);
+    return m?.[1];
+  }
+  return undefined;
+}
+
+function orderIdFromBuyerPath(pathname: string): string | undefined {
+  const m = pathname.match(/\/buyer\/orders\/([0-9a-f-]{36})/i);
+  return m?.[1];
+}
+
+function orderIdFromAnyPath(pathname: string): string | undefined {
+  const m = pathname.match(/\/orders\/([0-9a-f-]{36})/i);
+  return m?.[1];
+}
+
+const PRODUCER_WELCOME =
+  "Hola, soy **Ayni**. Puedo explicar el flujo, consultar **tus lotes** (orden, campaña, liquidación), estimar kg disponibles en tus órdenes, y verificar que Postgres y la blockchain coincidan.\n\n¿Qué quieres saber?";
+
+const ASSOCIATION_WELCOME =
+  "Hola, soy **Ayni**. Puedo consultar **campañas, órdenes, lotes y disputas de tu asociación**, liquidaciones y hallazgos de auditoría. No resuelvo disputas ni registro lotes por chat — eso es el panel.\n\n¿Qué quieres revisar?";
+
+const BUYER_WELCOME =
+  "Hola, soy **Ayni**. Puedo consultar **tus órdenes**, fondeo/escrow, lotes que entran a ellas y precios de tus campañas. Para financiar, usa el botón de la orden.\n\n¿Qué necesitas?";
+
+function historyForApi(messages: ChatMessage[], welcome: string): ChatMessage[] {
+  return messages.filter((m, i) => !(i === 0 && m.role === "assistant" && m.content === welcome));
+}
+
+/** Dispatch from any page to open the floating Ayni chat. */
 export const AYNI_OPEN_CHAT_EVENT = "ayni:open-chat";
 
 export function openAyniChat() {
@@ -42,13 +71,15 @@ export function openAyniChat() {
   window.dispatchEvent(new CustomEvent(AYNI_OPEN_CHAT_EVENT));
 }
 
-/** Floating Ayni chatbot for all producer routes (portal + scoped data tools). */
-export function AyniGuideChat() {
+function AyniRoleChat({ config }: { config: AyniChatConfig }) {
   const pathname = usePathname() ?? "";
-  const contextLotId = useMemo(() => lotIdFromPath(pathname), [pathname]);
+  const contextLotId = useMemo(() => config.extractLotId?.(pathname), [pathname, config.extractLotId]);
+  const contextOrderId = useMemo(() => config.extractOrderId?.(pathname), [pathname, config.extractOrderId]);
+  const welcomeMsg = useMemo<ChatMessage>(() => ({ role: "assistant", content: config.welcome }), [config.welcome]);
+
   const [open, setOpen] = useState(false);
   const [closing, setClosing] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([WELCOME]);
+  const [messages, setMessages] = useState<ChatMessage[]>([welcomeMsg]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -62,6 +93,10 @@ export function AyniGuideChat() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    setMessages([welcomeMsg]);
+  }, [welcomeMsg]);
 
   useEffect(() => {
     function onOpenRequest() {
@@ -112,6 +147,12 @@ export function AyniGuideChat() {
     };
   }, [open]);
 
+  const contextHint = contextLotId
+    ? `Lote ${contextLotId.slice(0, 8)}`
+    : contextOrderId
+      ? `Orden ${contextOrderId.slice(0, 8)}`
+      : config.subtitle;
+
   async function send() {
     const text = draft.trim();
     if (!text || busy) return;
@@ -123,19 +164,20 @@ export function AyniGuideChat() {
     setBusy(true);
 
     try {
-      const res = await apiFetch<{ reply: string; anomaly: { lotId: string; message: string } | null }>(
-        "/ayni/producer-chat",
+      const res = await apiFetch<{ reply: string; anomaly?: { lotId: string; message: string } | null }>(
+        config.endpoint,
         {
           method: "POST",
           body: {
-            messages: historyForApi(nextMessages),
+            messages: historyForApi(nextMessages, config.welcome),
             contextLotId,
+            contextOrderId,
             contextPath: pathname,
           },
         },
       );
       setMessages(prev => [...prev, { role: "assistant", content: res.reply }]);
-      if (res.anomaly) setAnomaly(res.anomaly);
+      if (config.enableIntegrityDispute && res.anomaly) setAnomaly(res.anomaly);
     } catch (err) {
       const message =
         err instanceof ApiError ? err.message : err instanceof Error ? err.message : "No pude responder ahora.";
@@ -210,16 +252,14 @@ export function AyniGuideChat() {
               <Image src={ayniAvatar} alt="" width={36} height={36} className="size-9 rounded-full object-cover" />
               <div className="min-w-0 flex-1">
                 <p className="m-0 truncate text-sm font-semibold leading-tight">Ayni</p>
-                <p className="m-0 truncate text-xs text-muted-foreground">
-                  {contextLotId ? `Lote ${contextLotId.slice(0, 8)}` : "Tu asistente de productor"}
-                </p>
+                <p className="m-0 truncate text-xs text-muted-foreground">{contextHint}</p>
               </div>
               <Button type="button" variant="ghost" size="icon-sm" aria-label="Cerrar chat" onClick={closeChat}>
                 <X className="h-4 w-4" />
               </Button>
             </header>
 
-            {anomaly ? (
+            {config.enableIntegrityDispute && anomaly ? (
               <div className="flex flex-col gap-2 border-b border-destructive/30 bg-destructive/10 px-3 py-2.5">
                 <p className="m-0 flex items-start gap-2 text-xs text-destructive">
                   <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
@@ -344,5 +384,59 @@ export function AyniGuideChat() {
   return createPortal(ui, document.body);
 }
 
-/** Alias for producer-wide mounting. */
-export const AyniProducerChat = AyniGuideChat;
+/** @deprecated Prefer AyniProducerChat — kept for guide deep-links. */
+export function AyniGuideChat() {
+  return (
+    <AyniRoleChat
+      config={{
+        endpoint: "/ayni/producer-chat",
+        subtitle: "Tu asistente de productor",
+        welcome: PRODUCER_WELCOME,
+        enableIntegrityDispute: true,
+        extractLotId: lotIdFromProducerPath,
+      }}
+    />
+  );
+}
+
+export function AyniProducerChat() {
+  return (
+    <AyniRoleChat
+      config={{
+        endpoint: "/ayni/producer-chat",
+        subtitle: "Tu asistente de productor",
+        welcome: PRODUCER_WELCOME,
+        enableIntegrityDispute: true,
+        extractLotId: lotIdFromProducerPath,
+      }}
+    />
+  );
+}
+
+export function AyniAssociationChat() {
+  return (
+    <AyniRoleChat
+      config={{
+        endpoint: "/ayni/association-chat",
+        subtitle: "Asistente de asociación",
+        welcome: ASSOCIATION_WELCOME,
+        extractLotId: lotIdFromAnyPath,
+        extractOrderId: orderIdFromAnyPath,
+      }}
+    />
+  );
+}
+
+export function AyniBuyerChat() {
+  return (
+    <AyniRoleChat
+      config={{
+        endpoint: "/ayni/buyer-chat",
+        subtitle: "Asistente de comprador",
+        welcome: BUYER_WELCOME,
+        extractLotId: lotIdFromAnyPath,
+        extractOrderId: orderIdFromBuyerPath,
+      }}
+    />
+  );
+}

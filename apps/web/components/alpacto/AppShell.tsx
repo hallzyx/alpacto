@@ -1,9 +1,16 @@
 "use client";
 
 import { AppSidebar } from "~~/components/alpacto/AppSidebar";
-import { AyniProducerChat } from "~~/components/alpacto/AyniGuideChat";
+import { AyniAssociationChat, AyniBuyerChat, AyniProducerChat } from "~~/components/alpacto/AyniGuideChat";
 import { useAuth } from "~~/components/alpacto/AuthProvider";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "~~/components/ui/sidebar";
+
+function AyniChatForRole({ role }: { role: string }) {
+  if (role === "producer") return <AyniProducerChat />;
+  if (role === "association") return <AyniAssociationChat />;
+  if (role === "buyer") return <AyniBuyerChat />;
+  return null;
+}
 
 export function AppShell({ children, showNav = true }: { children: React.ReactNode; showNav?: boolean }) {
   const { user } = useAuth();
@@ -27,7 +34,7 @@ export function AppShell({ children, showNav = true }: { children: React.ReactNo
           <main className="flex-1 p-4 pt-4 md:p-6">{children}</main>
         </SidebarInset>
       </SidebarProvider>
-      {user.role === "producer" ? <AyniProducerChat /> : null}
+      <AyniChatForRole role={user.role} />
     </div>
   );
 }

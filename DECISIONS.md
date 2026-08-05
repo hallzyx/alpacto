@@ -73,11 +73,11 @@
 - **Dust / close order (agreed, not yet implemented):** when Σ kg of settled lots (Ayni pass/warning) ≥ `targetWeightGrams` (tolerance TBD), sweep remaining escrow USDC to platform and mark order `completed`. If kg target is not met and buyer closes early, remanente returns to buyer — not platform. Cap dust later if remanente grows on large orders.
 - **Association fee:** unchanged demo default 300 bps (3%).
 
-- **Visual:** “Altiplano contemporáneo” — Fraunces + Source Sans 3; night indigo/teal atmosphere; brand-first landing.
-- **Roles seed:** buyer/inspector/association/admin via `demo-login` from landing.
+- **Visual:** “Altiplano contemporáneo” — Fraunces + Source Sans 3; night indigo/teal atmosphere; brand-first landing at `/`.
+- **Roles seed:** buyer/inspector/association/admin via `demo-login` from `/login`.
 - **Seed wallets:** `yarn seed:wallets` creates deterministic ZeroDev Kernel ECDSA accounts on Arbitrum Sepolia for every seed user, persists `users.smart_account_address`, writes owner keys to `.secrets/demo-wallets.json`, updates `DEMO_*_SMART_ACCOUNT`, and (when contract+treasury set) grants on-chain roles + dust ETH. Blockchain demo paths must be Sepolia-verifiable.
 - **Producer auth:** three ZeroDev-oriented paths in UI — Google, Email OTP, Passkey — then `POST /auth/producer/session` → JWT. Video prefers Martina seed (real SA) for on-chain; live Google/OTP remain for Web 2.5 UX.
-- **Screens:** `/producer`, `/inspector`, `/association`, `/buyer/orders`, `/admin`; `/debug` out of primary nav.
+- **Screens:** `/`, `/login`, `/producer`, `/inspector`, `/association`, `/buyer/orders`, `/admin`; `/debug` out of primary nav.
 - **API gaps:** `GET /orders`, `GET /lots`, `GET /pricing-policies/:id`, producer may `settlement/accept`, local payout simulate, enriched lot timeline, producer session.
 - **Docs:** `docs/demo-script.md`; smoke `yarn phase6`.
 - **Checkpoint:** UI demo end-to-end per demo script (API smoke verifies list/session surfaces).

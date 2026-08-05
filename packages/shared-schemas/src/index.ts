@@ -191,6 +191,20 @@ export const ayniProducerChatSchema = z.object({
   contextPath: z.string().max(256).optional(),
 });
 
+export const ayniAssociationChatSchema = z.object({
+  messages: z.array(ayniGuideChatMessageSchema).min(1).max(40),
+  contextLotId: z.string().uuid().optional(),
+  contextOrderId: z.string().uuid().optional(),
+  contextPath: z.string().max(256).optional(),
+});
+
+export const ayniBuyerChatSchema = z.object({
+  messages: z.array(ayniGuideChatMessageSchema).min(1).max(40),
+  contextLotId: z.string().uuid().optional(),
+  contextOrderId: z.string().uuid().optional(),
+  contextPath: z.string().max(256).optional(),
+});
+
 export const openIntegrityDisputeSchema = z.object({
   note: z.string().max(2000).optional(),
   diffs: z
@@ -213,4 +227,6 @@ export type CreateAuditInput = z.infer<typeof createAuditSchema>;
 export type AyniGuideChatInput = z.infer<typeof ayniGuideChatSchema>;
 export type AyniGuideChatMessage = z.infer<typeof ayniGuideChatMessageSchema>;
 export type AyniProducerChatInput = z.infer<typeof ayniProducerChatSchema>;
+export type AyniAssociationChatInput = z.infer<typeof ayniAssociationChatSchema>;
+export type AyniBuyerChatInput = z.infer<typeof ayniBuyerChatSchema>;
 export type OpenIntegrityDisputeInput = z.infer<typeof openIntegrityDisputeSchema>;

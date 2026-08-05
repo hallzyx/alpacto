@@ -14,20 +14,16 @@ export function RequireAuth({ roles, children }: { roles?: UserRole | UserRole[]
   useEffect(() => {
     if (loading) return;
     if (!user) {
-      router.replace("/");
+      router.replace("/login");
       return;
     }
     if (roles && !requireRole(roles)) {
-      router.replace("/");
+      router.replace("/login");
     }
   }, [loading, user, roles, requireRole, router]);
 
   if (loading || !user || (roles && !requireRole(roles))) {
-    return (
-      <div className="alp-page">
-        <Skeleton rows={4} />
-      </div>
-    );
+    return <Skeleton rows={4} />;
   }
 
   return <>{children}</>;

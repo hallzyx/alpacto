@@ -24,6 +24,8 @@ node_modules
 .vercel
 
 # Agent tooling and artifacts
+.agents/
+skills-lock.json
 .claude/*
 !.claude/workflows/
 !.claude/skills/
