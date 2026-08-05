@@ -12,6 +12,7 @@
     "phase3": "tsx scripts/phase3-demo.ts",
     "ayni:session": "tsx scripts/ayni-session-env.ts",
     "seed:wallets": "tsx scripts/seed-wallets.ts",
+    "fund-demo-buyer": "tsx scripts/fund-demo-buyer.ts",
     "test": "vitest run"
   },
   "dependencies": {

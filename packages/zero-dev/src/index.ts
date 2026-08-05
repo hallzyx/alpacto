@@ -192,20 +192,90 @@ export async function sendSponsoredCall(opts: {
   functionName: string;
   args?: readonly unknown[];
 }) {
-  const data = encodeFunctionData({
-    abi: opts.abi,
-    functionName: opts.functionName,
-    args: opts.args as never,
+  return sendSponsoredCalls({
+    client: opts.client,
+    calls: [
+      {
+        to: opts.to,
+        abi: opts.abi,
+        functionName: opts.functionName,
+        args: opts.args,
+      },
+    ],
+  });
+}
+
+export async function sendSponsoredCalls(opts: {
+  client: Awaited<ReturnType<typeof createSponsoredKernelClient>>;
+  calls: Array<{
+    to: Address;
+    data?: Hex;
+    abi?: Abi;
+    functionName?: string;
+    args?: readonly unknown[];
+    value?: bigint;
+  }>;
+}) {
+  const encoded = opts.calls.map((c) => {
+    const data =
+      c.data ??
+      encodeFunctionData({
+        abi: c.abi!,
+        functionName: c.functionName!,
+        args: c.args as never,
+      });
+    return { to: c.to, data, value: c.value ?? 0n };
   });
   const userOpHash = await opts.client.sendUserOperation({
-    callData: await opts.client.account.encodeCalls([
-      { to: opts.to, data, value: 0n },
-    ]),
+    callData: await opts.client.account.encodeCalls(encoded),
   });
   const receipt = await opts.client.waitForUserOperationReceipt({
     hash: userOpHash,
   });
   return { userOpHash, receipt };
+}
+
+export async function trySponsoredThenSelfFundedBatch(opts: {
+  publicClient: PublicClient<Transport, Chain>;
+  account: Awaited<ReturnType<typeof createKernelAccount>>;
+  config: ZeroDevConfig;
+  fundEth?: (to: Address) => Promise<void>;
+  calls: Array<{
+    to: Address;
+    data?: Hex;
+    abi?: Abi;
+    functionName?: string;
+    args?: readonly unknown[];
+    value?: bigint;
+  }>;
+}) {
+  try {
+    const client = await createSponsoredKernelClient({
+      publicClient: opts.publicClient,
+      account: opts.account,
+      config: opts.config,
+      usePaymaster: true,
+    });
+    return await sendSponsoredCalls({ client, calls: opts.calls });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (!msg.includes("sponsoring policies") && !msg.includes("404")) {
+      throw err;
+    }
+    console.warn(
+      "⚠️  ZeroDev paymaster policy missing/rejected — funding SA with ETH and retrying without paymaster",
+    );
+    if (opts.fundEth) {
+      await opts.fundEth(opts.account.address);
+    }
+    const client = await createSponsoredKernelClient({
+      publicClient: opts.publicClient,
+      account: opts.account,
+      config: opts.config,
+      usePaymaster: false,
+    });
+    return sendSponsoredCalls({ client, calls: opts.calls });
+  }
 }
 
 export function generateOwnerKey(): Hex {
