@@ -43,7 +43,10 @@ function AssociationDisputesInner() {
     void load();
   }, [load]);
 
-  const resolve = async (disputeId: string, action: "correct_and_resubmit" | "reassign_producer" | "delete_lot") => {
+  const resolve = async (
+    disputeId: string,
+    action: "correct_and_resubmit" | "reassign_producer" | "delete_lot" | "acknowledge" | "investigating",
+  ) => {
     setBusyId(disputeId);
     setError("");
     try {
@@ -57,7 +60,11 @@ function AssociationDisputesInner() {
               ? "Datos corregidos; se reenvía al productor"
               : action === "delete_lot"
                 ? "Lote cancelado por la asociación"
-                : "Lote reasignado a otro productor",
+                : action === "acknowledge"
+                  ? "Anomalía de integridad reconocida"
+                  : action === "investigating"
+                    ? "Investigación en curso"
+                    : "Lote reasignado a otro productor",
         },
       });
       await load();
@@ -70,14 +77,15 @@ function AssociationDisputesInner() {
 
   if (loading) return <Skeleton rows={6} />;
 
-  const open = disputes.filter(d => d.status === "open");
-  const resolved = disputes.filter(d => d.status !== "open");
+  const open = disputes.filter(d => d.status === "open" || d.status === "investigating");
+  const resolved = disputes.filter(d => d.status !== "open" && d.status !== "investigating");
 
   const DisputeCard = ({ dispute }: { dispute: LotDispute }) => {
     const busy = busyId === dispute.id;
-    const isOpen = dispute.status === "open";
+    const isOpen = dispute.status === "open" || dispute.status === "investigating";
+    const isIntegrity = dispute.reasonCode === "data_mismatch";
     return (
-      <Card>
+      <Card className={isIntegrity ? "border-destructive/40" : undefined}>
         <CardHeader className="pb-3">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
@@ -115,57 +123,78 @@ function AssociationDisputesInner() {
           </div>
 
           {isOpen ? (
-            <div className="flex flex-col gap-3">
-              <p className="text-sm text-muted-foreground">
-                Puedes corregir y reenviar al mismo productor, reasignar a otro, o cancelar el lote (si aún no tiene
-                inspección).
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <Button size="sm" disabled={busy} onClick={() => void resolve(dispute.id, "correct_and_resubmit")}>
-                  Corregir y reenviar
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={busy}
-                  onClick={() => void resolve(dispute.id, "delete_lot")}
-                >
-                  Cancelar lote
-                </Button>
-              </div>
-              <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
-                <Field>
-                  <FieldLabel>Reasignar a otro productor</FieldLabel>
-                  <Select
-                    value={reassignByDispute[dispute.id] ?? ""}
-                    onValueChange={v => setReassignByDispute(prev => ({ ...prev, [dispute.id]: v }))}
+            isIntegrity ? (
+              <div className="flex flex-col gap-3">
+                <p className="text-sm text-destructive">
+                  Anomalía de integridad (Postgres vs blockchain). Revisa montos/estado on-chain antes de cerrar.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={busy}
+                    onClick={() => void resolve(dispute.id, "investigating")}
                   >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Elige productor" />
-                    </SelectTrigger>
-                    <SelectContent position="popper">
-                      {producers.map(p => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.name} ({p.email})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </Field>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  disabled={busy || !reassignByDispute[dispute.id]}
-                  onClick={() => void resolve(dispute.id, "reassign_producer")}
-                >
-                  Reasignar
-                </Button>
+                    Marcar en investigación
+                  </Button>
+                  <Button size="sm" disabled={busy} onClick={() => void resolve(dispute.id, "acknowledge")}>
+                    Reconocer y cerrar
+                  </Button>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                <p className="text-sm text-muted-foreground">
+                  Puedes corregir y reenviar al mismo productor, reasignar a otro, o cancelar el lote (si aún no tiene
+                  inspección).
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" disabled={busy} onClick={() => void resolve(dispute.id, "correct_and_resubmit")}>
+                    Corregir y reenviar
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={busy}
+                    onClick={() => void resolve(dispute.id, "delete_lot")}
+                  >
+                    Cancelar lote
+                  </Button>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
+                  <Field>
+                    <FieldLabel>Reasignar a otro productor</FieldLabel>
+                    <Select
+                      value={reassignByDispute[dispute.id] ?? ""}
+                      onValueChange={v => setReassignByDispute(prev => ({ ...prev, [dispute.id]: v }))}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Elige productor" />
+                      </SelectTrigger>
+                      <SelectContent position="popper">
+                        {producers.map(p => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.name} ({p.email})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={busy || !reassignByDispute[dispute.id]}
+                    onClick={() => void resolve(dispute.id, "reassign_producer")}
+                  >
+                    Reasignar
+                  </Button>
+                </div>
+              </div>
+            )
           ) : (
             <p className="text-sm text-muted-foreground">
               Resuelta
-              {dispute.resolutionAction ? `: ${dispute.resolutionAction.replace(/_/g, " ")}` : ""}
+              {dispute.resolutionAction ? `: ${statusLabel(dispute.resolutionAction)}` : ""}
               {dispute.resolvedAt ? ` · ${new Date(dispute.resolvedAt).toLocaleDateString("es-PE")}` : ""}
               {dispute.resolutionNote ? ` — ${dispute.resolutionNote}` : ""}
             </p>
@@ -180,7 +209,7 @@ function AssociationDisputesInner() {
       <div>
         <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">Disputas</h1>
         <p className="text-muted-foreground">
-          Cuando un productor declina un lote (datos incorrectos, fibra ajena, etc.), aparece aquí.
+          Declives de productores y anomalías de integridad (Postgres ↔ blockchain) aparecen aquí.
         </p>
       </div>
 

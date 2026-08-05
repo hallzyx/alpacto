@@ -29,6 +29,8 @@ const TONE: Record<string, string> = {
   failed: "err",
   active: "ok",
   open: "warn",
+  investigating: "warn",
+  data_mismatch: "err",
 };
 
 export function StatusPill({ status, label }: { status: string; label?: string }) {

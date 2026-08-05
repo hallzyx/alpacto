@@ -83,11 +83,15 @@ export function statusLabel(status: string): string {
     failed: "Fallido",
     simulated_paid: "Simulado pagado",
     open: "Abierta",
+    investigating: "En investigación",
+    resolved_acknowledged: "Reconocida",
+    data_mismatch: "Anomalía Postgres ↔ cadena",
     wrong_weight: "Peso incorrecto",
     wrong_producer: "Productor equivocado",
     not_my_fiber: "No es mi fibra",
     wrong_order: "Orden equivocada",
     other: "Otro",
+    acknowledge: "Reconocida",
   };
   return map[status] ?? status.replace(/_/g, " ");
 }
