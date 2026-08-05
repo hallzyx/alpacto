@@ -3,6 +3,7 @@ import "@rainbow-me/rainbowkit/styles.css";
 import { Metadata } from "next";
 import { ThemeProvider } from "~~/components/ThemeProvider";
 import { AuthProvider } from "~~/components/alpacto/AuthProvider";
+import { TooltipProvider } from "~~/components/ui/tooltip";
 import "~~/styles/globals.css";
 import { cn } from "~~/lib/utils";
 
@@ -78,7 +79,9 @@ const RootLayout = ({ children }: { children: React.ReactNode }) => {
         suppressHydrationWarning
       >
         <ThemeProvider enableSystem={false} defaultTheme="light">
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            <TooltipProvider>{children}</TooltipProvider>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>
