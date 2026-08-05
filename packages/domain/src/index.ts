@@ -1,10 +1,13 @@
 export {
   applyBps,
   calculateSettlementPreview,
+  DEFAULT_PLATFORM_FEE_BPS,
+  estimateOrderFundingFromKg,
   gramsToKgString,
   kgToGrams,
   penToUsdc,
   usdcToPenMinor,
+  type OrderFundingEstimate,
   type PenMinor,
   type PenPerUsdcMicros,
   type SettlementPreview,
