@@ -83,8 +83,25 @@ const ROLE_NAV: Record<UserRole, { label: string; items: NavItem[] }> = {
   buyer: {
     label: "Comprador",
     items: [
-      { href: "/buyer/campaigns", label: "Campañas", icon: Factory },
-      { href: "/buyer/orders", label: "Órdenes", icon: ShoppingCart },
+      { href: "/buyer", label: "Panel", icon: Building2 },
+      {
+        href: "/buyer/campaigns",
+        label: "Campañas",
+        icon: Factory,
+        items: [
+          { href: "/buyer/campaigns", label: "Listado" },
+          { href: "/buyer/campaigns/new", label: "Nueva campaña" },
+        ],
+      },
+      {
+        href: "/buyer/orders",
+        label: "Órdenes",
+        icon: ShoppingCart,
+        items: [
+          { href: "/buyer/orders", label: "Listado" },
+          { href: "/buyer/orders/new", label: "Nueva orden" },
+        ],
+      },
     ],
   },
   admin: {
@@ -136,7 +153,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarGroupLabel>{nav.label}</SidebarGroupLabel>
             <SidebarMenu>
               {nav.items.map(item => {
-                const isDashboardRoot = item.href === "/association";
+                const isDashboardRoot = ["/association", "/buyer"].includes(item.href);
                 const active = isDashboardRoot
                   ? pathname === item.href
                   : pathname === item.href || pathname.startsWith(`${item.href}/`);
