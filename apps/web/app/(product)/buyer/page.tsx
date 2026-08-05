@@ -113,9 +113,14 @@ function BuyerOverviewInner() {
           <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">Comprador</h1>
           <p className="text-muted-foreground">Resumen de campañas, órdenes y fondeo.</p>
         </div>
-        <Button asChild>
-          <Link href="/buyer/orders/new">Nueva orden</Link>
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button asChild variant="outline">
+            <Link href="/buyer/pricing">Políticas</Link>
+          </Button>
+          <Button asChild>
+            <Link href="/buyer/orders/new">Nueva orden</Link>
+          </Button>
+        </div>
       </div>
 
       {error ? <ErrorBanner message={error} /> : null}

@@ -19,6 +19,38 @@ dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
 const DEMO_POLICY_HASH =
   "0x1111111111111111111111111111111111111111111111111111111111111111";
 
+/** Demo v1 — three alpaca fiber grades; settlement uses the inspector's category row. */
+const DEMO_POLICY_CATEGORIES = [
+  { code: "FINE", label: "Fino", pricePenMinorPerKg: 2750n, qualityBonusPenMinorPerKg: 0n },
+  { code: "MEDIUM", label: "Medio", pricePenMinorPerKg: 2300n, qualityBonusPenMinorPerKg: 0n },
+  { code: "COARSE", label: "Grueso", pricePenMinorPerKg: 1850n, qualityBonusPenMinorPerKg: 0n },
+] as const;
+
+async function ensureDemoPolicyCategories(
+  db: ReturnType<typeof createDb>,
+  policyId: string,
+) {
+  for (const cat of DEMO_POLICY_CATEGORIES) {
+    await db
+      .insert(pricingCategories)
+      .values({
+        pricingPolicyId: policyId,
+        code: cat.code,
+        label: cat.label,
+        pricePenMinorPerKg: cat.pricePenMinorPerKg,
+        qualityBonusPenMinorPerKg: cat.qualityBonusPenMinorPerKg,
+      })
+      .onConflictDoUpdate({
+        target: [pricingCategories.pricingPolicyId, pricingCategories.code],
+        set: {
+          label: cat.label,
+          pricePenMinorPerKg: cat.pricePenMinorPerKg,
+          qualityBonusPenMinorPerKg: cat.qualityBonusPenMinorPerKg,
+        },
+      });
+  }
+}
+
 const SEED_USERS = [
   {
     email: "martina@demo.alpacto",
@@ -155,13 +187,7 @@ async function main() {
       })
       .returning();
     policy = row!;
-    await db.insert(pricingCategories).values({
-      pricingPolicyId: policy.id,
-      code: "FINE",
-      label: "Fino",
-      pricePenMinorPerKg: 2750n,
-      qualityBonusPenMinorPerKg: 0n,
-    });
+    await ensureDemoPolicyCategories(db, policy.id);
   } else if (policy.penPerUsdcMicros <= 0n || policy.platformFeeBps !== 50) {
     const [row] = await db
       .update(pricingPolicies)
@@ -173,6 +199,8 @@ async function main() {
       .returning();
     policy = row!;
   }
+
+  await ensureDemoPolicyCategories(db, policy.id);
 
   let [campaign] = await db
     .select()

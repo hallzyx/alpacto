@@ -54,6 +54,9 @@ async function loadPricingBundle(db: Database, pricingPolicyId: string) {
     weightToleranceBps: policy.weightToleranceBps,
     penPerUsdcMicros: policy.penPerUsdcMicros.toString(),
     policyHash: policy.policyHash,
+    createdBy: policy.createdBy,
+    lockedAt: policy.lockedAt?.toISOString() ?? null,
+    createdAt: policy.createdAt.toISOString(),
     categories: categories.map((c) => ({
       code: c.code,
       label: c.label,

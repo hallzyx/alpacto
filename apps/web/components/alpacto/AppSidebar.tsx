@@ -97,6 +97,15 @@ const ROLE_NAV: Record<UserRole, { label: string; items: NavItem[] }> = {
     items: [
       { href: "/buyer", label: "Panel", icon: Building2 },
       {
+        href: "/buyer/pricing",
+        label: "Políticas",
+        icon: BookOpenText,
+        items: [
+          { href: "/buyer/pricing", label: "Listado" },
+          { href: "/buyer/pricing/new", label: "Nueva política" },
+        ],
+      },
+      {
         href: "/buyer/campaigns",
         label: "Campañas",
         icon: Factory,

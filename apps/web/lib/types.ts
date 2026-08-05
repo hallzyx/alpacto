@@ -135,6 +135,9 @@ export type PricingPolicy = {
   weightToleranceBps: number;
   penPerUsdcMicros: string;
   policyHash: string;
+  createdBy?: string | null;
+  lockedAt?: string | null;
+  createdAt?: string;
   categories: PricingCategory[];
 };
 

@@ -1,7 +1,8 @@
 "use client";
 
+import { Suspense } from "react";
 import { useRouter } from "next/navigation";
-import { CreateCampaignForm, RequireAuth } from "~~/components/alpacto";
+import { CreateCampaignForm, RequireAuth, Skeleton } from "~~/components/alpacto";
 
 function NewCampaignInner() {
   const router = useRouter();
@@ -12,11 +13,13 @@ function NewCampaignInner() {
         <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">Nueva campaña</h1>
         <p className="text-muted-foreground">Define el marco comercial para las próximas órdenes.</p>
       </div>
-      <CreateCampaignForm
-        onCreated={() => {
-          router.push("/association/campaigns");
-        }}
-      />
+      <Suspense fallback={<Skeleton rows={4} />}>
+        <CreateCampaignForm
+          onCreated={() => {
+            router.push("/association/campaigns");
+          }}
+        />
+      </Suspense>
     </div>
   );
 }

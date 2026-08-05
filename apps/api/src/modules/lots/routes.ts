@@ -2,12 +2,14 @@ import type { FastifyInstance } from "fastify";
 import { and, asc, desc, eq } from "drizzle-orm";
 import {
   auditRuns,
+  campaigns,
   evidenceFiles,
   fundingIntents,
   inspections,
   lotDisputes,
   lots,
   orders,
+  pricingCategories,
   reweighRequests,
   settlements,
   users,
@@ -261,6 +263,32 @@ export async function registerLotRoutes(
         400,
         "Lot must be confirmed by the producer before inspection",
         "LOT_NOT_CONFIRMED",
+      );
+    }
+
+    const [order] = await db.select().from(orders).where(eq(orders.id, lot.orderId)).limit(1);
+    if (!order) throw new ApiError(404, "Order not found");
+    const [campaign] = await db
+      .select()
+      .from(campaigns)
+      .where(eq(campaigns.id, order.campaignId))
+      .limit(1);
+    if (!campaign) throw new ApiError(404, "Campaign not found");
+    const [pricedCategory] = await db
+      .select()
+      .from(pricingCategories)
+      .where(
+        and(
+          eq(pricingCategories.pricingPolicyId, campaign.pricingPolicyId),
+          eq(pricingCategories.code, body.categoryCode),
+        ),
+      )
+      .limit(1);
+    if (!pricedCategory) {
+      throw new ApiError(
+        400,
+        `Category ${body.categoryCode} is not priced in this campaign's policy`,
+        "INVALID_CATEGORY",
       );
     }
 

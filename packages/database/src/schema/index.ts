@@ -82,6 +82,8 @@ export const pricingPolicies = pgTable("pricing_policies", {
   weightToleranceBps: integer("weight_tolerance_bps").notNull(),
   penPerUsdcMicros: bigint("pen_per_usdc_micros", { mode: "bigint" }).notNull(),
   policyHash: varchar("policy_hash", { length: 66 }).notNull(),
+  /** Buyer (or admin) who authored this policy; null = platform/demo seed. */
+  createdBy: uuid("created_by").references(() => users.id),
   lockedAt: timestamp("locked_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

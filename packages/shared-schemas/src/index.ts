@@ -24,6 +24,34 @@ export const createCampaignSchema = z.object({
   endDate: optionalCalendarDate,
 });
 
+const pricingCategoryInputSchema = z.object({
+  code: z.string().min(1).max(32),
+  label: z.string().min(1).max(128),
+  /** Soles per kg as decimal string/number (e.g. 27.5) or minor units bigint. */
+  pricePenPerKg: z.coerce.number().positive().max(10_000),
+  qualityBonusPenPerKg: z.coerce.number().min(0).max(10_000).default(0),
+});
+
+export const createPricingPolicySchema = z.object({
+  currency: z.enum(["PEN"]).default("PEN"),
+  /** Association fee in percent (e.g. 3 = 3%) or pass associationFeeBps. */
+  associationFeePercent: z.coerce.number().min(0).max(50).optional(),
+  associationFeeBps: z.coerce.number().int().min(0).max(5_000).optional(),
+  /** Platform fee fixed at 0.5% for buyers; admin may override. */
+  platformFeeBps: z.coerce.number().int().min(0).max(500).optional(),
+  /** Weight tolerance percent (e.g. 1 = 1%). */
+  weightTolerancePercent: z.coerce.number().min(0).max(20).optional(),
+  weightToleranceBps: z.coerce.number().int().min(0).max(2_000).optional(),
+  /** PEN per 1 USD (e.g. 3.75). */
+  penPerUsdc: z.coerce.number().positive().max(20).default(3.75),
+  categories: z.array(pricingCategoryInputSchema).min(1).max(12),
+}).refine(
+  (v) => v.associationFeePercent != null || v.associationFeeBps != null,
+  { message: "Provide associationFeePercent or associationFeeBps" },
+);
+
+export type CreatePricingPolicyInput = z.infer<typeof createPricingPolicySchema>;
+
 export const createOrderSchema = z
   .object({
     campaignId: z.string().uuid(),

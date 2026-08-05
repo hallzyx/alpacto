@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "./AuthProvider";
 import { ErrorBanner } from "./ErrorBanner";
 import { PricingPolicyPreview } from "./PricingPolicyHelp";
@@ -20,6 +22,8 @@ type CreateCampaignFormProps = {
 
 export function CreateCampaignForm({ onCreated }: CreateCampaignFormProps) {
   const { user } = useAuth();
+  const searchParams = useSearchParams();
+  const preselectedPolicyId = searchParams.get("policyId") ?? "";
   const [orgs, setOrgs] = useState<Organization[]>([]);
   const [policies, setPolicies] = useState<PricingPolicy[]>([]);
   const [buyers, setBuyers] = useState<BuyerOption[]>([]);
@@ -34,18 +38,20 @@ export function CreateCampaignForm({ onCreated }: CreateCampaignFormProps) {
   const [error, setError] = useState("");
 
   const needsBuyerPicker = user?.role === "association" || user?.role === "admin";
+  const isBuyer = user?.role === "buyer";
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
+        const policyPath = isBuyer ? "/pricing-policies?mine=1" : "/pricing-policies";
         const requests: [
           Promise<{ organizations: Organization[] }>,
           Promise<{ policies: PricingPolicy[] }>,
           Promise<{ buyers: BuyerOption[] }> | null,
         ] = [
           apiFetch<{ organizations: Organization[] }>("/organizations?type=association"),
-          apiFetch<{ policies: PricingPolicy[] }>("/pricing-policies"),
+          apiFetch<{ policies: PricingPolicy[] }>(policyPath),
           needsBuyerPicker ? apiFetch<{ buyers: BuyerOption[] }>("/users/buyers") : null,
         ];
         const [orgRes, policyRes, buyerRes] = await Promise.all([
@@ -58,7 +64,12 @@ export function CreateCampaignForm({ onCreated }: CreateCampaignFormProps) {
         setPolicies(policyRes.policies);
         setBuyers(buyerRes.buyers);
         if (orgRes.organizations[0]) setOrganizationId(orgRes.organizations[0].id);
-        if (policyRes.policies[0]) setPricingPolicyId(policyRes.policies[0].id);
+        const preferred =
+          (preselectedPolicyId && policyRes.policies.find(p => p.id === preselectedPolicyId)?.id) ||
+          policyRes.policies.find(p => p.createdBy === user?.id)?.id ||
+          policyRes.policies[0]?.id ||
+          "";
+        if (preferred) setPricingPolicyId(preferred);
         if (buyerRes.buyers[0]) setBuyerId(buyerRes.buyers[0].id);
       } catch (err) {
         if (!cancelled) {
@@ -71,7 +82,7 @@ export function CreateCampaignForm({ onCreated }: CreateCampaignFormProps) {
     return () => {
       cancelled = true;
     };
-  }, [needsBuyerPicker]);
+  }, [needsBuyerPicker, isBuyer, preselectedPolicyId, user?.id]);
 
   const selectedPolicy = policies.find(p => p.id === pricingPolicyId) ?? null;
 
@@ -123,9 +134,23 @@ export function CreateCampaignForm({ onCreated }: CreateCampaignFormProps) {
       <CardContent>
         {error ? <ErrorBanner message={error} onDismiss={() => setError("")} /> : null}
 
-        {!orgs.length || !policies.length ? (
+        {!orgs.length ? (
           <p className="text-sm text-muted-foreground">
-            Falta seed de asociación o política de precios. Ejecuta <code>yarn db:seed</code>.
+            Falta seed de asociación. Ejecuta <code>yarn db:seed</code>.
+          </p>
+        ) : !policies.length ? (
+          <p className="text-sm text-muted-foreground">
+            No hay políticas de precios.{" "}
+            {isBuyer ? (
+              <Link href="/buyer/pricing/new" className="text-primary underline">
+                Crea una política
+              </Link>
+            ) : (
+              <>
+                Ejecuta <code>yarn db:seed</code> o pide al comprador que cree una.
+              </>
+            )}
+            .
           </p>
         ) : (
           <form
@@ -189,14 +214,26 @@ export function CreateCampaignForm({ onCreated }: CreateCampaignFormProps) {
                   <SelectValue placeholder="Selecciona una política" />
                 </SelectTrigger>
                 <SelectContent>
-                  {policies.map(p => (
-                    <SelectItem key={p.id} value={p.id}>
-                      v{p.version} · fee {(p.associationFeeBps / 100).toFixed(1)}% ·{" "}
-                      {p.categories.map(c => c.code).join(", ") || "sin categorías"}
-                    </SelectItem>
-                  ))}
+                  {policies.map(p => {
+                    const own = Boolean(user?.id && p.createdBy === user.id);
+                    const tag = own ? "tuya" : p.createdBy ? "comprador" : "plataforma";
+                    return (
+                      <SelectItem key={p.id} value={p.id}>
+                        v{p.version} ({tag}) · fee {(p.associationFeeBps / 100).toFixed(1)}% ·{" "}
+                        {p.categories.map(c => c.code).join(", ") || "sin categorías"}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
+              {isBuyer ? (
+                <p className="text-xs text-muted-foreground">
+                  ¿Necesitas otros precios?{" "}
+                  <Link href="/buyer/pricing/new" className="text-primary underline">
+                    Crear política nueva
+                  </Link>
+                </p>
+              ) : null}
             </Field>
 
             {selectedPolicy ? <PricingPolicyPreview policy={selectedPolicy} /> : null}
