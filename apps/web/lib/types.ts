@@ -21,6 +21,8 @@ export type Lot = {
   status: string;
   currentInspectionVersion: number;
   acceptedInspectionVersion: number | null;
+  producerConfirmedAt?: string | null;
+  producerDeclinedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -171,4 +173,65 @@ export type LocalPayout = {
   reference: string | null;
   createdAt: string;
   label: string;
+};
+
+export type LotDispute = {
+  id: string;
+  lotId: string;
+  openedBy: string;
+  reasonCode: string;
+  reasonText: string | null;
+  status: string;
+  resolutionAction: string | null;
+  resolutionNote: string | null;
+  resolvedBy: string | null;
+  resolvedAt: string | null;
+  createdAt: string;
+  lotStatus?: string | null;
+  orderId?: string | null;
+  orderExternalRef?: string | null;
+  producerName?: string | null;
+  producerEmail?: string | null;
+};
+
+export type AuditFinding = {
+  id: string;
+  code: string;
+  severity: string;
+  declaredValue: string | null;
+  observedValue: string | null;
+  explanation: string | null;
+};
+
+export type AuditRunDetail = {
+  id: string;
+  lotId: string;
+  inspectionVersion: number;
+  status: string;
+  resultCode: string | null;
+  findings: AuditFinding[];
+};
+
+/** Producer-scoped order + campaign context (no buyer budget / escrow). */
+export type ProducerOrderParticipation = {
+  orderId: string;
+  externalRef: string | null;
+  orderStatus: string;
+  fundsSecured: boolean;
+  campaign: {
+    id: string;
+    name: string;
+    status: string;
+    associationName: string | null;
+    startDate: string | null;
+    endDate: string | null;
+    pricing: Pick<PricingPolicy, "currency" | "associationFeeBps" | "categories"> | null;
+  };
+  lotCount: number;
+  lots: Lot[];
+};
+
+export type ProducerParticipation = {
+  orders: ProducerOrderParticipation[];
+  totalLots: number;
 };

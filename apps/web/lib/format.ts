@@ -1,4 +1,9 @@
-/** Format PEN minor units (céntimos) as `S/ x.xx`. */
+/** Human-readable order reference for producer-facing UI. */
+export function orderDisplayRef(externalRef: string | null | undefined, orderId: string): string {
+  if (externalRef) return externalRef;
+  return `Orden ${orderId.slice(0, 8)}`;
+}
+
 export function formatPen(penMinor: string | number | bigint | null | undefined): string {
   if (penMinor === null || penMinor === undefined || penMinor === "") return "S/ —";
   const n = typeof penMinor === "bigint" ? Number(penMinor) : Number(penMinor);
@@ -48,7 +53,14 @@ export const ONCHAIN_ACTIVITY_LABELS: Record<string, string> = {
 export function statusLabel(status: string): string {
   const map: Record<string, string> = {
     registered: "Registrado",
+    awaiting_producer_confirmation: "Pendiente de tu confirmación",
+    producer_declined: "Declinado — en disputa",
+    cancelled: "Cancelado",
     inspection_submitted: "Inspección enviada",
+    auditing: "Ayni revisando",
+    ready_for_review: "Listo para liquidar",
+    review_required: "Revisión requerida",
+    audit_failed: "Auditoría fallida",
     audit_pending: "Auditoría pendiente",
     audit_passed: "Ayni aprobado",
     audit_warning: "Ayni con aviso",
@@ -65,12 +77,17 @@ export function statusLabel(status: string): string {
     active: "Activa",
     pass: "Aprobado",
     warning: "Aviso",
-    review_required: "Revisión requerida",
     unreadable: "No legible",
     pending: "Pendiente",
     completed: "Completado",
     failed: "Fallido",
     simulated_paid: "Simulado pagado",
+    open: "Abierta",
+    wrong_weight: "Peso incorrecto",
+    wrong_producer: "Productor equivocado",
+    not_my_fiber: "No es mi fibra",
+    wrong_order: "Orden equivocada",
+    other: "Otro",
   };
   return map[status] ?? status.replace(/_/g, " ");
 }
