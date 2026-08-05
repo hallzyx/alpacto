@@ -1,24 +1,31 @@
 "use client";
 
-import Link from "next/link";
-import { RoleNav } from "./RoleNav";
+import { AppSidebar } from "~~/components/alpacto/AppSidebar";
+import { useAuth } from "~~/components/alpacto/AuthProvider";
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "~~/components/ui/sidebar";
 
 export function AppShell({ children, showNav = true }: { children: React.ReactNode; showNav?: boolean }) {
+  const { user } = useAuth();
+
+  if (!showNav || !user) {
+    return <div className="alpacto-product min-h-screen">{children}</div>;
+  }
+
   return (
-    <div className="alpacto-product min-h-screen flex flex-col">
-      <header className="alp-header">
-        <div className="alp-header__inner">
-          <Link href="/" className="alp-brand">
-            <span className="alp-brand__mark" aria-hidden />
-            <span className="alp-brand__name">Alpacto</span>
-          </Link>
-          {showNav ? <RoleNav /> : null}
-        </div>
-      </header>
-      <main className="alp-main flex-1 w-full">{children}</main>
-      <footer className="alp-footer">
-        <p>Un pacto justo por cada fibra.</p>
-      </footer>
+    <div className="min-h-screen">
+      <SidebarProvider>
+        <AppSidebar />
+        <SidebarInset className="alpacto-dashboard-panel p-0">
+          <header className="flex h-16 shrink-0 items-center gap-2 border-b border-sidebar-border/60">
+            <div className="flex items-center gap-2 px-4">
+              <SidebarTrigger className="-ml-1" />
+              <div aria-hidden className="h-4 w-px shrink-0 bg-border" />
+              <span className="text-sm text-muted-foreground">Panel</span>
+            </div>
+          </header>
+          <main className="flex-1 p-4 pt-4 md:p-6">{children}</main>
+        </SidebarInset>
+      </SidebarProvider>
     </div>
   );
 }
