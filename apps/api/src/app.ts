@@ -7,8 +7,10 @@ import { isApiError } from "./lib/errors.js";
 import { ensureBucket } from "./lib/s3.js";
 import { authPlugin } from "./plugins/auth.js";
 import { createQueues, startWorkers } from "./jobs/queues.js";
+import { registerAdminRoutes } from "./modules/admin/routes.js";
 import { registerAuthRoutes } from "./modules/auth/routes.js";
 import { registerCampaignRoutes } from "./modules/campaigns/routes.js";
+import { registerOrganizationRoutes } from "./modules/organizations/routes.js";
 import { registerOrderRoutes } from "./modules/orders/routes.js";
 import { registerLotRoutes } from "./modules/lots/routes.js";
 import { registerEvidenceRoutes } from "./modules/evidence/routes.js";
@@ -19,6 +21,7 @@ import {
 import { registerAuditRoutes } from "./modules/audits/routes.js";
 import { registerSettlementRoutes } from "./modules/settlements/routes.js";
 import { registerPricingRoutes } from "./modules/pricing/routes.js";
+import { registerUserRoutes } from "./modules/users/routes.js";
 
 export type AppDeps = {
   startWorkers?: boolean;
@@ -51,7 +54,10 @@ export async function buildApp(deps: AppDeps = {}) {
   });
 
   await registerAuthRoutes(app, db, authenticate);
+  await registerAdminRoutes(app, db, authenticate);
+  await registerUserRoutes(app, db, authenticate);
   await registerCampaignRoutes(app, db, authenticate);
+  await registerOrganizationRoutes(app, db, authenticate);
   await registerPricingRoutes(app, db, authenticate);
   await registerOrderRoutes(app, db, authenticate);
   await registerFundingRoutes(app, db, authenticate, queues);

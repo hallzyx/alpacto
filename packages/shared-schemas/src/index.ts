@@ -4,21 +4,39 @@ export const demoLoginSchema = z.object({
   email: z.string().email(),
 });
 
+/** Accepts ISO datetime or YYYY-MM-DD from HTML date inputs. */
+const optionalCalendarDate = z
+  .string()
+  .min(1)
+  .refine(
+    (v) => !Number.isNaN(Date.parse(v.includes("T") ? v : `${v}T00:00:00.000Z`)),
+    "Invalid date",
+  )
+  .optional();
+
 export const createCampaignSchema = z.object({
   organizationId: z.string().uuid(),
-  buyerId: z.string().uuid(),
+  /** Defaults to the authenticated buyer when omitted. */
+  buyerId: z.string().uuid().optional(),
   name: z.string().min(1).max(255),
   pricingPolicyId: z.string().uuid(),
-  startDate: z.string().datetime().optional(),
-  endDate: z.string().datetime().optional(),
+  startDate: optionalCalendarDate,
+  endDate: optionalCalendarDate,
 });
 
-export const createOrderSchema = z.object({
-  campaignId: z.string().uuid(),
-  externalRef: z.string().min(1).max(64).optional(),
-  budgetUsdCents: z.coerce.bigint().positive(),
-  associationId: z.string().uuid().optional(),
-});
+export const createOrderSchema = z
+  .object({
+    campaignId: z.string().uuid(),
+    externalRef: z.string().min(1).max(64).optional(),
+    associationId: z.string().uuid().optional(),
+    /** Preferred: meta de acopio en gramos; el API calcula budget con la política. */
+    targetWeightGrams: z.coerce.bigint().positive().optional(),
+    /** Legacy / override; si viene targetWeightGrams, el servidor recalcula. */
+    budgetUsdCents: z.coerce.bigint().positive().optional(),
+  })
+  .refine((v) => v.targetWeightGrams != null || v.budgetUsdCents != null, {
+    message: "Provide targetWeightGrams or budgetUsdCents",
+  });
 
 export const createLotSchema = z.object({
   orderId: z.string().uuid(),
