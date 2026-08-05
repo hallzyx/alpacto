@@ -59,6 +59,23 @@ export const reweighRequestSchema = z.object({
   reasonText: z.string().max(2000).optional(),
 });
 
+export const declineLotSchema = z.object({
+  reasonCode: z.enum([
+    "wrong_weight",
+    "wrong_producer",
+    "not_my_fiber",
+    "wrong_order",
+    "other",
+  ]),
+  reasonText: z.string().max(2000).optional(),
+});
+
+export const resolveLotDisputeSchema = z.object({
+  action: z.enum(["correct_and_resubmit", "reassign_producer", "delete_lot"]),
+  producerId: z.string().uuid().optional(),
+  resolutionNote: z.string().max(2000).optional(),
+});
+
 const allowedMimeTypes = [
   "image/jpeg",
   "image/png",
@@ -79,6 +96,8 @@ export type CreateOrderInput = z.infer<typeof createOrderSchema>;
 export type CreateLotInput = z.infer<typeof createLotSchema>;
 export type CreateInspectionInput = z.infer<typeof createInspectionSchema>;
 export type ReweighRequestInput = z.infer<typeof reweighRequestSchema>;
+export type DeclineLotInput = z.infer<typeof declineLotSchema>;
+export type ResolveLotDisputeInput = z.infer<typeof resolveLotDisputeSchema>;
 export const fundingIntentStatusSchema = z.enum([
   "pending",
   "paid",
