@@ -49,4 +49,9 @@ export const config = {
   demo: {
     maxFundingUsdc: parseBigIntEnv("DEMO_MAX_FUNDING_USDC", 10_000n),
   },
+  deepseek: {
+    apiKey: process.env["DEEPSEEK_API_KEY"] ?? "",
+    model: process.env["DEEPSEEK_MODEL"] ?? "deepseek-v4-flash",
+    baseUrl: process.env["DEEPSEEK_BASE_URL"] ?? "https://api.deepseek.com",
+  },
 };
