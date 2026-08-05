@@ -279,8 +279,8 @@ p {
   --sidebar-foreground: #0f2430;
   --sidebar-primary: #1a6b6a;
   --sidebar-primary-foreground: #f7fffe;
-  --sidebar-accent: #d8eae7;
-  --sidebar-accent-foreground: #145a55;
+  --sidebar-accent: #e0ecea;
+  --sidebar-accent-foreground: #1a6b6a;
   --sidebar-border: #d8e2e6;
   --sidebar-ring: #2a9d8f;
 }
@@ -644,6 +644,37 @@ p {
 }
 
 .alpacto-product > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Dashboard main panel — flat surface + oblique lines (wins over Tailwind bg-background) */
+[data-slot="sidebar-inset"].alpacto-dashboard-panel {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background-color: #f6f9fa !important;
+  background-image: none !important;
+}
+
+[data-slot="sidebar-inset"].alpacto-dashboard-panel::before {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  opacity: 0.48;
+  background-image:
+    repeating-linear-gradient(
+      105deg,
+      transparent 0,
+      transparent 11px,
+      rgba(20, 55, 74, 0.058) 11px,
+      rgba(20, 55, 74, 0.058) 12px
+    );
+  z-index: 0;
+}
+
+[data-slot="sidebar-inset"].alpacto-dashboard-panel > * {
   position: relative;
   z-index: 1;
 }
