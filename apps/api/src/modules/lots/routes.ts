@@ -5,6 +5,7 @@ import {
   evidenceFiles,
   fundingIntents,
   inspections,
+  lotDisputes,
   lots,
   orders,
   reweighRequests,
@@ -15,6 +16,7 @@ import {
 import {
   createInspectionSchema,
   createLotSchema,
+  declineLotSchema,
   reweighRequestSchema,
 } from "@alpacto/shared-schemas";
 import type { AuthUser } from "../../plugins/auth.js";
@@ -30,6 +32,8 @@ function serializeLot(row: typeof lots.$inferSelect) {
     status: row.status,
     currentInspectionVersion: row.currentInspectionVersion,
     acceptedInspectionVersion: row.acceptedInspectionVersion,
+    producerConfirmedAt: row.producerConfirmedAt?.toISOString() ?? null,
+    producerDeclinedAt: row.producerDeclinedAt?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -106,7 +110,7 @@ export async function registerLotRoutes(
         orderId: body.orderId,
         producerId: body.producerId,
         onchainLotId: body.onchainLotId,
-        status: "registered",
+        status: "awaiting_producer_confirmation",
       })
       .returning();
     if (!row) throw new ApiError(500, "Failed to create lot");
@@ -163,8 +167,22 @@ export async function registerLotRoutes(
     events.push({
       type: "lot_registered",
       at: lot.createdAt.toISOString(),
-      label: "Lote registrado",
+      label: "Lote registrado por la asociación",
     });
+    if (lot.producerConfirmedAt) {
+      events.push({
+        type: "producer_confirmed",
+        at: lot.producerConfirmedAt.toISOString(),
+        label: "Productor confirmó: es mi fibra",
+      });
+    }
+    if (lot.producerDeclinedAt) {
+      events.push({
+        type: "producer_declined",
+        at: lot.producerDeclinedAt.toISOString(),
+        label: "Productor declinó el lote (disputa)",
+      });
+    }
 
     for (const insp of inspectionRows) {
       events.push({
@@ -238,6 +256,13 @@ export async function registerLotRoutes(
 
     const [lot] = await db.select().from(lots).where(eq(lots.id, lotId)).limit(1);
     if (!lot) throw new ApiError(404, "Lot not found");
+    if (["awaiting_producer_confirmation", "producer_declined", "cancelled"].includes(lot.status)) {
+      throw new ApiError(
+        400,
+        "Lot must be confirmed by the producer before inspection",
+        "LOT_NOT_CONFIRMED",
+      );
+    }
 
     const nextVersion = lot.currentInspectionVersion + 1;
     if (lot.status === "reweighing_requested" && nextVersion <= lot.currentInspectionVersion) {
@@ -307,6 +332,15 @@ export async function registerLotRoutes(
     if (user.role !== "admin" && user.id !== lot.producerId) {
       throw new ApiError(403, "Only the lot producer may request reweighing");
     }
+    if (["settled", "settlement_accepted"].includes(lot.status)) {
+      throw new ApiError(400, "Cannot request reweighing on a settled lot");
+    }
+    if (lot.status === "reweighing_requested") {
+      throw new ApiError(400, "Reweighing already requested");
+    }
+    if (lot.currentInspectionVersion < 1) {
+      throw new ApiError(400, "Lot has no inspection to dispute");
+    }
 
     const [row] = await db
       .insert(reweighRequests)
@@ -328,6 +362,83 @@ export async function registerLotRoutes(
       lotId,
       reasonCode: body.reasonCode,
       status: "reweighing_requested",
+    };
+  });
+
+  app.post("/lots/:id/confirm", { preHandler: authenticate }, async (request) => {
+    const user = request.user as AuthUser;
+    const { id: lotId } = request.params as { id: string };
+
+    const [lot] = await db.select().from(lots).where(eq(lots.id, lotId)).limit(1);
+    if (!lot) throw new ApiError(404, "Lot not found");
+    if (user.role !== "admin" && user.id !== lot.producerId) {
+      throw new ApiError(403, "Only the lot producer may confirm");
+    }
+    if (lot.status !== "awaiting_producer_confirmation") {
+      throw new ApiError(400, "Lot is not awaiting confirmation");
+    }
+
+    const [row] = await db
+      .update(lots)
+      .set({
+        status: "registered",
+        producerConfirmedAt: new Date(),
+        producerDeclinedAt: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(lots.id, lotId))
+      .returning();
+    if (!row) throw new ApiError(500, "Failed to confirm lot");
+    return serializeLot(row);
+  });
+
+  app.post("/lots/:id/decline", { preHandler: authenticate }, async (request) => {
+    const user = request.user as AuthUser;
+    const { id: lotId } = request.params as { id: string };
+    const body = declineLotSchema.parse(request.body ?? {});
+
+    const [lot] = await db.select().from(lots).where(eq(lots.id, lotId)).limit(1);
+    if (!lot) throw new ApiError(404, "Lot not found");
+    if (user.role !== "admin" && user.id !== lot.producerId) {
+      throw new ApiError(403, "Only the lot producer may decline");
+    }
+    if (lot.status !== "awaiting_producer_confirmation") {
+      throw new ApiError(400, "Lot is not awaiting confirmation");
+    }
+
+    const [dispute] = await db
+      .insert(lotDisputes)
+      .values({
+        lotId,
+        openedBy: user.id,
+        reasonCode: body.reasonCode,
+        reasonText: body.reasonText,
+        status: "open",
+      })
+      .returning();
+    if (!dispute) throw new ApiError(500, "Failed to open dispute");
+
+    const [row] = await db
+      .update(lots)
+      .set({
+        status: "producer_declined",
+        producerDeclinedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(lots.id, lotId))
+      .returning();
+    if (!row) throw new ApiError(500, "Failed to decline lot");
+
+    return {
+      lot: serializeLot(row),
+      dispute: {
+        id: dispute.id,
+        lotId: dispute.lotId,
+        reasonCode: dispute.reasonCode,
+        reasonText: dispute.reasonText,
+        status: dispute.status,
+        createdAt: dispute.createdAt.toISOString(),
+      },
     };
   });
 }

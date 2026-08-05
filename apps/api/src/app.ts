@@ -21,6 +21,8 @@ import {
 import { registerAuditRoutes } from "./modules/audits/routes.js";
 import { registerSettlementRoutes } from "./modules/settlements/routes.js";
 import { registerPricingRoutes } from "./modules/pricing/routes.js";
+import { registerProducerRoutes } from "./modules/producer/routes.js";
+import { registerLotDisputeRoutes } from "./modules/disputes/routes.js";
 import { registerUserRoutes } from "./modules/users/routes.js";
 
 export type AppDeps = {
@@ -56,6 +58,7 @@ export async function buildApp(deps: AppDeps = {}) {
   await registerAuthRoutes(app, db, authenticate);
   await registerAdminRoutes(app, db, authenticate);
   await registerUserRoutes(app, db, authenticate);
+  await registerProducerRoutes(app, db, authenticate);
   await registerCampaignRoutes(app, db, authenticate);
   await registerOrganizationRoutes(app, db, authenticate);
   await registerPricingRoutes(app, db, authenticate);
@@ -63,6 +66,7 @@ export async function buildApp(deps: AppDeps = {}) {
   await registerFundingRoutes(app, db, authenticate, queues);
   await registerStripeWebhookRoutes(app, db, queues);
   await registerLotRoutes(app, db, authenticate);
+  await registerLotDisputeRoutes(app, db, authenticate);
   await registerAuditRoutes(app, db, authenticate, queues);
   await registerSettlementRoutes(app, db, authenticate);
   await registerEvidenceRoutes(app, db, authenticate, queues);
