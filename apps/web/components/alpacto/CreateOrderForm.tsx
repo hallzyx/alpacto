@@ -6,6 +6,7 @@ import Link from "next/link";
 import { CampaignDetails } from "./CampaignDetails";
 import { ErrorBanner } from "./ErrorBanner";
 import { PricingPolicyHelpButton } from "./PricingPolicyHelp";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~~/components/ui/select";
 import { apiFetch } from "~~/lib/api";
 import { formatEscrowUsd, formatPen, formatUsdCents } from "~~/lib/format";
 import type { Campaign, Order, PricingPolicy } from "~~/lib/types";
@@ -194,19 +195,19 @@ export function CreateOrderForm({ existingOrders = [], onCreated, redirectToDeta
         >
           <div className="alp-field">
             <label htmlFor="create-order-campaign">Campaña</label>
-            <select
-              id="create-order-campaign"
-              value={campaignId}
-              onChange={e => setCampaignId(e.target.value)}
-              required
-            >
-              {campaigns.map(c => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                  {c.associationName ? ` · ${c.associationName}` : ""}
-                </option>
-              ))}
-            </select>
+            <Select value={campaignId} onValueChange={setCampaignId}>
+              <SelectTrigger id="create-order-campaign" className="w-full">
+                <SelectValue placeholder="Selecciona una campaña" />
+              </SelectTrigger>
+              <SelectContent>
+                {campaigns.map(c => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                    {c.associationName ? ` · ${c.associationName}` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <p className="alp-muted" style={{ margin: "0.35rem 0 0", fontSize: "0.85rem" }}>
               <Link href="/buyer/campaigns" className="alp-link-btn">
                 Ver / crear campañas

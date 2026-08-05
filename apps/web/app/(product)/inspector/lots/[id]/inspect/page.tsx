@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ErrorBanner, RequireAuth } from "~~/components/alpacto";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~~/components/ui/select";
 import { apiFetch } from "~~/lib/api";
 
 function InspectInner() {
@@ -105,11 +106,16 @@ function InspectInner() {
         </div>
         <div className="alp-field">
           <label htmlFor="cat">Categoría</label>
-          <select id="cat" value={categoryCode} onChange={e => setCategoryCode(e.target.value)}>
-            <option value="FINE">FINE</option>
-            <option value="MEDIUM">MEDIUM</option>
-            <option value="COARSE">COARSE</option>
-          </select>
+          <Select value={categoryCode} onValueChange={setCategoryCode}>
+            <SelectTrigger id="cat" className="w-full">
+              <SelectValue placeholder="Selecciona categoría" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="FINE">FINE</SelectItem>
+              <SelectItem value="MEDIUM">MEDIUM</SelectItem>
+              <SelectItem value="COARSE">COARSE</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div className="alp-field">
           <label htmlFor="ev">Evidencia (foto de balanza)</label>
