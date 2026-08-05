@@ -170,8 +170,19 @@ export const createAuditSchema = z.object({
   inspectionVersion: z.coerce.number().int().positive().optional(),
 });
 
+export const ayniGuideChatMessageSchema = z.object({
+  role: z.enum(["user", "assistant"]),
+  content: z.string().trim().min(1).max(4000),
+});
+
+export const ayniGuideChatSchema = z.object({
+  messages: z.array(ayniGuideChatMessageSchema).min(1).max(40),
+});
+
 export type ScaleEvidence = z.infer<typeof scaleEvidenceSchema>;
 export type ClassificationDoc = z.infer<typeof classificationDocSchema>;
 export type CompareResult = z.infer<typeof compareResultSchema>;
 export type AuditResultCode = z.infer<typeof auditResultCodeSchema>;
 export type CreateAuditInput = z.infer<typeof createAuditSchema>;
+export type AyniGuideChatInput = z.infer<typeof ayniGuideChatSchema>;
+export type AyniGuideChatMessage = z.infer<typeof ayniGuideChatMessageSchema>;
