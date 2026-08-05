@@ -107,6 +107,10 @@ function SettlementInner() {
             <dd>
               <AmountPen minor={amounts.feePenMinor} size="sm" />
             </dd>
+            <dt>Plataforma</dt>
+            <dd>
+              <AmountPen minor={amounts.platformFeePenMinor ?? "0"} size="sm" />
+            </dd>
           </dl>
           <div style={{ marginTop: "1rem" }}>
             <p className="alp-muted" style={{ margin: 0 }}>

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ErrorBanner, RequireAuth, Skeleton, StatusPill } from "~~/components/alpacto";
 import { apiFetch } from "~~/lib/api";
-import { formatUsdCents } from "~~/lib/format";
+import { formatEscrowUsd, formatKg, formatUsdCents } from "~~/lib/format";
 import type { Campaign, Lot, Order } from "~~/lib/types";
 
 type FundingStatus = {
@@ -122,21 +122,27 @@ function BuyerOrderInner() {
         <dl className="alp-kv">
           <dt>Presupuesto</dt>
           <dd>{formatUsdCents(order.budgetUsdCents)}</dd>
-          <dt>Fondeado (USDC units)</dt>
-          <dd>{funding?.fundedUsdcUnits ?? order.fundedUsdcUnits}</dd>
-          <dt>Restante</dt>
-          <dd>{funding?.remainingUsdcUnits ?? order.remainingUsdcUnits}</dd>
+          {order.targetWeightGrams ? (
+            <>
+              <dt>Meta de fibra</dt>
+              <dd>{formatKg(order.targetWeightGrams)}</dd>
+            </>
+          ) : null}
+          <dt>Fondeado en escrow</dt>
+          <dd>{formatEscrowUsd(funding?.fundedUsdcUnits ?? order.fundedUsdcUnits)}</dd>
+          <dt>Saldo disponible</dt>
+          <dd>{formatEscrowUsd(funding?.remainingUsdcUnits ?? order.remainingUsdcUnits)}</dd>
         </dl>
-        {["draft", "payment_pending"].includes(order.status) ? (
+        {["draft", "payment_pending", "funding_failed"].includes(order.status) ? (
           <div className="alp-actions" style={{ marginTop: "1rem" }}>
             <button type="button" className="alp-btn alp-btn--primary" disabled={busy} onClick={() => void fund()}>
-              {busy ? "Abriendo…" : "Financiar orden"}
+              {busy ? "Abriendo…" : order.status === "funding_failed" ? "Reintentar fondeo" : "Financiar orden"}
             </button>
           </div>
         ) : null}
         {funding?.intent ? (
           <p className="alp-muted" style={{ marginBottom: 0, marginTop: "0.75rem" }}>
-            Intent: <StatusPill status={funding.intent.status} />
+            Pago: <StatusPill status={funding.intent.status} />
           </p>
         ) : null}
       </div>

@@ -72,9 +72,11 @@ export type SettlementPreview = {
   grossPenMinor: string;
   bonusPenMinor: string;
   feePenMinor: string;
+  platformFeePenMinor?: string;
   netPenMinor: string;
   producerUsdcUnits: string;
   associationUsdcUnits: string;
+  platformUsdcUnits?: string;
 };
 
 export type Settlement = {
@@ -86,9 +88,11 @@ export type Settlement = {
   grossPenMinor: string;
   bonusPenMinor: string;
   feePenMinor: string;
+  platformFeePenMinor?: string;
   netPenMinor: string;
   producerUsdcUnits: string;
   associationUsdcUnits: string;
+  platformUsdcUnits?: string;
   quoteHash: string;
   status: string;
   acceptedAt: string | null;
@@ -104,12 +108,32 @@ export type Order = {
   buyerId: string;
   associationId: string;
   budgetUsdCents: string;
+  targetWeightGrams?: string | null;
   fundedUsdcUnits: string;
   remainingUsdcUnits: string;
   status: string;
   txHash: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+export type PricingCategory = {
+  code: string;
+  label: string;
+  pricePenMinorPerKg: string;
+  qualityBonusPenMinorPerKg: string;
+};
+
+export type PricingPolicy = {
+  id: string;
+  version: number;
+  currency: string;
+  associationFeeBps: number;
+  platformFeeBps?: number;
+  weightToleranceBps: number;
+  penPerUsdcMicros: string;
+  policyHash: string;
+  categories: PricingCategory[];
 };
 
 export type Campaign = {
@@ -121,6 +145,19 @@ export type Campaign = {
   endDate: string | null;
   status: string;
   pricingPolicyId: string;
+  createdAt: string;
+  associationName?: string | null;
+  associationType?: string | null;
+  buyerName?: string | null;
+  buyerEmail?: string | null;
+  pricing?: PricingPolicy | null;
+};
+
+export type Organization = {
+  id: string;
+  name: string;
+  type: string;
+  status: string;
   createdAt: string;
 };
 

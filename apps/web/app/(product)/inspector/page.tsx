@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { EmptyState, ErrorBanner, RequireAuth, Skeleton, StatusPill } from "~~/components/alpacto";
+import { EmptyState, ErrorBanner, RegisterLotForm, RequireAuth, Skeleton, StatusPill } from "~~/components/alpacto";
 import { apiFetch } from "~~/lib/api";
 import type { Lot } from "~~/lib/types";
 
@@ -13,24 +13,21 @@ function InspectorInner() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const data = await apiFetch<{ lots: Lot[] }>("/lots");
-        if (!cancelled) {
-          setLots(data.lots.filter(l => NEEDS_INSPECTION.has(l.status) || l.status === "inspection_submitted"));
-        }
-      } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Error al cargar lotes");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+  const load = useCallback(async () => {
+    try {
+      const data = await apiFetch<{ lots: Lot[] }>("/lots");
+      setLots(data.lots.filter(l => NEEDS_INSPECTION.has(l.status) || l.status === "inspection_submitted"));
+      setError("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al cargar lotes");
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   if (loading) return <Skeleton rows={4} />;
 
@@ -45,8 +42,13 @@ function InspectorInner() {
 
       {error ? <ErrorBanner message={error} /> : null}
 
+      <RegisterLotForm compact onRegistered={() => void load()} />
+
       {!pending.length ? (
-        <EmptyState title="Sin lotes pendientes" description="Cuando haya fibra por inspeccionar, la verás aquí." />
+        <EmptyState
+          title="Sin lotes pendientes"
+          description="Registra un lote arriba o desde Asociación cuando haya fibra por inspeccionar."
+        />
       ) : (
         <div className="alp-list">
           {pending.map(lot => (

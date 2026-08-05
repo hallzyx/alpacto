@@ -120,6 +120,10 @@ function ProducerLotInner() {
             <dd>
               <AmountPen minor={preview.feePenMinor} size="sm" />
             </dd>
+            <dt>Comisión plataforma</dt>
+            <dd>
+              <AmountPen minor={preview.platformFeePenMinor ?? "0"} size="sm" />
+            </dd>
             <dt>Total neto</dt>
             <dd>
               <AmountPen minor={preview.netPenMinor} size="md" />

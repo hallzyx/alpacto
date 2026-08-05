@@ -1,7 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { EmptyState, ErrorBanner, RequireAuth, Skeleton, StatusPill } from "~~/components/alpacto";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  CampaignDetails,
+  CreateCampaignForm,
+  EmptyState,
+  ErrorBanner,
+  RegisterLotForm,
+  RequireAuth,
+  Skeleton,
+  StatusPill,
+} from "~~/components/alpacto";
 import { apiFetch } from "~~/lib/api";
 import { formatUsdCents } from "~~/lib/format";
 import type { Campaign, Lot, Order } from "~~/lib/types";
@@ -10,32 +19,35 @@ function AssociationInner() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [lots, setLots] = useState<Lot[]>([]);
+  const [selectedCampaignId, setSelectedCampaignId] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const [c, o, l] = await Promise.all([
-          apiFetch<{ campaigns: Campaign[] }>("/campaigns"),
-          apiFetch<{ orders: Order[] }>("/orders"),
-          apiFetch<{ lots: Lot[] }>("/lots"),
-        ]);
-        if (cancelled) return;
-        setCampaigns(c.campaigns);
-        setOrders(o.orders);
-        setLots(l.lots);
-      } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Error al cargar");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+  const load = useCallback(async () => {
+    try {
+      const [c, o, l] = await Promise.all([
+        apiFetch<{ campaigns: Campaign[] }>("/campaigns"),
+        apiFetch<{ orders: Order[] }>("/orders"),
+        apiFetch<{ lots: Lot[] }>("/lots"),
+      ]);
+      setCampaigns(c.campaigns);
+      setOrders(o.orders);
+      setLots(l.lots);
+      setSelectedCampaignId(prev => {
+        if (prev && c.campaigns.some(x => x.id === prev)) return prev;
+        return c.campaigns[0]?.id ?? "";
+      });
+      setError("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al cargar");
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const lotsByStatus = useMemo(() => {
     const map = new Map<string, number>();
@@ -45,16 +57,29 @@ function AssociationInner() {
     return [...map.entries()].sort((a, b) => b[1] - a[1]);
   }, [lots]);
 
+  const selectedCampaign = useMemo(
+    () => campaigns.find(c => c.id === selectedCampaignId) ?? null,
+    [campaigns, selectedCampaignId],
+  );
+
   if (loading) return <Skeleton rows={6} />;
 
   return (
     <div className="alp-page">
       <div>
         <h1 className="alp-title">Asociación</h1>
-        <p className="alp-subtitle">Campañas, órdenes y lotes por estado.</p>
+        <p className="alp-subtitle">Campañas, órdenes y registro de lotes para el demo.</p>
       </div>
 
       {error ? <ErrorBanner message={error} /> : null}
+
+      <RegisterLotForm onRegistered={() => void load()} />
+
+      <CreateCampaignForm
+        onCreated={campaign => {
+          void load().then(() => setSelectedCampaignId(campaign.id));
+        }}
+      />
 
       <section className="alp-panel">
         <h2 className="alp-title" style={{ fontSize: "1.25rem" }}>
@@ -65,16 +90,32 @@ function AssociationInner() {
         ) : (
           <div className="alp-list">
             {campaigns.map(c => (
-              <div key={c.id} className="alp-lot-row" style={{ padding: "0.35rem 0" }}>
+              <button
+                key={c.id}
+                type="button"
+                className="alp-lot-row"
+                style={{
+                  padding: "0.35rem 0",
+                  width: "100%",
+                  textAlign: "left",
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+                onClick={() => setSelectedCampaignId(c.id)}
+              >
                 <div className="alp-lot-row__meta">
                   <span className="alp-lot-row__id">{c.name}</span>
                   <StatusPill status={c.status} />
                 </div>
-              </div>
+                <span className="alp-muted">{c.associationName ?? ""}</span>
+              </button>
             ))}
           </div>
         )}
       </section>
+
+      {selectedCampaign ? <CampaignDetails campaign={selectedCampaign} /> : null}
 
       <section className="alp-panel">
         <h2 className="alp-title" style={{ fontSize: "1.25rem" }}>

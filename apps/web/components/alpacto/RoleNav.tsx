@@ -11,7 +11,10 @@ const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
   producer: [{ href: "/producer", label: "Mis lotes" }],
   inspector: [{ href: "/inspector", label: "Inspecciones" }],
   association: [{ href: "/association", label: "Asociación" }],
-  buyer: [{ href: "/buyer/orders", label: "Órdenes" }],
+  buyer: [
+    { href: "/buyer/campaigns", label: "Campañas" },
+    { href: "/buyer/orders", label: "Órdenes" },
+  ],
   admin: [{ href: "/admin", label: "Admin" }],
 };
 

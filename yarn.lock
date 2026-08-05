@@ -175,6 +175,7 @@ __metadata:
     "@trivago/prettier-plugin-sort-imports": ^4.3.0
     "@types/node": ^24
     "@types/react": ^19.2.14
+    "@types/react-dom": ^19.2.3
     "@zerodev/ecdsa-validator": ^5.4.9
     "@zerodev/sdk": 5.5.4
     "@zerodev/wallet-core": 0.0.3
@@ -197,6 +198,7 @@ __metadata:
     react: ^19.2.5
     react-dom: ^19.2.5
     react-hot-toast: ^2.6.0
+    react-icons: ^5.7.0
     tailwindcss: ^4.2.4
     type-fest: ^4.26.1
     typescript: ^5.8.2
@@ -8344,6 +8346,15 @@ __metadata:
     pg-protocol: "*"
     pg-types: ^2.2.0
   checksum: 0188953d06d12db197cfdf3b69dc348995c0e83fe8389f80b4748974b3dbac54ac6dfad5378eae5238a13bfa1e4cca2805b5a67394f8db4e7a06e818ee7a9177
+  languageName: node
+  linkType: hard
+
+"@types/react-dom@npm:^19.2.3":
+  version: 19.2.4
+  resolution: "@types/react-dom@npm:19.2.4"
+  peerDependencies:
+    "@types/react": ^19.2.0
+  checksum: 1a8fdeb22428cfba51c837d635a77ae351f126a7e24dd759a8556c1be7872e8844213bd95495b6e24f5a68a59a0cde1ddf947f27d88a99dd613947354fae6222
   languageName: node
   linkType: hard
 
@@ -20000,6 +20011,15 @@ __metadata:
     react: ">=16"
     react-dom: ">=16"
   checksum: 244a587bc182f62fc1d9e119120da522395494ad1bdd3cf1365bf6be05dc23c9cd3b6749ae58d77a2e329f530649f05b87fe9cb43fa87eebf32ce90e393b9794
+  languageName: node
+  linkType: hard
+
+"react-icons@npm:^5.7.0":
+  version: 5.7.0
+  resolution: "react-icons@npm:5.7.0"
+  peerDependencies:
+    react: "*"
+  checksum: 96dcc5410518ef08d5f62e7083ee59545203f753a358733f303ae63fe67f068dd62e9bcb09101756d3644daee76e44bc63a3d170f1db10dd747c2637c16f6060
   languageName: node
   linkType: hard
 

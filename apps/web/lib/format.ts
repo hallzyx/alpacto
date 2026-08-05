@@ -22,6 +22,28 @@ export function formatKg(grams: string | number | bigint | null | undefined): st
   return `${(n / 1000).toFixed(1)} kg`;
 }
 
+/** Format demo escrow balance (USDC 6-decimal units, 1:1 USD) as `$x.xx`. */
+export function formatEscrowUsd(usdcUnits: string | number | bigint | null | undefined): string {
+  if (usdcUnits === null || usdcUnits === undefined || usdcUnits === "") return "$—";
+  const n = typeof usdcUnits === "bigint" ? Number(usdcUnits) : Number(usdcUnits);
+  if (!Number.isFinite(n)) return "$—";
+  return `$${(n / 1_000_000).toFixed(2)}`;
+}
+
+/** Shorten a 0x transaction hash for display. */
+export function shortTxHash(hash: string | null | undefined): string {
+  if (!hash || hash.length < 12) return hash ?? "—";
+  return `${hash.slice(0, 10)}…${hash.slice(-6)}`;
+}
+
+export const ONCHAIN_ACTIVITY_LABELS: Record<string, string> = {
+  order_funded: "Fondeo orden",
+  inspection: "Inspección on-chain",
+  audit_attest: "Attest Ayni",
+  settlement: "Liquidación",
+  reweigh: "Re-pesaje",
+};
+
 /** Human-readable lot / order status (Spanish). */
 export function statusLabel(status: string): string {
   const map: Record<string, string> = {
