@@ -24,6 +24,7 @@ import { registerPricingRoutes } from "./modules/pricing/routes.js";
 import { registerProducerRoutes } from "./modules/producer/routes.js";
 import { registerLotDisputeRoutes } from "./modules/disputes/routes.js";
 import { registerAyniGuideChatRoutes } from "./modules/ayni/guide-chat.js";
+import { registerAyniProducerChatRoutes } from "./modules/ayni/producer-chat.js";
 import { registerUserRoutes } from "./modules/users/routes.js";
 
 export type AppDeps = {
@@ -61,6 +62,7 @@ export async function buildApp(deps: AppDeps = {}) {
   await registerUserRoutes(app, db, authenticate);
   await registerProducerRoutes(app, db, authenticate);
   await registerAyniGuideChatRoutes(app, db, authenticate);
+  await registerAyniProducerChatRoutes(app, db, authenticate);
   await registerCampaignRoutes(app, db, authenticate);
   await registerOrganizationRoutes(app, db, authenticate);
   await registerPricingRoutes(app, db, authenticate);

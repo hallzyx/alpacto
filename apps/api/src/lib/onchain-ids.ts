@@ -40,13 +40,29 @@ export async function readLotOnchain(onchainLotId: bigint) {
   return {
     orderId: result[0],
     producer: result[1],
-    status: result[2],
-    currentVersion: result[3],
-    acceptedVersion: result[4],
+    status: Number(result[2]),
+    currentVersion: Number(result[3]),
+    acceptedVersion: Number(result[4]),
+    quoteHash: result[5] as `0x${string}`,
+    netPenMinor: result[6],
+    producerUsdc: result[7],
+    associationUsdc: result[8],
     platformUsdc: result[9],
     exists: result[10],
   };
 }
+
+/** On-chain lot status codes from AlpactoCore. */
+export const ONCHAIN_LOT_STATUS = {
+  Registered: 0,
+  Inspected: 1,
+  Attested: 2,
+  ReadyForReview: 3,
+  ReweighingRequested: 4,
+  AuditFailed: 5,
+  ProducerAccepted: 6,
+  Settled: 7,
+} as const;
 
 export async function attestationExistsOnchain(
   onchainLotId: bigint,

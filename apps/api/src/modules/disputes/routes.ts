@@ -63,8 +63,8 @@ export async function registerLotDisputeRoutes(
       query.status === "all"
         ? rows
         : query.status === "resolved"
-          ? rows.filter((r) => r.status !== "open")
-          : rows.filter((r) => r.status === "open");
+          ? rows.filter((r) => r.status !== "open" && r.status !== "investigating")
+          : rows.filter((r) => r.status === "open" || r.status === "investigating");
 
     const enriched = await Promise.all(
       filtered.map(async (dispute) => {
@@ -105,7 +105,12 @@ export async function registerLotDisputeRoutes(
     const [lot] = await db.select().from(lots).where(eq(lots.id, dispute.lotId)).limit(1);
     if (!lot) throw new ApiError(404, "Lot not found");
 
-    if (body.action === "reassign_producer") {
+    if (body.action === "acknowledge" || body.action === "investigating") {
+      // Integrity disputes: no lot status mutation required.
+    } else if (body.action === "reassign_producer") {
+      if (dispute.reasonCode === "data_mismatch") {
+        throw new ApiError(400, "Use acknowledge or investigating for integrity disputes");
+      }
       if (!body.producerId) throw new ApiError(400, "producerId required for reassignment");
       const [producer] = await db.select().from(users).where(eq(users.id, body.producerId)).limit(1);
       if (!producer || producer.role !== "producer") {
@@ -122,6 +127,9 @@ export async function registerLotDisputeRoutes(
         })
         .where(eq(lots.id, lot.id));
     } else if (body.action === "correct_and_resubmit") {
+      if (dispute.reasonCode === "data_mismatch") {
+        throw new ApiError(400, "Use acknowledge or investigating for integrity disputes");
+      }
       await db
         .update(lots)
         .set({
@@ -132,6 +140,9 @@ export async function registerLotDisputeRoutes(
         })
         .where(eq(lots.id, lot.id));
     } else if (body.action === "delete_lot") {
+      if (dispute.reasonCode === "data_mismatch") {
+        throw new ApiError(400, "Use acknowledge or investigating for integrity disputes");
+      }
       if (lot.currentInspectionVersion > 0) {
         throw new ApiError(400, "Cannot delete a lot that already has inspections");
       }
@@ -148,6 +159,8 @@ export async function registerLotDisputeRoutes(
       correct_and_resubmit: "resolved_correct_resubmit",
       reassign_producer: "resolved_reassign",
       delete_lot: "resolved_deleted",
+      acknowledge: "resolved_acknowledged",
+      investigating: "investigating",
     };
 
     const [resolved] = await db

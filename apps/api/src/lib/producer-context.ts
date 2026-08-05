@@ -60,6 +60,7 @@ async function loadPricingSummary(db: Database, pricingPolicyId: string) {
   return {
     currency: policy.currency,
     associationFeeBps: policy.associationFeeBps,
+    penPerUsdcMicros: policy.penPerUsdcMicros.toString(),
     categories: categories.map((c) => ({
       code: c.code,
       label: c.label,
