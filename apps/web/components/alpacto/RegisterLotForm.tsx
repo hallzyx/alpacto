@@ -3,6 +3,10 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ErrorBanner, StatusPill } from "~~/components/alpacto";
+import { Button } from "~~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~~/components/ui/card";
+import { Field, FieldLabel } from "~~/components/ui/field";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~~/components/ui/select";
 import { apiFetch } from "~~/lib/api";
 import { formatEscrowUsd } from "~~/lib/format";
 import type { Lot, Order } from "~~/lib/types";
@@ -90,82 +94,95 @@ export function RegisterLotForm({ onRegistered, compact = false }: RegisterLotFo
 
   if (loading) {
     return (
-      <section className="alp-panel">
-        <p className="alp-muted">Cargando formulario de registro…</p>
-      </section>
+      <Card>
+        <CardContent className="pt-6">
+          <p className="text-sm text-muted-foreground">Cargando formulario de registro…</p>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <section className="alp-panel">
-      <h2 className="alp-title" style={{ fontSize: compact ? "1.1rem" : "1.25rem" }}>
-        Registrar lote
-      </h2>
-      {!compact ? (
-        <p className="alp-subtitle" style={{ marginTop: "0.35rem" }}>
-          Vincula fibra de un productor a una orden fondeada. El inspector verá el lote como pendiente de inspección.
-        </p>
-      ) : null}
+    <Card>
+      <CardHeader>
+        <CardTitle className={compact ? "text-lg" : undefined}>Registrar lote</CardTitle>
+        {!compact ? (
+          <p className="text-sm text-muted-foreground">El inspector verá el lote como pendiente de inspección.</p>
+        ) : null}
+      </CardHeader>
+      <CardContent>
+        {error ? <ErrorBanner message={error} onDismiss={() => setError("")} /> : null}
 
-      {error ? <ErrorBanner message={error} onDismiss={() => setError("")} /> : null}
+        {!orders.length ? (
+          <p className="text-sm text-muted-foreground">
+            No hay órdenes fondeadas que acepten lotes. Fondea ALP-2026-001 primero.
+          </p>
+        ) : !producers.length ? (
+          <p className="text-sm text-muted-foreground">No hay productores en el sistema.</p>
+        ) : (
+          <form
+            className="grid gap-4"
+            onSubmit={e => {
+              e.preventDefault();
+              void submit();
+            }}
+          >
+            <Field>
+              <FieldLabel htmlFor="register-order">Orden</FieldLabel>
+              <Select value={orderId} onValueChange={setOrderId}>
+                <SelectTrigger id="register-order" className="w-full">
+                  <SelectValue placeholder="Selecciona una orden" />
+                </SelectTrigger>
+                <SelectContent>
+                  {orders.map(order => (
+                    <SelectItem key={order.id} value={order.id}>
+                      {order.externalRef ?? order.id.slice(0, 8)} — {order.status.replaceAll("_", " ")}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
 
-      {!orders.length ? (
-        <p className="alp-muted">No hay órdenes fondeadas que acepten lotes. Fondea ALP-2026-001 primero.</p>
-      ) : !producers.length ? (
-        <p className="alp-muted">No hay productores en el sistema.</p>
-      ) : (
-        <form
-          className="alp-form"
-          style={{ marginTop: compact ? "0.75rem" : "1rem" }}
-          onSubmit={e => {
-            e.preventDefault();
-            void submit();
-          }}
-        >
-          <div className="alp-field">
-            <label htmlFor="register-order">Orden</label>
-            <select id="register-order" value={orderId} onChange={e => setOrderId(e.target.value)} required>
-              {orders.map(order => (
-                <option key={order.id} value={order.id}>
-                  {order.externalRef ?? order.id.slice(0, 8)} — {order.status.replaceAll("_", " ")}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="alp-field">
-            <label htmlFor="register-producer">Productor</label>
-            <select id="register-producer" value={producerId} onChange={e => setProducerId(e.target.value)} required>
-              {producers.map(producer => (
-                <option key={producer.id} value={producer.id}>
-                  {producer.name} ({producer.email})
-                </option>
-              ))}
-            </select>
-          </div>
-          {selectedOrder ? (
-            <p className="alp-muted" style={{ margin: 0 }}>
-              Saldo disponible en orden: {formatEscrowUsd(selectedOrder.remainingUsdcUnits)}
+            <Field>
+              <FieldLabel htmlFor="register-producer">Productor</FieldLabel>
+              <Select value={producerId} onValueChange={setProducerId}>
+                <SelectTrigger id="register-producer" className="w-full">
+                  <SelectValue placeholder="Selecciona un productor" />
+                </SelectTrigger>
+                <SelectContent>
+                  {producers.map(producer => (
+                    <SelectItem key={producer.id} value={producer.id}>
+                      {producer.name} ({producer.email})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+
+            {selectedOrder ? (
+              <p className="text-sm text-muted-foreground">
+                Saldo disponible en orden: {formatEscrowUsd(selectedOrder.remainingUsdcUnits)}
+              </p>
+            ) : null}
+
+            <Button type="submit" disabled={busy || !orderId || !producerId}>
+              {busy ? "Registrando…" : "Registrar lote"}
+            </Button>
+          </form>
+        )}
+
+        {createdLot ? (
+          <div className="mt-4 rounded-lg border border-border bg-muted/50 p-4">
+            <p className="flex items-center gap-2 text-sm font-medium">
+              Lote creado <StatusPill status={createdLot.status} />
             </p>
-          ) : null}
-          <button type="submit" className="alp-btn alp-btn--primary" disabled={busy || !orderId || !producerId}>
-            {busy ? "Registrando…" : "Registrar lote"}
-          </button>
-        </form>
-      )}
-
-      {createdLot ? (
-        <div className="alp-note" style={{ marginTop: "1rem" }}>
-          <p style={{ margin: "0 0 0.5rem" }}>
-            Lote creado · <StatusPill status={createdLot.status} />
-          </p>
-          <p className="alp-muted" style={{ margin: "0 0 0.5rem" }}>
-            ID: {createdLot.id}
-          </p>
-          <Link href={`/inspector/lots/${createdLot.id}/inspect`} className="alp-link-btn">
-            Ir a inspeccionar →
-          </Link>
-        </div>
-      ) : null}
-    </section>
+            <p className="mt-1 text-sm text-muted-foreground">ID: {createdLot.id}</p>
+            <Button asChild variant="link" className="mt-2 h-auto p-0">
+              <Link href={`/inspector/lots/${createdLot.id}/inspect`}>Ir a inspeccionar →</Link>
+            </Button>
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
   );
 }

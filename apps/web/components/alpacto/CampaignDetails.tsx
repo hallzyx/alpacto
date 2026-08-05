@@ -2,6 +2,7 @@
 
 import { StatusPill } from "./StatusPill";
 import { PricingPolicyHelpButton } from "./PricingPolicyHelp";
+import { Card, CardContent, CardHeader, CardTitle } from "~~/components/ui/card";
 import { formatPen } from "~~/lib/format";
 import type { Campaign } from "~~/lib/types";
 
@@ -26,80 +27,79 @@ export function CampaignDetails({ campaign, compact = false }: CampaignDetailsPr
     pricing && Number(pricing.penPerUsdcMicros) > 0 ? (Number(pricing.penPerUsdcMicros) / 1_000_000).toFixed(2) : null;
 
   return (
-    <div className={compact ? undefined : "alp-panel"} style={compact ? { marginTop: "0.75rem" } : undefined}>
-      {!compact ? (
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
-          <h2 className="alp-title" style={{ fontSize: "1.25rem", margin: 0 }}>
-            {campaign.name}
-          </h2>
+    <Card>
+      <CardHeader>
+        <div className="flex flex-wrap items-center gap-3">
+          <CardTitle className="font-display text-xl">{campaign.name}</CardTitle>
           <StatusPill status={campaign.status} />
         </div>
-      ) : (
-        <p className="alp-muted" style={{ margin: "0 0 0.5rem" }}>
-          Detalle de campaña seleccionada
-        </p>
-      )}
-
-      <dl className="alp-kv" style={{ marginTop: compact ? 0 : "0.75rem" }}>
-        <dt>Asociación</dt>
-        <dd>{campaign.associationName ?? "—"}</dd>
-        <dt>Comprador</dt>
-        <dd>
-          {campaign.buyerName ?? "—"}
-          {campaign.buyerEmail ? (
-            <span className="alp-muted" style={{ display: "block", fontSize: "0.85rem" }}>
-              {campaign.buyerEmail}
-            </span>
+        {compact ? <p className="text-sm text-muted-foreground">Detalle de campaña seleccionada</p> : null}
+      </CardHeader>
+      <CardContent className="grid gap-6">
+        <dl className="grid gap-3 text-sm">
+          <div className="flex justify-between gap-4">
+            <dt className="text-muted-foreground">Asociación</dt>
+            <dd className="font-medium">{campaign.associationName ?? "—"}</dd>
+          </div>
+          <div className="flex justify-between gap-4">
+            <dt className="text-muted-foreground">Comprador</dt>
+            <dd className="text-right font-medium">
+              {campaign.buyerName ?? "—"}
+              {campaign.buyerEmail ? (
+                <span className="block text-xs font-normal text-muted-foreground">{campaign.buyerEmail}</span>
+              ) : null}
+            </dd>
+          </div>
+          <div className="flex justify-between gap-4">
+            <dt className="text-muted-foreground">Ventana</dt>
+            <dd className="font-medium">
+              {formatDay(campaign.startDate)} → {formatDay(campaign.endDate)}
+            </dd>
+          </div>
+          {feePct ? (
+            <div className="flex justify-between gap-4">
+              <dt className="text-muted-foreground">Comisión asociación</dt>
+              <dd className="font-medium">{feePct}%</dd>
+            </div>
           ) : null}
-        </dd>
-        <dt>Ventana</dt>
-        <dd>
-          {formatDay(campaign.startDate)} → {formatDay(campaign.endDate)}
-        </dd>
-        {feePct ? (
-          <>
-            <dt>Comisión asociación</dt>
-            <dd>{feePct}%</dd>
-          </>
-        ) : null}
-        {fx ? (
-          <>
-            <dt>Tipo de cambio (demo)</dt>
-            <dd>S/ {fx} por USD</dd>
-          </>
-        ) : null}
-      </dl>
+          {fx ? (
+            <div className="flex justify-between gap-4">
+              <dt className="text-muted-foreground">Tipo de cambio (demo)</dt>
+              <dd className="font-medium">S/ {fx} por USD</dd>
+            </div>
+          ) : null}
+        </dl>
 
-      {pricing?.categories?.length ? (
-        <div style={{ marginTop: "0.75rem" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", marginBottom: "0.35rem" }}>
-            <h3 className="alp-title" style={{ fontSize: "1rem", margin: 0 }}>
-              Tabla de precios
-            </h3>
-            <PricingPolicyHelpButton policy={pricing} />
+        {pricing?.categories?.length ? (
+          <div>
+            <div className="mb-3 flex items-center gap-2">
+              <h3 className="text-base font-semibold">Tabla de precios</h3>
+              <PricingPolicyHelpButton policy={pricing} />
+            </div>
+            <div className="grid gap-2">
+              {pricing.categories.map(cat => (
+                <div
+                  key={cat.code}
+                  className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2"
+                >
+                  <span className="font-medium">
+                    {cat.label} ({cat.code})
+                  </span>
+                  <span className="text-sm text-muted-foreground">
+                    {formatPen(cat.pricePenMinorPerKg)}
+                    {Number(cat.qualityBonusPenMinorPerKg) > 0
+                      ? ` + prima ${formatPen(cat.qualityBonusPenMinorPerKg)}`
+                      : ""}{" "}
+                    / kg
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="alp-list">
-            {pricing.categories.map(cat => (
-              <div key={cat.code} className="alp-lot-row" style={{ padding: "0.25rem 0" }}>
-                <span className="alp-lot-row__id">
-                  {cat.label} ({cat.code})
-                </span>
-                <span className="alp-muted">
-                  {formatPen(cat.pricePenMinorPerKg)}
-                  {Number(cat.qualityBonusPenMinorPerKg) > 0
-                    ? ` + prima ${formatPen(cat.qualityBonusPenMinorPerKg)}`
-                    : ""}{" "}
-                  / kg
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <p className="alp-muted" style={{ marginTop: "0.75rem", marginBottom: 0 }}>
-          Sin tabla de precios vinculada.
-        </p>
-      )}
-    </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">Sin tabla de precios vinculada.</p>
+        )}
+      </CardContent>
+    </Card>
   );
 }

@@ -4,6 +4,11 @@ import { useEffect, useState } from "react";
 import { useAuth } from "./AuthProvider";
 import { ErrorBanner } from "./ErrorBanner";
 import { PricingPolicyPreview } from "./PricingPolicyHelp";
+import { Button } from "~~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~~/components/ui/card";
+import { Field, FieldLabel } from "~~/components/ui/field";
+import { Input } from "~~/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~~/components/ui/select";
 import { apiFetch } from "~~/lib/api";
 import type { Campaign, Organization, PricingPolicy } from "~~/lib/types";
 
@@ -101,105 +106,118 @@ export function CreateCampaignForm({ onCreated }: CreateCampaignFormProps) {
 
   if (loading) {
     return (
-      <section className="alp-panel">
-        <p className="alp-muted">Cargando formulario de campaña…</p>
-      </section>
+      <Card>
+        <CardContent className="pt-6">
+          <p className="text-sm text-muted-foreground">Cargando formulario de campaña…</p>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <section className="alp-panel">
-      <h2 className="alp-title" style={{ fontSize: "1.25rem" }}>
-        Nueva campaña
-      </h2>
-      <p className="alp-subtitle" style={{ marginTop: "0.35rem" }}>
-        Define el marco comercial: asociación, ventana y tabla de precios. Las órdenes se crean después dentro de esta
-        campaña.
-      </p>
+    <Card>
+      <CardHeader>
+        <CardTitle>Datos de la campaña</CardTitle>
+        <p className="text-sm text-muted-foreground">Asociación, comprador, política de precios y ventana de tiempo.</p>
+      </CardHeader>
+      <CardContent>
+        {error ? <ErrorBanner message={error} onDismiss={() => setError("")} /> : null}
 
-      {error ? <ErrorBanner message={error} onDismiss={() => setError("")} /> : null}
-
-      {!orgs.length || !policies.length ? (
-        <p className="alp-muted">
-          Falta seed de asociación o política de precios. Ejecuta <code>yarn db:seed</code>.
-        </p>
-      ) : (
-        <form
-          className="alp-form"
-          style={{ marginTop: "1rem" }}
-          onSubmit={e => {
-            e.preventDefault();
-            void submit();
-          }}
-        >
-          <div className="alp-field">
-            <label htmlFor="campaign-name">Nombre</label>
-            <input
-              id="campaign-name"
-              type="text"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="Campaña Arequipa 2026"
-              required
-              maxLength={255}
-            />
-          </div>
-          <div className="alp-field">
-            <label htmlFor="campaign-org">Asociación</label>
-            <select id="campaign-org" value={organizationId} onChange={e => setOrganizationId(e.target.value)} required>
-              {orgs.map(o => (
-                <option key={o.id} value={o.id}>
-                  {o.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          {needsBuyerPicker ? (
-            <div className="alp-field">
-              <label htmlFor="campaign-buyer">Comprador</label>
-              <select id="campaign-buyer" value={buyerId} onChange={e => setBuyerId(e.target.value)} required>
-                {buyers.map(b => (
-                  <option key={b.id} value={b.id}>
-                    {b.name} ({b.email})
-                  </option>
-                ))}
-              </select>
-            </div>
-          ) : null}
-          <div className="alp-field">
-            <label htmlFor="campaign-policy">Política de precios</label>
-            <select
-              id="campaign-policy"
-              value={pricingPolicyId}
-              onChange={e => setPricingPolicyId(e.target.value)}
-              required
-            >
-              {policies.map(p => (
-                <option key={p.id} value={p.id}>
-                  v{p.version} · fee {(p.associationFeeBps / 100).toFixed(1)}% ·{" "}
-                  {p.categories.map(c => c.code).join(", ") || "sin categorías"}
-                </option>
-              ))}
-            </select>
-          </div>
-          {selectedPolicy ? <PricingPolicyPreview policy={selectedPolicy} /> : null}
-          <div className="alp-field">
-            <label htmlFor="campaign-start">Inicio</label>
-            <input id="campaign-start" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
-          </div>
-          <div className="alp-field">
-            <label htmlFor="campaign-end">Fin</label>
-            <input id="campaign-end" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
-          </div>
-          <button
-            type="submit"
-            className="alp-btn alp-btn--primary"
-            disabled={busy || !name.trim() || !organizationId || !pricingPolicyId}
+        {!orgs.length || !policies.length ? (
+          <p className="text-sm text-muted-foreground">
+            Falta seed de asociación o política de precios. Ejecuta <code>yarn db:seed</code>.
+          </p>
+        ) : (
+          <form
+            className="grid gap-4"
+            onSubmit={e => {
+              e.preventDefault();
+              void submit();
+            }}
           >
-            {busy ? "Creando…" : "Crear campaña"}
-          </button>
-        </form>
-      )}
-    </section>
+            <Field>
+              <FieldLabel htmlFor="campaign-name">Nombre</FieldLabel>
+              <Input
+                id="campaign-name"
+                type="text"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder="Campaña Arequipa 2026"
+                required
+                maxLength={255}
+              />
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="campaign-org">Asociación</FieldLabel>
+              <Select value={organizationId} onValueChange={setOrganizationId}>
+                <SelectTrigger id="campaign-org" className="w-full">
+                  <SelectValue placeholder="Selecciona una asociación" />
+                </SelectTrigger>
+                <SelectContent>
+                  {orgs.map(o => (
+                    <SelectItem key={o.id} value={o.id}>
+                      {o.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+
+            {needsBuyerPicker ? (
+              <Field>
+                <FieldLabel htmlFor="campaign-buyer">Comprador</FieldLabel>
+                <Select value={buyerId} onValueChange={setBuyerId}>
+                  <SelectTrigger id="campaign-buyer" className="w-full">
+                    <SelectValue placeholder="Selecciona un comprador" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {buyers.map(b => (
+                      <SelectItem key={b.id} value={b.id}>
+                        {b.name} ({b.email})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+            ) : null}
+
+            <Field>
+              <FieldLabel htmlFor="campaign-policy">Política de precios</FieldLabel>
+              <Select value={pricingPolicyId} onValueChange={setPricingPolicyId}>
+                <SelectTrigger id="campaign-policy" className="w-full">
+                  <SelectValue placeholder="Selecciona una política" />
+                </SelectTrigger>
+                <SelectContent>
+                  {policies.map(p => (
+                    <SelectItem key={p.id} value={p.id}>
+                      v{p.version} · fee {(p.associationFeeBps / 100).toFixed(1)}% ·{" "}
+                      {p.categories.map(c => c.code).join(", ") || "sin categorías"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+
+            {selectedPolicy ? <PricingPolicyPreview policy={selectedPolicy} /> : null}
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field>
+                <FieldLabel htmlFor="campaign-start">Inicio</FieldLabel>
+                <Input id="campaign-start" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="campaign-end">Fin</FieldLabel>
+                <Input id="campaign-end" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+              </Field>
+            </div>
+
+            <Button type="submit" disabled={busy || !name.trim() || !organizationId || !pricingPolicyId}>
+              {busy ? "Creando…" : "Crear campaña"}
+            </Button>
+          </form>
+        )}
+      </CardContent>
+    </Card>
   );
 }
