@@ -55,10 +55,10 @@ const alpactoAbi = parseAbi([
   "function submitInspectionReference(uint256 lotId, uint32 version, uint64 weightGrams, uint32 categoryCode, bytes32 evidenceHash)",
   "function submitAuditAttestation(uint256 lotId, uint32 version, bytes32 reportHash, uint8 result)",
   "function requestReweighing(uint256 lotId, bytes32 reasonHash)",
-  "function acceptSettlement(uint256 lotId, uint32 version, bytes32 quoteHash, uint256 netPenMinor, uint256 producerUsdcUnits, uint256 associationUsdcUnits)",
+  "function acceptSettlement(uint256 lotId, uint32 version, bytes32 quoteHash, uint256 netPenMinor, uint256 producerUsdcUnits, uint256 associationUsdcUnits, uint256 platformUsdcUnits)",
   "function settleLot(uint256 lotId)",
   "function getOrder(uint256 orderId) view returns (address, address, bytes32, uint256, uint256, uint256, uint8, bool)",
-  "function getLot(uint256 lotId) view returns (uint256, address, uint8, uint32, uint32, bytes32, uint256, uint256, uint256, bool)",
+  "function getLot(uint256 lotId) view returns (uint256, address, uint8, uint32, uint32, bytes32, uint256, uint256, uint256, uint256, bool)",
 ]);
 
 function loadDeployed(chainId: string) {
@@ -263,6 +263,7 @@ async function main() {
       100_000n,
       800_000_000n,
       200_000_000n,
+      0n,
     ],
   });
   await write(wallet(demo.producer), {

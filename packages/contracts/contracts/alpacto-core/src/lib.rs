@@ -75,11 +75,13 @@ sol! {
     #[derive(Debug)]
     event ReweighingRequested(uint256 indexed lotId, bytes32 reasonHash);
     #[derive(Debug)]
-    event SettlementAccepted(uint256 indexed lotId, uint32 version, bytes32 quoteHash, uint256 producerUsdcUnits, uint256 associationUsdcUnits);
+    event SettlementAccepted(uint256 indexed lotId, uint32 version, bytes32 quoteHash, uint256 producerUsdcUnits, uint256 associationUsdcUnits, uint256 platformUsdcUnits);
     #[derive(Debug)]
-    event LotSettled(uint256 indexed lotId, uint256 producerUsdcUnits, uint256 associationUsdcUnits);
+    event LotSettled(uint256 indexed lotId, uint256 producerUsdcUnits, uint256 associationUsdcUnits, uint256 platformUsdcUnits);
     #[derive(Debug)]
     event OrderCompleted(uint256 indexed orderId);
+    #[derive(Debug)]
+    event PlatformTreasuryUpdated(address indexed treasury);
 
     #[derive(Debug)]
     error Unauthorized(address account, bytes32 neededRole);
@@ -197,6 +199,7 @@ sol_storage! {
         uint256 accepted_net_pen_minor;
         uint256 producer_usdc;
         uint256 association_usdc;
+        uint256 platform_usdc;
         bool exists;
     }
 
@@ -217,6 +220,7 @@ sol_storage! {
     pub struct AlpactoCore {
         AccessControl access;
         address usdc;
+        address platform_treasury;
         mapping(uint256 => OrderData) orders;
         mapping(bytes32 => bool) used_payment_refs;
         mapping(uint256 => LotData) lots;
@@ -253,6 +257,21 @@ impl AlpactoCore {
 
     pub fn usdc_token(&self) -> Address {
         self.usdc.get()
+    }
+
+    pub fn platform_treasury(&self) -> Address {
+        self.platform_treasury.get()
+    }
+
+    /// Admin sets the address that receives the platform fee on settleLot.
+    pub fn set_platform_treasury(&mut self, treasury: Address) -> Result<(), Error> {
+        self.require_role(B256::ZERO)?;
+        if treasury.is_zero() {
+            return Err(Error::ZeroAddress(ZeroAddress {}));
+        }
+        self.platform_treasury.set(treasury);
+        log(self.vm(), PlatformTreasuryUpdated { treasury });
+        Ok(())
     }
 
     pub fn platform_admin_role(&self) -> B256 {
@@ -324,6 +343,7 @@ impl AlpactoCore {
         Ok(())
     }
 
+    /// Treasury / platform admin deposits USDC into escrow (legacy demo path).
     pub fn fund_order(
         &mut self,
         order_id: U256,
@@ -331,52 +351,30 @@ impl AlpactoCore {
         payment_reference_hash: B256,
     ) -> Result<(), Error> {
         self.require_role(PLATFORM_ADMIN_ROLE)?;
-        if amount.is_zero() {
-            return Err(Error::InvalidAmount(InvalidAmount {}));
-        }
-        if self.used_payment_refs.get(payment_reference_hash) {
-            return Err(Error::PaymentRefUsed(PaymentRefUsed {
-                paymentReferenceHash: payment_reference_hash,
-            }));
-        }
+        self.apply_fund_order(order_id, amount, payment_reference_hash)
+    }
 
+    /// Buyer deposits USDC from their own account into escrow.
+    /// Requires BUYER_ROLE and `msg.sender == order.buyer`.
+    pub fn buyer_fund_order(
+        &mut self,
+        order_id: U256,
+        amount: U256,
+        payment_reference_hash: B256,
+    ) -> Result<(), Error> {
+        self.require_role(BUYER_ROLE)?;
+        let sender = self.vm().msg_sender();
         let order = self.orders.get(order_id);
         if !order.exists.get() {
             return Err(Error::OrderNotFound(OrderNotFound { orderId: order_id }));
         }
-        let status = u8_of(order.status.get());
-        if status != order_status::DRAFT
-            && status != order_status::FUNDED
-            && status != order_status::ACCEPTING_LOTS
-        {
-            return Err(Error::InvalidOrderStatus(InvalidOrderStatus {
-                orderId: order_id,
-                status,
+        if sender != order.buyer.get() {
+            return Err(Error::Unauthorized(Unauthorized {
+                account: sender,
+                neededRole: BUYER_ROLE,
             }));
         }
-
-        let from = self.vm().msg_sender();
-        self.pull_usdc(from, amount)?;
-
-        self.used_payment_refs.setter(payment_reference_hash).set(true);
-
-        let mut order = self.orders.setter(order_id);
-        let funded = order.funded_usdc.get() + amount;
-        let remaining = order.remaining_usdc.get() + amount;
-        order.funded_usdc.set(funded);
-        order.remaining_usdc.set(remaining);
-        order.status.set(U8::from(order_status::ACCEPTING_LOTS));
-
-        log(
-            self.vm(),
-            OrderFunded {
-                orderId: order_id,
-                amount,
-                paymentReferenceHash: payment_reference_hash,
-                remainingUsdcUnits: remaining,
-            },
-        );
-        Ok(())
+        self.apply_fund_order(order_id, amount, payment_reference_hash)
     }
 
     pub fn register_lot(
@@ -613,6 +611,7 @@ impl AlpactoCore {
         net_pen_minor: U256,
         producer_usdc_units: U256,
         association_usdc_units: U256,
+        platform_usdc_units: U256,
     ) -> Result<(), Error> {
         let lot = self.lots.get(lot_id);
         if !lot.exists.get() {
@@ -657,9 +656,12 @@ impl AlpactoCore {
             }));
         }
 
-        let total = producer_usdc_units + association_usdc_units;
+        let total = producer_usdc_units + association_usdc_units + platform_usdc_units;
         if total.is_zero() {
             return Err(Error::InvalidAmount(InvalidAmount {}));
+        }
+        if !platform_usdc_units.is_zero() && self.platform_treasury.get().is_zero() {
+            return Err(Error::ZeroAddress(ZeroAddress {}));
         }
 
         let order_id = lot.order_id.get();
@@ -677,6 +679,7 @@ impl AlpactoCore {
         lot.accepted_net_pen_minor.set(net_pen_minor);
         lot.producer_usdc.set(producer_usdc_units);
         lot.association_usdc.set(association_usdc_units);
+        lot.platform_usdc.set(platform_usdc_units);
         lot.status.set(U8::from(lot_status::PRODUCER_ACCEPTED));
 
         log(
@@ -687,6 +690,7 @@ impl AlpactoCore {
                 quoteHash: quote_hash,
                 producerUsdcUnits: producer_usdc_units,
                 associationUsdcUnits: association_usdc_units,
+                platformUsdcUnits: platform_usdc_units,
             },
         );
         Ok(())
@@ -723,7 +727,8 @@ impl AlpactoCore {
         let order_id = lot.order_id.get();
         let producer_usdc = lot.producer_usdc.get();
         let association_usdc = lot.association_usdc.get();
-        let total = producer_usdc + association_usdc;
+        let platform_usdc = lot.platform_usdc.get();
+        let total = producer_usdc + association_usdc + platform_usdc;
         let association = self.orders.get(order_id).association.get();
         let remaining = self.orders.get(order_id).remaining_usdc.get();
 
@@ -739,6 +744,13 @@ impl AlpactoCore {
         }
         if !association_usdc.is_zero() {
             self.push_usdc(association, association_usdc)?;
+        }
+        if !platform_usdc.is_zero() {
+            let treasury = self.platform_treasury.get();
+            if treasury.is_zero() {
+                return Err(Error::ZeroAddress(ZeroAddress {}));
+            }
+            self.push_usdc(treasury, platform_usdc)?;
         }
 
         let new_remaining = remaining - total;
@@ -763,6 +775,7 @@ impl AlpactoCore {
                 lotId: lot_id,
                 producerUsdcUnits: producer_usdc,
                 associationUsdcUnits: association_usdc,
+                platformUsdcUnits: platform_usdc,
             },
         );
 
@@ -792,7 +805,7 @@ impl AlpactoCore {
     pub fn get_lot(
         &self,
         lot_id: U256,
-    ) -> (U256, Address, u8, u32, u32, B256, U256, U256, U256, bool) {
+    ) -> (U256, Address, u8, u32, u32, B256, U256, U256, U256, U256, bool) {
         let lot = self.lots.get(lot_id);
         (
             lot.order_id.get(),
@@ -804,6 +817,7 @@ impl AlpactoCore {
             lot.accepted_net_pen_minor.get(),
             lot.producer_usdc.get(),
             lot.association_usdc.get(),
+            lot.platform_usdc.get(),
             lot.exists.get(),
         )
     }
@@ -875,6 +889,60 @@ impl AlpactoCore {
         Ok(self
             .access
             ._check_role(role, self.vm().msg_sender())?)
+    }
+
+    fn apply_fund_order(
+        &mut self,
+        order_id: U256,
+        amount: U256,
+        payment_reference_hash: B256,
+    ) -> Result<(), Error> {
+        if amount.is_zero() {
+            return Err(Error::InvalidAmount(InvalidAmount {}));
+        }
+        if self.used_payment_refs.get(payment_reference_hash) {
+            return Err(Error::PaymentRefUsed(PaymentRefUsed {
+                paymentReferenceHash: payment_reference_hash,
+            }));
+        }
+
+        let order = self.orders.get(order_id);
+        if !order.exists.get() {
+            return Err(Error::OrderNotFound(OrderNotFound { orderId: order_id }));
+        }
+        let status = u8_of(order.status.get());
+        if status != order_status::DRAFT
+            && status != order_status::FUNDED
+            && status != order_status::ACCEPTING_LOTS
+        {
+            return Err(Error::InvalidOrderStatus(InvalidOrderStatus {
+                orderId: order_id,
+                status,
+            }));
+        }
+
+        let from = self.vm().msg_sender();
+        self.pull_usdc(from, amount)?;
+
+        self.used_payment_refs.setter(payment_reference_hash).set(true);
+
+        let mut order = self.orders.setter(order_id);
+        let funded = order.funded_usdc.get() + amount;
+        let remaining = order.remaining_usdc.get() + amount;
+        order.funded_usdc.set(funded);
+        order.remaining_usdc.set(remaining);
+        order.status.set(U8::from(order_status::ACCEPTING_LOTS));
+
+        log(
+            self.vm(),
+            OrderFunded {
+                orderId: order_id,
+                amount,
+                paymentReferenceHash: payment_reference_hash,
+                remainingUsdcUnits: remaining,
+            },
+        );
+        Ok(())
     }
 
     fn pull_usdc(&mut self, from: Address, amount: U256) -> Result<(), Error> {
@@ -1068,6 +1136,7 @@ mod test {
             U256::from(1000),
             U256::from(800_000),
             U256::from(200_000),
+            U256::ZERO,
         )
         .unwrap();
 
@@ -1098,6 +1167,48 @@ mod test {
             .fund_order(U256::from(1), U256::from(100), payment_ref(9))
             .unwrap_err();
         assert!(matches!(err, crate::Error::PaymentRefUsed(_)));
+    }
+
+    #[test]
+    fn test_buyer_fund_order() {
+        let (vm, mut core, _admin, buyer, association, _inspector, _auditor, _producer) = setup();
+        vm.set_sender(buyer);
+        core.create_order(
+            U256::from(1),
+            buyer,
+            association,
+            policy_hash(),
+            U256::from(1_000_000),
+        )
+        .unwrap();
+        core.buyer_fund_order(U256::from(1), U256::from(250_000), payment_ref(3))
+            .unwrap();
+        let order = core.get_order(U256::from(1));
+        assert_eq!(order.4, U256::from(250_000)); // funded
+        assert_eq!(order.5, U256::from(250_000)); // remaining
+        assert_eq!(order.6, order_status::ACCEPTING_LOTS);
+    }
+
+    #[test]
+    fn test_buyer_fund_order_rejects_non_buyer() {
+        let (vm, mut core, admin, buyer, association, _inspector, _auditor, _producer) = setup();
+        vm.set_sender(buyer);
+        core.create_order(
+            U256::from(1),
+            buyer,
+            association,
+            policy_hash(),
+            U256::from(1_000_000),
+        )
+        .unwrap();
+        vm.set_sender(admin);
+        let err = core
+            .buyer_fund_order(U256::from(1), U256::from(100), payment_ref(4))
+            .unwrap_err();
+        assert!(matches!(
+            err,
+            crate::Error::AccessControlUnauthorized(_) | crate::Error::Unauthorized(_)
+        ));
     }
 
     #[test]
@@ -1190,6 +1301,7 @@ mod test {
             U256::from(1),
             U256::from(700_000),
             U256::from(300_000),
+            U256::ZERO,
         )
         .unwrap();
         vm.set_sender(auditor);
@@ -1244,6 +1356,7 @@ mod test {
                 U256::from(1),
                 U256::from(500_000),
                 U256::from(500_000),
+                U256::ZERO,
             )
             .unwrap_err();
         assert!(matches!(err, crate::Error::VersionMismatch(_)));
@@ -1282,6 +1395,7 @@ mod test {
                 U256::from(1),
                 U256::from(80_000),
                 U256::from(30_000), // total 110k > 100k
+                U256::ZERO,
             )
             .unwrap_err();
         assert!(matches!(err, crate::Error::InsufficientOrderBalance(_)));
@@ -1293,6 +1407,7 @@ mod test {
             U256::from(1),
             U256::from(70_000),
             U256::from(30_000),
+            U256::ZERO,
         )
         .unwrap();
         core.settle_lot(U256::from(10)).unwrap();
@@ -1346,6 +1461,7 @@ mod test {
             U256::from(1),
             U256::from(900_000),
             U256::from(100_000),
+            U256::ZERO,
         )
         .unwrap();
         core.settle_lot(U256::from(10)).unwrap();

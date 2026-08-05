@@ -1087,8 +1087,8 @@ const deployedContracts = {
   },
   "421614": {
     "alpacto-core": {
-      address: "0x8dc078ce37800b26e728952b08bd1e040e231991",
-      txHash: "0x12bc2fd869f875ffb3122756e6fd00fe65ea55b0533ef17b266f1decdfe04e56",
+      address: "0xe651750934308720f305c5dae257d4ea1c013cdf",
+      txHash: "0x65b6c65d16192058e185d41c02e08e8138d95dd48a483f323475daf67a3f8f47",
       abi: [
         {
           inputs: [],
@@ -1432,6 +1432,11 @@ const deployedContracts = {
               name: "association_usdc_units",
               type: "uint256",
             },
+            {
+              internalType: "uint256",
+              name: "platform_usdc_units",
+              type: "uint256",
+            },
           ],
           name: "acceptSettlement",
           outputs: [],
@@ -1462,6 +1467,29 @@ const deployedContracts = {
             },
           ],
           stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "order_id",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "amount",
+              type: "uint256",
+            },
+            {
+              internalType: "bytes32",
+              name: "payment_reference_hash",
+              type: "bytes32",
+            },
+          ],
+          name: "buyerFundOrder",
+          outputs: [],
+          stateMutability: "nonpayable",
           type: "function",
         },
         {
@@ -1662,6 +1690,11 @@ const deployedContracts = {
               type: "uint256",
             },
             {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+            {
               internalType: "bool",
               name: "",
               type: "bool",
@@ -1751,6 +1784,19 @@ const deployedContracts = {
           type: "function",
         },
         {
+          inputs: [],
+          name: "platformTreasury",
+          outputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
           inputs: [
             {
               internalType: "uint256",
@@ -1787,6 +1833,19 @@ const deployedContracts = {
             },
           ],
           name: "requestReweighing",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "treasury",
+              type: "address",
+            },
+          ],
+          name: "setPlatformTreasury",
           outputs: [],
           stateMutability: "nonpayable",
           type: "function",

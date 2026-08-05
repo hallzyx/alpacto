@@ -19,8 +19,8 @@ Constructor:
 | Role | Typical callers |
 |------|-----------------|
 | `DEFAULT_ADMIN_ROLE` | Deploy admin (grant/revoke) |
-| `PLATFORM_ADMIN_ROLE` | Treasury / `fundOrder` |
-| `BUYER_ROLE` | `createOrder` |
+| `PLATFORM_ADMIN_ROLE` | Treasury / `fundOrder` (ops / legacy) |
+| `BUYER_ROLE` | `createOrder`, `buyerFundOrder` |
 | `ASSOCIATION_ROLE` | `registerLot` |
 | `INSPECTOR_ROLE` | `registerLot`, `submitInspectionReference` |
 | `AUDITOR_AGENT_ROLE` | `submitAuditAttestation` only (no transfers / settle) |
@@ -44,12 +44,13 @@ AuditResult: Pass=0, Warning=1, ReviewRequired=2, Unreadable=3
 
 ```text
 createOrder(orderId, buyer, association, pricingPolicyHash, budgetUsdcUnits)
-fundOrder(orderId, amount, paymentReferenceHash)
+fundOrder(orderId, amount, paymentReferenceHash)           // PLATFORM_ADMIN
+buyerFundOrder(orderId, amount, paymentReferenceHash)      // BUYER == order.buyer
 registerLot(orderId, lotId, producerAccount)
 submitInspectionReference(lotId, version, weightGrams, categoryCode, evidenceHash)
 submitAuditAttestation(lotId, version, reportHash, result)
 requestReweighing(lotId, reasonHash)
-acceptSettlement(lotId, version, quoteHash, netPenMinor, producerUsdcUnits, associationUsdcUnits)
+acceptSettlement(lotId, version, quoteHash, netPenMinor, producerUsdcUnits, associationUsdcUnits, platformUsdcUnits)
 settleLot(lotId)
 
 getOrder(orderId)
@@ -62,13 +63,14 @@ getAuditAttestation(lotId, version)
 | Function | Key rules |
 |----------|-----------|
 | `createOrder` | Buyer role; Draft; unique `orderId` |
-| `fundOrder` | Platform admin; unique `paymentReferenceHash`; `transferFrom` caller → contract; remaining += amount; Draft→Funded→AcceptingLots; policy immutable after Funded |
+| `fundOrder` | Platform admin; unique `paymentReferenceHash`; `transferFrom` caller → contract; remaining += amount; → AcceptingLots |
+| `buyerFundOrder` | Buyer role + `msg.sender == order.buyer`; same accounting as `fundOrder` |
 | `registerLot` | Association or inspector; order AcceptingLots/PartiallySettled; unique `lotId` |
 | `submitInspectionReference` | Inspector; version == current+1 (or 1 if 0); append-only; → InspectionSubmitted/Auditing |
 | `submitAuditAttestation` | Auditor only; no transfers; Pass/Warning→ReadyForReview; ReviewRequired→ReviewRequired |
 | `requestReweighing` | Lot producer; → ReweighingRequested |
-| `acceptSettlement` | Producer; current version; attestation Pass/Warning; split sum == producer+association; remaining ≥ total; → ProducerAccepted |
-| `settleLot` | ProducerAccepted; transfer USDC splits; remaining -=; → Settled; order PartiallySettled/Completed |
+| `acceptSettlement` | Producer; current version; attestation Pass/Warning; split sum == producer+association+platform; remaining ≥ total; → ProducerAccepted |
+| `settleLot` | ProducerAccepted; transfer USDC splits to producer, association, and platform treasury; remaining -=; → Settled; order PartiallySettled/Completed |
 
 ## Events
 
