@@ -13,3 +13,6 @@ export { CreateOrderForm } from "./CreateOrderForm";
 export { CreateCampaignForm } from "./CreateCampaignForm";
 export { CampaignDetails } from "./CampaignDetails";
 export { PricingPolicyHelpButton, PricingPolicyPreview } from "./PricingPolicyHelp";
+export { ProducerOrderContextCard } from "./ProducerOrderContextCard";
+export { ProducerGuide } from "./ProducerGuide";
+export { ProducerGuideLink } from "./ProducerGuideLink";

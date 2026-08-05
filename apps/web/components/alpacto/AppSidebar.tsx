@@ -9,6 +9,7 @@ import {
   Factory,
   LogOut,
   LucideIcon,
+  LayoutDashboard,
   Package,
   ShieldCheck,
   ShoppingCart,
@@ -16,6 +17,8 @@ import {
   Warehouse,
   FilePlus2,
   CalendarRange,
+  BookOpenText,
+  MessageSquareWarning,
 } from "lucide-react";
 
 import { useAuth } from "~~/components/alpacto/AuthProvider";
@@ -54,7 +57,11 @@ type NavItem = {
 const ROLE_NAV: Record<UserRole, { label: string; items: NavItem[] }> = {
   producer: {
     label: "Productor",
-    items: [{ href: "/producer", label: "Mis lotes", icon: Package }],
+    items: [
+      { href: "/producer", label: "Panel", icon: LayoutDashboard },
+      { href: "/producer/lots", label: "Mis lotes", icon: Package },
+      { href: "/producer/guide", label: "Guía", icon: BookOpenText },
+    ],
   },
   inspector: {
     label: "Inspector",
@@ -77,6 +84,11 @@ const ROLE_NAV: Record<UserRole, { label: string; items: NavItem[] }> = {
         href: "/association/lots/register",
         label: "Registrar lote",
         icon: FilePlus2,
+      },
+      {
+        href: "/association/disputes",
+        label: "Disputas",
+        icon: MessageSquareWarning,
       },
     ],
   },
@@ -153,7 +165,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarGroupLabel>{nav.label}</SidebarGroupLabel>
             <SidebarMenu>
               {nav.items.map(item => {
-                const isDashboardRoot = ["/association", "/buyer"].includes(item.href);
+                const isDashboardRoot = ["/association", "/buyer", "/producer"].includes(item.href);
                 const active = isDashboardRoot
                   ? pathname === item.href
                   : pathname === item.href || pathname.startsWith(`${item.href}/`);
