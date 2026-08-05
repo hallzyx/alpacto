@@ -16,6 +16,8 @@ import { calculateSettlementPreview, isSettlementAllowed } from "@alpacto/domain
 import type { AuthUser } from "../../plugins/auth.js";
 import { ApiError } from "../../lib/errors.js";
 import { createHash } from "node:crypto";
+import { executeSettlementOnchain } from "../../lib/settlement-onchain.js";
+import { isChainConfigured } from "../../lib/onchain-ids.js";
 
 async function loadSettlementContext(db: Database, lotId: string) {
   const [lot] = await db.select().from(lots).where(eq(lots.id, lotId)).limit(1);
@@ -75,9 +77,11 @@ function serializeSettlement(row: typeof settlements.$inferSelect) {
     grossPenMinor: row.grossPenMinor.toString(),
     bonusPenMinor: row.bonusPenMinor.toString(),
     feePenMinor: row.feePenMinor.toString(),
+    platformFeePenMinor: row.platformFeePenMinor.toString(),
     netPenMinor: row.netPenMinor.toString(),
     producerUsdcUnits: row.producerUsdcUnits.toString(),
     associationUsdcUnits: row.associationUsdcUnits.toString(),
+    platformUsdcUnits: row.platformUsdcUnits.toString(),
     quoteHash: row.quoteHash,
     status: row.status,
     acceptedAt: row.acceptedAt?.toISOString() ?? null,
@@ -102,6 +106,7 @@ export async function registerSettlementRoutes(
       pricePenMinorPerKg: category.pricePenMinorPerKg,
       qualityBonusPenMinorPerKg: category.qualityBonusPenMinorPerKg,
       associationFeeBps: policy.associationFeeBps,
+      platformFeeBps: policy.platformFeeBps,
       penPerUsdcMicros,
     });
 
@@ -113,9 +118,11 @@ export async function registerSettlementRoutes(
       grossPenMinor: preview.grossPenMinor.toString(),
       bonusPenMinor: preview.bonusPenMinor.toString(),
       feePenMinor: preview.feePenMinor.toString(),
+      platformFeePenMinor: preview.platformFeePenMinor.toString(),
       netPenMinor: preview.netPenMinor.toString(),
       producerUsdcUnits: preview.producerUsdcUnits.toString(),
       associationUsdcUnits: preview.associationUsdcUnits.toString(),
+      platformUsdcUnits: preview.platformUsdcUnits.toString(),
     };
   });
 
@@ -155,6 +162,7 @@ export async function registerSettlementRoutes(
       pricePenMinorPerKg: category.pricePenMinorPerKg,
       qualityBonusPenMinorPerKg: category.qualityBonusPenMinorPerKg,
       associationFeeBps: policy.associationFeeBps,
+      platformFeeBps: policy.platformFeeBps,
       penPerUsdcMicros,
     });
 
@@ -164,6 +172,7 @@ export async function registerSettlementRoutes(
           lotId,
           version: inspection.version,
           netPenMinor: preview.netPenMinor.toString(),
+          platformUsdcUnits: preview.platformUsdcUnits.toString(),
         }),
       )
       .digest("hex")}`;
@@ -178,9 +187,11 @@ export async function registerSettlementRoutes(
         grossPenMinor: preview.grossPenMinor,
         bonusPenMinor: preview.bonusPenMinor,
         feePenMinor: preview.feePenMinor,
+        platformFeePenMinor: preview.platformFeePenMinor,
         netPenMinor: preview.netPenMinor,
         producerUsdcUnits: preview.producerUsdcUnits,
         associationUsdcUnits: preview.associationUsdcUnits,
+        platformUsdcUnits: preview.platformUsdcUnits,
         quoteHash,
         status: "accepted",
         acceptedAt: new Date(),
@@ -196,7 +207,67 @@ export async function registerSettlementRoutes(
       })
       .where(eq(lots.id, lot.id));
 
-    return serializeSettlement(row!);
+    let _settlementTxHash: string | null = null;
+    if (isChainConfigured()) {
+      try {
+        _settlementTxHash = await executeSettlementOnchain(db, lotId, (msg) => {
+          request.log.info({ lotId, msg }, "settlement-onchain");
+        });
+      } catch (err) {
+        request.log.error({ err, lotId }, "on-chain settlement failed after accept");
+        throw new ApiError(
+          502,
+          err instanceof Error ? err.message : "On-chain settlement failed",
+          "SETTLEMENT_ONCHAIN_FAILED",
+        );
+      }
+    }
+
+    const [finalRow] = await db
+      .select()
+      .from(settlements)
+      .where(eq(settlements.id, row!.id))
+      .limit(1);
+
+    return serializeSettlement(finalRow ?? row!);
+  });
+
+  app.post("/lots/:id/settlement/settle-onchain", { preHandler: authenticate }, async (request) => {
+    const user = request.user as AuthUser;
+    if (!["producer", "admin", "association"].includes(user.role)) {
+      throw new ApiError(403, "Forbidden");
+    }
+    const { id: lotId } = request.params as { id: string };
+
+    const [lotCheck] = await db.select().from(lots).where(eq(lots.id, lotId)).limit(1);
+    if (!lotCheck) throw new ApiError(404, "Lot not found");
+    if (user.role === "producer" && lotCheck.producerId !== user.id) {
+      throw new ApiError(403, "Only the lot producer may settle on-chain");
+    }
+
+    if (!isChainConfigured()) {
+      throw new ApiError(400, "On-chain settlement is not configured");
+    }
+
+    try {
+      const txHash = await executeSettlementOnchain(db, lotId, (msg) => {
+        request.log.info({ lotId, msg }, "settlement-onchain");
+      });
+      const [row] = await db
+        .select()
+        .from(settlements)
+        .where(eq(settlements.lotId, lotId))
+        .orderBy(desc(settlements.acceptedAt))
+        .limit(1);
+      if (!row) throw new ApiError(404, "Settlement not found");
+      return { ...serializeSettlement(row), settlementTxHash: txHash };
+    } catch (err) {
+      throw new ApiError(
+        502,
+        err instanceof Error ? err.message : "On-chain settlement failed",
+        "SETTLEMENT_ONCHAIN_FAILED",
+      );
+    }
   });
 
   app.get("/lots/:id/settlement", { preHandler: authenticate }, async (request) => {

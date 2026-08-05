@@ -283,6 +283,7 @@ export async function processAuditJob(
         weightGrams: ctx.inspection.weightGrams,
         pricePenMinorPerKg: ctx.categoryPrice,
         associationFeeBps: ctx.policy.associationFeeBps,
+        platformFeeBps: ctx.policy.platformFeeBps,
         penPerUsdcMicros,
       });
       return {
@@ -290,6 +291,7 @@ export async function processAuditJob(
         netPenMinor: settlement.netPenMinor.toString(),
         producerUsdcUnits: settlement.producerUsdcUnits.toString(),
         associationUsdcUnits: settlement.associationUsdcUnits.toString(),
+        platformUsdcUnits: settlement.platformUsdcUnits.toString(),
       };
     },
     compare_audit_values: async () => {
@@ -316,9 +318,11 @@ export async function processAuditJob(
               grossPenMinor: settlement.grossPenMinor.toString(),
               bonusPenMinor: settlement.bonusPenMinor.toString(),
               feePenMinor: settlement.feePenMinor.toString(),
+              platformFeePenMinor: settlement.platformFeePenMinor.toString(),
               netPenMinor: settlement.netPenMinor.toString(),
               producerUsdcUnits: settlement.producerUsdcUnits.toString(),
               associationUsdcUnits: settlement.associationUsdcUnits.toString(),
+              platformUsdcUnits: settlement.platformUsdcUnits.toString(),
             }
           : null,
         compareResult,
