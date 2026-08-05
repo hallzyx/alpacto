@@ -6,6 +6,10 @@ import Link from "next/link";
 import { CampaignDetails } from "./CampaignDetails";
 import { ErrorBanner } from "./ErrorBanner";
 import { PricingPolicyHelpButton } from "./PricingPolicyHelp";
+import { Button } from "~~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~~/components/ui/card";
+import { Field, FieldLabel } from "~~/components/ui/field";
+import { Input } from "~~/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~~/components/ui/select";
 import { apiFetch } from "~~/lib/api";
 import { formatEscrowUsd, formatPen, formatUsdCents } from "~~/lib/format";
@@ -159,145 +163,161 @@ export function CreateOrderForm({ existingOrders = [], onCreated, redirectToDeta
 
   if (loading) {
     return (
-      <section className="alp-panel">
-        <p className="alp-muted">Cargando formulario…</p>
-      </section>
+      <Card>
+        <CardContent className="pt-6">
+          <p className="text-sm text-muted-foreground">Cargando formulario…</p>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <section className="alp-panel">
-      <h2 className="alp-title" style={{ fontSize: "1.25rem" }}>
-        Nueva orden
-      </h2>
-      <p className="alp-subtitle" style={{ marginTop: "0.35rem" }}>
-        Indica cuántos kg quieres asegurar. El presupuesto a fondear se calcula con la política de la campaña (precio
-        FINE, comisión y tipo de cambio).
-      </p>
-
-      {error ? <ErrorBanner message={error} onDismiss={() => setError("")} /> : null}
-
-      {!campaigns.length ? (
-        <p className="alp-muted">
-          No hay campañas activas.{" "}
-          <Link href="/buyer/campaigns" className="alp-link-btn">
-            Crear una campaña →
-          </Link>
+    <Card>
+      <CardHeader>
+        <CardTitle>Datos de la orden</CardTitle>
+        <p className="text-sm text-muted-foreground">
+          Indica cuántos kg quieres asegurar. El presupuesto se calcula con la política de la campaña.
         </p>
-      ) : (
-        <form
-          className="alp-form"
-          style={{ marginTop: "1rem" }}
-          onSubmit={e => {
-            e.preventDefault();
-            void submit();
-          }}
-        >
-          <div className="alp-field">
-            <label htmlFor="create-order-campaign">Campaña</label>
-            <Select value={campaignId} onValueChange={setCampaignId}>
-              <SelectTrigger id="create-order-campaign" className="w-full">
-                <SelectValue placeholder="Selecciona una campaña" />
-              </SelectTrigger>
-              <SelectContent>
-                {campaigns.map(c => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name}
-                    {c.associationName ? ` · ${c.associationName}` : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="alp-muted" style={{ margin: "0.35rem 0 0", fontSize: "0.85rem" }}>
-              <Link href="/buyer/campaigns" className="alp-link-btn">
-                Ver / crear campañas
-              </Link>
-            </p>
-          </div>
+      </CardHeader>
+      <CardContent>
+        {error ? <ErrorBanner message={error} onDismiss={() => setError("")} /> : null}
 
-          {selectedCampaign ? <CampaignDetails campaign={selectedCampaign} compact /> : null}
-
-          <div className="alp-field">
-            <label htmlFor="create-order-ref">Referencia</label>
-            <input
-              id="create-order-ref"
-              type="text"
-              value={externalRef}
-              onChange={e => setExternalRef(e.target.value)}
-              placeholder={suggestedRef}
-              maxLength={64}
-            />
-          </div>
-
-          <div className="alp-field">
-            <label htmlFor="create-order-kg">Meta de fibra (kg)</label>
-            <input
-              id="create-order-kg"
-              type="number"
-              min={0.1}
-              step={0.1}
-              inputMode="decimal"
-              value={targetKg}
-              onChange={e => setTargetKg(e.target.value)}
-              required
-            />
-            <p className="alp-muted" style={{ margin: "0.35rem 0 0", fontSize: "0.85rem" }}>
-              Cantidad que quieres cubrir con el escrow. Los lotes se irán descontando de este tope.
-            </p>
-          </div>
-
-          {estimate && selectedCampaign?.pricing ? (
-            <div className="alp-note" style={{ marginTop: "0.5rem" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", marginBottom: "0.5rem" }}>
-                <strong style={{ fontSize: "0.95rem" }}>Qué vas a fondear (en vivo)</strong>
-                <PricingPolicyHelpButton policy={selectedCampaign.pricing} />
-              </div>
-              <dl className="alp-kv" style={{ fontSize: "0.9rem", margin: 0 }}>
-                <dt>Categoría de cálculo</dt>
-                <dd>
-                  {estimate.category.label} ({estimate.category.code})
-                </dd>
-                <dt>Precio</dt>
-                <dd>{estimate.pricePerKgLabel} / kg</dd>
-                <dt>Bruto ({targetKg} kg)</dt>
-                <dd>{formatPen(estimate.grossPenMinor)}</dd>
-                <dt>Comisión asociación ({estimate.feePct}%)</dt>
-                <dd>− {formatPen(estimate.feePenMinor)}</dd>
-                <dt>Comisión plataforma ({estimate.platformFeePct}%)</dt>
-                <dd>− {formatPen(estimate.platformFeePenMinor)}</dd>
-                <dt>Neto productor (estimado)</dt>
-                <dd>{formatPen(estimate.netPenMinor)}</dd>
-                <dt>Tipo de cambio (demo)</dt>
-                <dd>S/ {estimate.fx} por USD</dd>
-                <dt>A fondear en escrow</dt>
-                <dd style={{ fontWeight: 700 }}>
-                  {formatUsdCents(estimate.budgetUsdCents)}{" "}
-                  <span className="alp-muted" style={{ fontWeight: 400 }}>
-                    ({formatEscrowUsd(estimate.escrowUsdcUnits)})
-                  </span>
-                </dd>
-              </dl>
-              <p className="alp-muted" style={{ margin: "0.65rem 0 0", fontSize: "0.85rem" }}>
-                Estimado a precio <strong>{estimate.category.code}</strong>. Si el inspector clasifica otra categoría o
-                llega menos peso, puede sobrar saldo; si llega de más, el escrow no permite pasarse del tope.
-              </p>
-            </div>
-          ) : (
-            <p className="alp-muted" style={{ marginTop: "0.5rem" }}>
-              Elige una campaña con política de precios e ingresa kg para ver el desglose.
-            </p>
-          )}
-
-          <button
-            type="submit"
-            className="alp-btn alp-btn--primary"
-            disabled={busy || !campaignId || !estimate}
-            style={{ marginTop: "0.75rem" }}
+        {!campaigns.length ? (
+          <p className="text-sm text-muted-foreground">
+            No hay campañas activas.{" "}
+            <Link href="/buyer/campaigns/new" className="text-primary hover:underline">
+              Crear una campaña →
+            </Link>
+          </p>
+        ) : (
+          <form
+            className="grid gap-4"
+            onSubmit={e => {
+              e.preventDefault();
+              void submit();
+            }}
           >
-            {busy ? "Creando…" : estimate ? `Crear orden · ${formatUsdCents(estimate.budgetUsdCents)}` : "Crear orden"}
-          </button>
-        </form>
-      )}
-    </section>
+            <Field>
+              <FieldLabel htmlFor="create-order-campaign">Campaña</FieldLabel>
+              <Select value={campaignId} onValueChange={setCampaignId}>
+                <SelectTrigger id="create-order-campaign" className="w-full">
+                  <SelectValue placeholder="Selecciona una campaña" />
+                </SelectTrigger>
+                <SelectContent>
+                  {campaigns.map(c => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                      {c.associationName ? ` · ${c.associationName}` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                <Link href="/buyer/campaigns" className="text-primary hover:underline">
+                  Ver / crear campañas
+                </Link>
+              </p>
+            </Field>
+
+            {selectedCampaign ? <CampaignDetails campaign={selectedCampaign} compact /> : null}
+
+            <Field>
+              <FieldLabel htmlFor="create-order-ref">Referencia</FieldLabel>
+              <Input
+                id="create-order-ref"
+                type="text"
+                value={externalRef}
+                onChange={e => setExternalRef(e.target.value)}
+                placeholder={suggestedRef}
+                maxLength={64}
+              />
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="create-order-kg">Meta de fibra (kg)</FieldLabel>
+              <Input
+                id="create-order-kg"
+                type="number"
+                min={0.1}
+                step={0.1}
+                inputMode="decimal"
+                value={targetKg}
+                onChange={e => setTargetKg(e.target.value)}
+                required
+              />
+              <p className="text-xs text-muted-foreground">
+                Cantidad que quieres cubrir con el escrow. Los lotes se irán descontando de este tope.
+              </p>
+            </Field>
+
+            {estimate && selectedCampaign?.pricing ? (
+              <div className="rounded-lg border border-border bg-muted/40 p-4">
+                <div className="flex items-center gap-1.5 mb-3">
+                  <strong className="text-sm">Qué vas a fondear (en vivo)</strong>
+                  <PricingPolicyHelpButton policy={selectedCampaign.pricing} />
+                </div>
+                <dl className="grid gap-2 text-sm sm:grid-cols-2">
+                  <div>
+                    <dt className="text-muted-foreground">Categoría de cálculo</dt>
+                    <dd className="font-medium">
+                      {estimate.category.label} ({estimate.category.code})
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Precio</dt>
+                    <dd className="font-medium">{estimate.pricePerKgLabel} / kg</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Bruto ({targetKg} kg)</dt>
+                    <dd className="font-medium">{formatPen(estimate.grossPenMinor)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Comisión asociación ({estimate.feePct}%)</dt>
+                    <dd className="font-medium">− {formatPen(estimate.feePenMinor)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Comisión plataforma ({estimate.platformFeePct}%)</dt>
+                    <dd className="font-medium">− {formatPen(estimate.platformFeePenMinor)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Neto productor (estimado)</dt>
+                    <dd className="font-medium">{formatPen(estimate.netPenMinor)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Tipo de cambio (demo)</dt>
+                    <dd className="font-medium">S/ {estimate.fx} por USD</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">A fondear en escrow</dt>
+                    <dd className="font-semibold text-primary">
+                      {formatUsdCents(estimate.budgetUsdCents)}{" "}
+                      <span className="font-normal text-muted-foreground">
+                        ({formatEscrowUsd(estimate.escrowUsdcUnits)})
+                      </span>
+                    </dd>
+                  </div>
+                </dl>
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Estimado a precio <strong>{estimate.category.code}</strong>. Si el inspector clasifica otra categoría
+                  o llega menos peso, puede sobrar saldo; si llega de más, el escrow no permite pasarse del tope.
+                </p>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Elige una campaña con política de precios e ingresa kg para ver el desglose.
+              </p>
+            )}
+
+            <Button type="submit" disabled={busy || !campaignId || !estimate}>
+              {busy
+                ? "Creando…"
+                : estimate
+                  ? `Crear orden · ${formatUsdCents(estimate.budgetUsdCents)}`
+                  : "Crear orden"}
+            </Button>
+          </form>
+        )}
+      </CardContent>
+    </Card>
   );
 }
