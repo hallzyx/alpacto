@@ -77,6 +77,8 @@ export const pricingPolicies = pgTable("pricing_policies", {
   version: integer("version").notNull().default(1),
   currency: varchar("currency", { length: 8 }).notNull().default("PEN"),
   associationFeeBps: integer("association_fee_bps").notNull(),
+  /** Alpacto platform fee in basis points (50 = 0.5%). */
+  platformFeeBps: integer("platform_fee_bps").notNull().default(50),
   weightToleranceBps: integer("weight_tolerance_bps").notNull(),
   penPerUsdcMicros: bigint("pen_per_usdc_micros", { mode: "bigint" }).notNull(),
   policyHash: varchar("policy_hash", { length: 66 }).notNull(),
@@ -132,6 +134,8 @@ export const orders = pgTable("orders", {
     .notNull()
     .references(() => organizations.id),
   budgetUsdCents: bigint("budget_usd_cents", { mode: "bigint" }).notNull(),
+  /** Meta de acopio en gramos (UI kg → budget). Null en órdenes legacy. */
+  targetWeightGrams: bigint("target_weight_grams", { mode: "bigint" }),
   fundedUsdcUnits: bigint("funded_usdc_units", { mode: "bigint" }).notNull(),
   remainingUsdcUnits: bigint("remaining_usdc_units", { mode: "bigint" }).notNull(),
   status: varchar("status", { length: 32 }).notNull().default("draft"),
@@ -254,9 +258,11 @@ export const settlements = pgTable("settlements", {
   grossPenMinor: bigint("gross_pen_minor", { mode: "bigint" }).notNull(),
   bonusPenMinor: bigint("bonus_pen_minor", { mode: "bigint" }).notNull(),
   feePenMinor: bigint("fee_pen_minor", { mode: "bigint" }).notNull(),
+  platformFeePenMinor: bigint("platform_fee_pen_minor", { mode: "bigint" }).notNull().default(0),
   netPenMinor: bigint("net_pen_minor", { mode: "bigint" }).notNull(),
   producerUsdcUnits: bigint("producer_usdc_units", { mode: "bigint" }).notNull(),
   associationUsdcUnits: bigint("association_usdc_units", { mode: "bigint" }).notNull(),
+  platformUsdcUnits: bigint("platform_usdc_units", { mode: "bigint" }).notNull().default(0),
   quoteHash: varchar("quote_hash", { length: 66 }),
   status: varchar("status", { length: 32 }).notNull().default("pending"),
   acceptedAt: timestamp("accepted_at", { withTimezone: true }),

@@ -15,6 +15,20 @@
       "when": 1785807388972,
       "tag": "0001_sour_hulk",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785882600000,
+      "tag": "0002_order_target_kg",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1785892800000,
+      "tag": "0003_platform_fee",
+      "breakpoints": true
     }
   ]
 }

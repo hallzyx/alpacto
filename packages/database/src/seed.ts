@@ -148,6 +148,7 @@ async function main() {
         version: 1,
         currency: "PEN",
         associationFeeBps: 300,
+        platformFeeBps: 50,
         weightToleranceBps: 100,
         penPerUsdcMicros,
         policyHash: DEMO_POLICY_HASH,
@@ -161,6 +162,16 @@ async function main() {
       pricePenMinorPerKg: 2750n,
       qualityBonusPenMinorPerKg: 0n,
     });
+  } else if (policy.penPerUsdcMicros <= 0n || policy.platformFeeBps !== 50) {
+    const [row] = await db
+      .update(pricingPolicies)
+      .set({
+        ...(policy.penPerUsdcMicros <= 0n ? { penPerUsdcMicros } : {}),
+        platformFeeBps: 50,
+      })
+      .where(eq(pricingPolicies.id, policy.id))
+      .returning();
+    policy = row!;
   }
 
   let [campaign] = await db
