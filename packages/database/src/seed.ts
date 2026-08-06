@@ -158,6 +158,11 @@ async function main() {
 
   const memberPairs = [
     { organizationId: associationOrg.id, userId: byEmail["alpasur@demo.alpacto"]!.id, memberRole: "admin" },
+    {
+      organizationId: associationOrg.id,
+      userId: byEmail["martina@demo.alpacto"]!.id,
+      memberRole: "producer",
+    },
     { organizationId: buyerOrg.id, userId: byEmail["andes@demo.alpacto"]!.id, memberRole: "admin" },
   ];
   for (const m of memberPairs) {

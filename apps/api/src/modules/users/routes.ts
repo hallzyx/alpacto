@@ -1,8 +1,9 @@
 import type { FastifyInstance } from "fastify";
-import { asc, eq } from "drizzle-orm";
-import { users, type Database } from "@alpacto/database";
+import { and, asc, eq, inArray } from "drizzle-orm";
+import { organizationMembers, users, type Database } from "@alpacto/database";
 import type { AuthUser } from "../../plugins/auth.js";
 import { ApiError } from "../../lib/errors.js";
+import { resolveAssociationOrgIds } from "../../lib/ayni-role-scope.js";
 
 function serializeProducer(row: typeof users.$inferSelect) {
   return {
@@ -23,6 +24,27 @@ export async function registerUserRoutes(
     if (!["association", "inspector", "admin"].includes(user.role)) {
       throw new ApiError(403, "Forbidden");
     }
+
+    // Association users only see producers attached to their org(s).
+    if (user.role === "association") {
+      const orgIds = await resolveAssociationOrgIds(db, user.id, false);
+      if (orgIds.length === 0) return { producers: [] };
+
+      const memberRows = await db
+        .select({ userId: organizationMembers.userId })
+        .from(organizationMembers)
+        .where(inArray(organizationMembers.organizationId, orgIds));
+      const memberIds = [...new Set(memberRows.map((r) => r.userId))];
+      if (memberIds.length === 0) return { producers: [] };
+
+      const rows = await db
+        .select()
+        .from(users)
+        .where(and(eq(users.role, "producer"), inArray(users.id, memberIds)))
+        .orderBy(asc(users.name));
+      return { producers: rows.map(serializeProducer) };
+    }
+
     const rows = await db
       .select()
       .from(users)

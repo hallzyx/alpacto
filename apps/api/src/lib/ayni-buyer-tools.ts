@@ -327,7 +327,22 @@ export function createAyniBuyerToolHandlers(opts: {
 
     async get_lot_settlement(args) {
       try {
-        const { lot } = await assertBuyerLot(db, buyerId, String(args["lotId"] ?? ""));
+        const raw = String(args["lotId"] ?? "");
+        let lotId = raw;
+        if (!/^[0-9a-f-]{36}$/i.test(raw)) {
+          const mine = await db
+            .select({ lot: lots })
+            .from(lots)
+            .innerJoin(orders, eq(lots.orderId, orders.id))
+            .where(eq(orders.buyerId, buyerId));
+          const match = await resolveLotByIdOrPrefix(
+            mine.map((r) => r.lot),
+            raw,
+          );
+          if (!match) return { error: "Lote no encontrado en tus órdenes." };
+          lotId = match.id;
+        }
+        const { lot } = await assertBuyerLot(db, buyerId, lotId);
         const [settlement] = await db
           .select()
           .from(settlements)
@@ -343,7 +358,9 @@ export function createAyniBuyerToolHandlers(opts: {
             weightKg: Number(settlement.weightGrams) / 1000,
             categoryCode: settlement.categoryCode,
             grossPen: (Number(settlement.grossPenMinor) / 100).toFixed(2),
+            bonusPen: (Number(settlement.bonusPenMinor) / 100).toFixed(2),
             feePen: (Number(settlement.feePenMinor) / 100).toFixed(2),
+            platformFeePen: (Number(settlement.platformFeePenMinor) / 100).toFixed(2),
             netPen: (Number(settlement.netPenMinor) / 100).toFixed(2),
             producerUsdc: (Number(settlement.producerUsdcUnits) / 1e6).toFixed(6),
             associationUsdc: (Number(settlement.associationUsdcUnits) / 1e6).toFixed(6),

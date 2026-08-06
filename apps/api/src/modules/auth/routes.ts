@@ -28,6 +28,7 @@ import { z } from "zod";
 import { signToken, type AuthUser } from "../../plugins/auth.js";
 import { ApiError } from "../../lib/errors.js";
 import { config } from "../../config.js";
+import { ensureProducerInDemoAssociation } from "../../lib/demo-association.js";
 
 const rpID = (() => {
   try {
@@ -83,16 +84,20 @@ export async function registerAuthRoutes(
 
     let [user] = await db.select().from(users).where(eq(users.email, body.email)).limit(1);
     if (!user) {
+      const role = body.role ?? "producer";
       const [created] = await db
         .insert(users)
         .values({
           email: body.email,
           name: body.name ?? body.email.split("@")[0]!,
-          role: body.role ?? "producer",
+          role,
           status: "active",
         })
         .returning();
       user = created!;
+      if (role === "producer") {
+        await ensureProducerInDemoAssociation(db, user.id);
+      }
     }
 
     const existing = await db
@@ -400,6 +405,11 @@ export async function registerAuthRoutes(
         .where(eq(users.id, user.id))
         .returning();
       user = updated!;
+    }
+
+    // Demo: auto-join Asociación AlpaSur so association can assign this producer on lots.
+    if (user.role === "producer") {
+      await ensureProducerInDemoAssociation(db, user.id);
     }
 
     const token = await signToken({

@@ -93,8 +93,11 @@ export async function resolveLotByIdOrPrefix(
 }
 
 export async function resolveOrderByIdOrRef(db: Database, raw: string) {
-  const [byId] = await db.select().from(orders).where(eq(orders.id, raw)).limit(1);
-  if (byId) return byId;
-  const [byRef] = await db.select().from(orders).where(eq(orders.externalRef, raw)).limit(1);
+  const value = raw.trim();
+  if (/^[0-9a-f-]{36}$/i.test(value)) {
+    const [byId] = await db.select().from(orders).where(eq(orders.id, value)).limit(1);
+    if (byId) return byId;
+  }
+  const [byRef] = await db.select().from(orders).where(eq(orders.externalRef, value)).limit(1);
   return byRef ?? null;
 }

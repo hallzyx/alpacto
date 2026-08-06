@@ -264,8 +264,11 @@ export function createAyniProducerToolHandlers(opts: {
           grossPen: (Number(settlement.grossPenMinor) / 100).toFixed(2),
           bonusPen: (Number(settlement.bonusPenMinor) / 100).toFixed(2),
           feePen: (Number(settlement.feePenMinor) / 100).toFixed(2),
+          platformFeePen: (Number(settlement.platformFeePenMinor) / 100).toFixed(2),
           netPen: (Number(settlement.netPenMinor) / 100).toFixed(2),
           producerUsdc: (Number(settlement.producerUsdcUnits) / 1e6).toFixed(6),
+          associationUsdc: (Number(settlement.associationUsdcUnits) / 1e6).toFixed(6),
+          platformUsdc: (Number(settlement.platformUsdcUnits) / 1e6).toFixed(6),
           settlementTxHash: settlement.settlementTxHash,
           acceptedAt: settlement.acceptedAt?.toISOString() ?? null,
           settledAt: settlement.settledAt?.toISOString() ?? null,
@@ -287,9 +290,11 @@ export function createAyniProducerToolHandlers(opts: {
           .from(lots)
           .where(and(eq(lots.producerId, producerId), eq(lots.orderId, lot.orderId)));
       } else if (args["orderId"]) {
-        const raw = String(args["orderId"]);
-        const [byId] = await db.select().from(orders).where(eq(orders.id, raw)).limit(1);
-        orderRow = byId;
+        const raw = String(args["orderId"]).trim();
+        if (/^[0-9a-f-]{36}$/i.test(raw)) {
+          const [byId] = await db.select().from(orders).where(eq(orders.id, raw)).limit(1);
+          orderRow = byId;
+        }
         if (!orderRow) {
           const [byRef] = await db.select().from(orders).where(eq(orders.externalRef, raw)).limit(1);
           orderRow = byRef;
@@ -337,7 +342,7 @@ export function createAyniProducerToolHandlers(opts: {
         .select()
         .from(auditRuns)
         .where(eq(auditRuns.lotId, lot.id))
-        .orderBy(desc(auditRuns.startedAt))
+        .orderBy(desc(auditRuns.inspectionVersion), desc(auditRuns.startedAt))
         .limit(1);
       if (!audit) return { lotId: lot.id, audit: null, message: "Ayni aún no auditó este lote." };
       const findings = await db

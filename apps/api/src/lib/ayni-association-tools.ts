@@ -422,9 +422,11 @@ export function createAyniAssociationToolHandlers(opts: {
             grossPen: (Number(settlement.grossPenMinor) / 100).toFixed(2),
             bonusPen: (Number(settlement.bonusPenMinor) / 100).toFixed(2),
             feePen: (Number(settlement.feePenMinor) / 100).toFixed(2),
+            platformFeePen: (Number(settlement.platformFeePenMinor) / 100).toFixed(2),
             netPen: (Number(settlement.netPenMinor) / 100).toFixed(2),
             associationUsdc: (Number(settlement.associationUsdcUnits) / 1e6).toFixed(6),
             producerUsdc: (Number(settlement.producerUsdcUnits) / 1e6).toFixed(6),
+            platformUsdc: (Number(settlement.platformUsdcUnits) / 1e6).toFixed(6),
             settlementTxHash: settlement.settlementTxHash,
           },
         };
@@ -446,7 +448,7 @@ export function createAyniAssociationToolHandlers(opts: {
           .select()
           .from(auditRuns)
           .where(eq(auditRuns.lotId, lot.id))
-          .orderBy(desc(auditRuns.startedAt))
+          .orderBy(desc(auditRuns.inspectionVersion), desc(auditRuns.startedAt))
           .limit(1);
         if (!audit) return { lotId: lot.id, audit: null, message: "Ayni aún no auditó este lote." };
         const findings = await db
@@ -477,7 +479,13 @@ export function createAyniAssociationToolHandlers(opts: {
       try {
         let orderId: string | undefined;
         if (args["lotId"]) {
-          const { order } = await assertAssociationLot(db, orgIds, String(args["lotId"]));
+          const all = await scopedLots();
+          const match = await resolveLotByIdOrPrefix(
+            all.map((r) => r.lot),
+            String(args["lotId"]),
+          );
+          if (!match) return { error: "Lote no encontrado en tu asociación." };
+          const { order } = await assertAssociationLot(db, orgIds, match.id);
           orderId = order.id;
         } else if (args["orderId"]) {
           const order = await resolveOrderByIdOrRef(db, String(args["orderId"]));
