@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Activity,
   Building2,
   ClipboardList,
   Factory,
@@ -11,7 +12,6 @@ import {
   LucideIcon,
   LayoutDashboard,
   Package,
-  ShieldCheck,
   ShoppingCart,
   UserCircle,
   Warehouse,
@@ -127,7 +127,7 @@ const ROLE_NAV: Record<UserRole, { label: string; items: NavItem[] }> = {
   },
   admin: {
     label: "Admin",
-    items: [{ href: "/admin", label: "Panel", icon: ShieldCheck }],
+    items: [{ href: "/admin", label: "On-chain", icon: Activity }],
   },
 };
 

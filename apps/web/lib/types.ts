@@ -243,3 +243,24 @@ export type ProducerParticipation = {
   orders: ProducerOrderParticipation[];
   totalLots: number;
 };
+
+export type OnchainActivityType = "order_funded" | "inspection" | "audit_attest" | "settlement" | "reweigh";
+
+export type OnchainActivity = {
+  id: string;
+  type: OnchainActivityType | string;
+  txHash: string;
+  at: string;
+  orderRef: string | null;
+  orderId: string | null;
+  lotId: string | null;
+  detail: string | null;
+  amountUsdcUnits: string | null;
+  explorerUrl: string;
+};
+
+export type OnchainActivityResponse = {
+  chainId: number;
+  explorerName: string;
+  activities: OnchainActivity[];
+};
