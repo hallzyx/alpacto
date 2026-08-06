@@ -17,4 +17,5 @@ export { ProducerOrderContextCard } from "./ProducerOrderContextCard";
 export { ProducerGuide } from "./ProducerGuide";
 export { ProducerGuideLink } from "./ProducerGuideLink";
 export { AyniGuideChat, AyniProducerChat, AyniAssociationChat, AyniBuyerChat, openAyniChat } from "./AyniGuideChat";
+export { AyniAuditLiveModal } from "./AyniAuditLiveModal";
 export { AyniMarkdown } from "./AyniMarkdown";

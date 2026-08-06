@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
-import { ErrorBanner, RequireAuth, Skeleton, StatusPill, Timeline } from "~~/components/alpacto";
+import { AyniAuditLiveModal, ErrorBanner, RequireAuth, Skeleton, StatusPill, Timeline } from "~~/components/alpacto";
 import { Badge } from "~~/components/ui/badge";
 import { Button } from "~~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~~/components/ui/card";
@@ -37,6 +37,10 @@ function InspectInner() {
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const [auditRunId, setAuditRunId] = useState<string | null>(null);
+  const [auditOpen, setAuditOpen] = useState(false);
+  const [submittedWeight, setSubmittedWeight] = useState("42500");
+  const [submittedCategory, setSubmittedCategory] = useState("FINE");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -99,14 +103,19 @@ function InspectInner() {
         },
       });
 
-      // Best-effort enqueue Ayni audit
+      setSubmittedWeight(weightGrams);
+      setSubmittedCategory(categoryCode);
+
       try {
-        await apiFetch(`/lots/${id}/audits`, { method: "POST", body: {} });
+        const audit = await apiFetch<{ id: string }>(`/lots/${id}/audits`, { method: "POST", body: {} });
+        setAuditRunId(audit.id);
+        setAuditOpen(true);
       } catch {
-        /* audit optional in UX */
+        setNote("Inspección enviada, pero no se pudo encolar Ayni. Revisa el worker.");
+        router.push("/inspector");
       }
 
-      router.push("/inspector");
+      void load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo enviar la inspección");
     } finally {
@@ -187,7 +196,7 @@ function InspectInner() {
                 <CardTitle>Peso y clasificación</CardTitle>
                 <CardDescription>
                   {canInspect
-                    ? "Registra el peso real y la categoría. La evidencia queda ligada a esta versión."
+                    ? "Registra el peso real y la categoría. Al enviar, Ayni revisará la evidencia en vivo."
                     : "Este lote no está listo para inspección (falta confirmación del productor o ya fue liquidado)."}
                 </CardDescription>
               </CardHeader>
@@ -207,13 +216,13 @@ function InspectInner() {
                       value={weightGrams}
                       onChange={e => setWeightGrams(e.target.value)}
                       required
-                      disabled={!canInspect}
+                      disabled={!canInspect || busy}
                     />
                     {weightGrams ? <p className="text-xs text-muted-foreground">≈ {formatKg(weightGrams)}</p> : null}
                   </Field>
                   <Field>
                     <FieldLabel htmlFor="cat">Categoría</FieldLabel>
-                    <Select value={categoryCode} onValueChange={setCategoryCode} disabled={!canInspect}>
+                    <Select value={categoryCode} onValueChange={setCategoryCode} disabled={!canInspect || busy}>
                       <SelectTrigger id="cat" className="w-full">
                         <SelectValue placeholder="Selecciona categoría" />
                       </SelectTrigger>
@@ -233,11 +242,11 @@ function InspectInner() {
                       type="file"
                       accept="image/jpeg,image/png,image/webp,application/pdf"
                       onChange={e => setFile(e.target.files?.[0] ?? null)}
-                      disabled={!canInspect}
+                      disabled={!canInspect || busy}
                     />
                   </Field>
                   <Button type="submit" disabled={busy || !canInspect}>
-                    {busy ? "Enviando…" : "Enviar inspección"}
+                    {busy ? "Enviando…" : "Enviar inspección y abrir Ayni"}
                   </Button>
                 </form>
               </CardContent>
@@ -288,6 +297,20 @@ function InspectInner() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {auditRunId ? (
+        <AyniAuditLiveModal
+          open={auditOpen}
+          auditRunId={auditRunId}
+          lotId={id}
+          declaredWeightGrams={submittedWeight}
+          categoryCode={submittedCategory}
+          onClose={() => {
+            setAuditOpen(false);
+            router.push("/inspector");
+          }}
+        />
+      ) : null}
     </div>
   );
 }

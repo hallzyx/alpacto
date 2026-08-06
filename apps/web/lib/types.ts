@@ -211,7 +211,12 @@ export type AuditRunDetail = {
   lotId: string;
   inspectionVersion: number;
   status: string;
+  progressPhase?: string | null;
+  progressLabel?: string | null;
   resultCode: string | null;
+  reportHash?: string | null;
+  onchainTxHash?: string | null;
+  explorerUrl?: string | null;
   findings: AuditFinding[];
 };
 
