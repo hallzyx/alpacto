@@ -228,6 +228,9 @@ export const auditRuns = pgTable("audit_runs", {
     .references(() => lots.id),
   inspectionVersion: integer("inspection_version").notNull(),
   status: varchar("status", { length: 32 }).notNull().default("pending"),
+  /** Live UI phase: queued | context | scale | classification | settlement | compare | report | attest | done | failed */
+  progressPhase: varchar("progress_phase", { length: 64 }).notNull().default("queued"),
+  progressLabel: varchar("progress_label", { length: 255 }),
   provider: varchar("provider", { length: 64 }),
   modelAlias: varchar("model_alias", { length: 128 }),
   promptVersion: varchar("prompt_version", { length: 64 }),
