@@ -14,13 +14,13 @@ import {
   Package,
   ShoppingCart,
   UserCircle,
-  Warehouse,
   FilePlus2,
   CalendarRange,
   BookOpenText,
   MessageSquareWarning,
 } from "lucide-react";
 
+import { AlpactoMark } from "~~/components/alpacto/AlpactoMark";
 import { useAuth } from "~~/components/alpacto/AuthProvider";
 import {
   Sidebar,
@@ -147,6 +147,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
 
   const nav = useMemo(() => (user ? ROLE_NAV[user.role] : null), [user]);
+  const dashboardHome = nav?.items[0]?.href ?? "/";
 
   return (
     <Sidebar variant="inset" {...props}>
@@ -154,12 +155,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild tooltip="Alpacto">
-              <Link href="/">
-                <span className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-[0_0_0_3px_rgba(42,157,143,0.18)]">
-                  <Warehouse className="size-4" />
-                </span>
+              <Link href={dashboardHome} className="flex items-center gap-2">
+                <AlpactoMark size="sm" />
                 <span className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-display font-semibold">Alpacto</span>
+                  <span className="truncate font-display text-xl leading-none font-semibold">Alpacto</span>
                   <span className="truncate text-xs text-muted-foreground">Fibra justa</span>
                 </span>
               </Link>

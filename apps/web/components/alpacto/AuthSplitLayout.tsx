@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { AlpactoMark } from "~~/components/alpacto/AlpactoMark";
 import loginImage from "~~/assets/login_image.png";
 import { cn } from "~~/lib/utils";
 
@@ -41,12 +42,9 @@ export function AuthSplitLayout({
       {/* Form column — overlaps slightly under the oblique cut */}
       <div className="relative z-10 flex min-h-svh flex-col p-6 md:p-10 lg:w-[60%]">
         <div className={cn("mx-auto flex w-full flex-1 flex-col", contentMaxWidthClass[contentMaxWidth])}>
-          <Link href="/" className="flex items-center gap-2 font-medium">
-            <span
-              aria-hidden
-              className="size-3.5 shrink-0 rounded-[4px] bg-gradient-to-br from-[#1a6b6a] to-[#2a9d8f] shadow-[0_0_0_3px_rgba(42,157,143,0.18)]"
-            />
-            <span className="font-display text-xl font-semibold tracking-tight">Alpacto</span>
+          <Link href="/" className="inline-flex items-center gap-2.5 font-medium">
+            <AlpactoMark size="sm" />
+            <span className="font-display text-3xl leading-none font-semibold tracking-tight">Alpacto</span>
           </Link>
           <div className={cn("flex flex-1 flex-col justify-center py-8", contentClassName)}>
             <div className="w-full">{children}</div>

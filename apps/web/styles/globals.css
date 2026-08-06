@@ -665,17 +665,20 @@ h4 {
   visibility: hidden !important;
 }
 
-/* Keep landing content above ambient altitude clouds */
-.lp > header,
-.lp > section,
-.lp > footer {
+/* Landing sections: no z-index so fixed drift clouds (z-8) can float above backgrounds */
+.lp > section {
   position: relative;
-  z-index: 10;
+}
+
+.lp > header.lp-nav {
+  position: absolute;
+  z-index: 40;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .lp-clouds,
-  .lp-altitude {
+  .lp-altitude,
+  .lp-altitude-hero {
     display: none !important;
   }
 

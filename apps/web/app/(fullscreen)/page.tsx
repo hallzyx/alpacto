@@ -18,6 +18,7 @@ import {
 import heroAltiplano from "~~/assets/landing-hero-altiplano.png";
 import alpacaPortrait from "~~/assets/landing-alpaca-portrait.png";
 import fiberTexture from "~~/assets/landing-fiber-texture.png";
+import { AlpactoMark } from "~~/components/alpacto/AlpactoMark";
 import { Button } from "~~/components/ui/button";
 import { cn } from "~~/lib/utils";
 
@@ -120,18 +121,88 @@ const CLOUD_BLOBS: Array<{
 ];
 
 /** Ambient drift clouds while scrolling (altitude → surface) */
-const DRIFT_CLOUDS = [
-  { dir: "ltr" as const, top: "10%", w: 360, h: 120, opacity: 0.69, duration: 16, delay: 0 },
-  { dir: "rtl" as const, top: "22%", w: 300, h: 100, opacity: 0.6, duration: 18, delay: 0.5 },
-  { dir: "ltr" as const, top: "38%", w: 420, h: 140, opacity: 0.53, duration: 20, delay: 1 },
-  { dir: "rtl" as const, top: "52%", w: 320, h: 110, opacity: 0.63, duration: 15, delay: 0.2 },
-  { dir: "ltr" as const, top: "68%", w: 280, h: 90, opacity: 0.5, duration: 17, delay: 1.5 },
-  { dir: "rtl" as const, top: "78%", w: 380, h: 130, opacity: 0.56, duration: 19, delay: 0.8 },
-  { dir: "ltr" as const, top: "15%", w: 220, h: 70, opacity: 0.48, duration: 13, delay: 2 },
-  { dir: "rtl" as const, top: "45%", w: 260, h: 85, opacity: 0.45, duration: 14, delay: 2.5 },
-  { dir: "ltr" as const, top: "60%", w: 340, h: 115, opacity: 0.5, duration: 16, delay: 1.2 },
-  { dir: "rtl" as const, top: "88%", w: 300, h: 95, opacity: 0.44, duration: 12, delay: 0.4 },
+type DriftCloud = {
+  dir: "ltr" | "rtl";
+  top: string;
+  w: number;
+  h: number;
+  opacity: number;
+  duration: number;
+  delay: number;
+};
+
+const HERO_DRIFT_OPACITY_BOOST = 1.2;
+
+/** Hero-only — clipped to the hero section, boosted opacity */
+const HERO_DRIFT_CLOUDS: DriftCloud[] = [
+  { dir: "ltr", top: "10%", w: 360, h: 120, opacity: 0.69, duration: 16, delay: 0 },
+  { dir: "rtl", top: "22%", w: 300, h: 100, opacity: 0.6, duration: 18, delay: 0.5 },
+  { dir: "ltr", top: "38%", w: 420, h: 140, opacity: 0.53, duration: 20, delay: 1 },
+  { dir: "ltr", top: "15%", w: 220, h: 70, opacity: 0.48, duration: 13, delay: 2 },
+  { dir: "rtl", top: "58%", w: 320, h: 110, opacity: 0.55, duration: 15, delay: 0.2 },
 ];
+
+/** Page-wide fixed layer — unchanged opacity below the hero */
+const LOWER_DRIFT_CLOUDS: DriftCloud[] = [
+  { dir: "rtl", top: "52%", w: 320, h: 110, opacity: 0.63, duration: 15, delay: 0.2 },
+  { dir: "ltr", top: "68%", w: 280, h: 90, opacity: 0.5, duration: 17, delay: 1.5 },
+  { dir: "rtl", top: "78%", w: 380, h: 130, opacity: 0.56, duration: 19, delay: 0.8 },
+  { dir: "rtl", top: "45%", w: 260, h: 85, opacity: 0.45, duration: 14, delay: 2.5 },
+  { dir: "ltr", top: "60%", w: 340, h: 115, opacity: 0.5, duration: 16, delay: 1.2 },
+  { dir: "rtl", top: "88%", w: 300, h: 95, opacity: 0.44, duration: 12, delay: 0.4 },
+];
+
+function driftCloudBackground(index: number) {
+  return index % 2 === 0
+    ? "radial-gradient(ellipse at center, rgba(255,255,255,0.98) 0%, rgba(180,220,215,0.88) 38%, transparent 68%)"
+    : "radial-gradient(ellipse at center, rgba(255,255,255,0.96) 0%, rgba(160,210,205,0.82) 42%, transparent 70%)";
+}
+
+/** Hero: white-dominant mist — only a whisper of brand teal on the fringe */
+function heroDriftCloudBackground(index: number) {
+  return index % 2 === 0
+    ? "radial-gradient(ellipse at center, rgba(255,255,255,1) 0%, rgba(255,255,255,0.9) 32%, rgba(244,250,249,0.42) 50%, transparent 72%)"
+    : "radial-gradient(ellipse at center, rgba(255,255,255,0.99) 0%, rgba(253,254,254,0.86) 36%, rgba(238,246,245,0.3) 54%, transparent 74%)";
+}
+
+function setupDriftAnimations(gsap: typeof import("gsap").gsap, selector: string, clouds: DriftCloud[]) {
+  const drifts = gsap.utils.toArray<HTMLElement>(selector);
+
+  drifts.forEach((el, i) => {
+    const cfg = clouds[i];
+    if (!cfg) return;
+
+    const startFrac = (i % 5) / 5;
+    const fromX = cfg.dir === "ltr" ? -30 : 110;
+    const toX = cfg.dir === "ltr" ? 110 : -30;
+    const startX = `${fromX + (toX - fromX) * startFrac}vw`;
+
+    gsap.set(el, { x: startX, y: 0 });
+    gsap.to(el, {
+      x: `${toX}vw`,
+      duration: cfg.duration * (1 - startFrac),
+      delay: cfg.delay,
+      ease: "none",
+      onComplete: () => {
+        gsap.set(el, { x: `${fromX}vw` });
+        gsap.to(el, {
+          x: `${toX}vw`,
+          duration: cfg.duration,
+          ease: "none",
+          repeat: -1,
+        });
+      },
+    });
+    gsap.to(el, {
+      y: i % 2 === 0 ? 14 : -12,
+      duration: 6 + (i % 4),
+      ease: "sine.inOut",
+      yoyo: true,
+      repeat: -1,
+      delay: cfg.delay * 0.2,
+    });
+  });
+}
 
 export default function LandingPage() {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -272,41 +343,9 @@ export default function LandingPage() {
         if (!reduce) {
           const driftLayer = rootRef.current?.querySelector(".lp-altitude");
           const ground = rootRef.current?.querySelector(".lp-ground");
-          const drifts = gsap.utils.toArray<HTMLElement>(".lp-drift");
 
-          drifts.forEach((el, i) => {
-            const cfg = DRIFT_CLOUDS[i];
-            if (!cfg) return;
-            // Stagger start X so some clouds are already on-screen at load
-            const startFrac = (i % 5) / 5;
-            const fromX = cfg.dir === "ltr" ? -30 : 110;
-            const toX = cfg.dir === "ltr" ? 110 : -30;
-            const startX = `${fromX + (toX - fromX) * startFrac}vw`;
-            gsap.set(el, { x: startX, y: 0 });
-            gsap.to(el, {
-              x: `${toX}vw`,
-              duration: cfg.duration * (1 - startFrac),
-              delay: cfg.delay,
-              ease: "none",
-              onComplete: () => {
-                gsap.set(el, { x: `${fromX}vw` });
-                gsap.to(el, {
-                  x: `${toX}vw`,
-                  duration: cfg.duration,
-                  ease: "none",
-                  repeat: -1,
-                });
-              },
-            });
-            gsap.to(el, {
-              y: i % 2 === 0 ? 14 : -12,
-              duration: 6 + (i % 4),
-              ease: "sine.inOut",
-              yoyo: true,
-              repeat: -1,
-              delay: cfg.delay * 0.2,
-            });
-          });
+          setupDriftAnimations(gsap, ".lp-drift-hero", HERO_DRIFT_CLOUDS);
+          setupDriftAnimations(gsap, ".lp-drift-lower", LOWER_DRIFT_CLOUDS);
 
           // As you scroll down: fewer / fainter clouds (descending altitude)
           // Keep a visible floor so clouds don't vanish mid-page
@@ -364,7 +403,7 @@ export default function LandingPage() {
             );
           }
         } else {
-          gsap.set(".lp-altitude", { autoAlpha: 0 });
+          gsap.set(".lp-altitude, .lp-altitude-hero", { autoAlpha: 0 });
           gsap.set(".lp-ground", { autoAlpha: 1, yPercent: 0 });
         }
       }, rootRef);
@@ -430,21 +469,18 @@ export default function LandingPage() {
         ))}
       </div>
 
-      {/* Ambient altitude clouds — behind content, never blocks clicks */}
-      <div aria-hidden className="lp-altitude pointer-events-none fixed inset-0 z-[5] overflow-hidden">
-        {DRIFT_CLOUDS.map((c, i) => (
+      {/* Ambient drift clouds — fixed layer for sections below the hero */}
+      <div aria-hidden className="lp-altitude pointer-events-none fixed inset-0 z-[8] overflow-hidden">
+        {LOWER_DRIFT_CLOUDS.map((c, i) => (
           <span
             key={i}
-            className="lp-drift absolute rounded-[50%] blur-[28px] will-change-transform"
+            className="lp-drift-lower absolute rounded-[50%] blur-[28px] will-change-transform"
             style={{
               top: c.top,
               width: c.w,
               height: c.h,
               opacity: c.opacity,
-              background:
-                i % 2 === 0
-                  ? "radial-gradient(ellipse at center, rgba(255,255,255,0.98) 0%, rgba(210,235,232,0.75) 42%, transparent 70%)"
-                  : "radial-gradient(ellipse at center, rgba(255,255,255,0.95) 0%, rgba(190,220,216,0.7) 45%, transparent 72%)",
+              background: driftCloudBackground(i),
             }}
           />
         ))}
@@ -472,12 +508,9 @@ export default function LandingPage() {
       {/* ── Nav ─────────────────────────────────────────────── */}
       <header className="lp-nav absolute inset-x-0 top-0 z-40 bg-transparent">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
-          <Link href="/" className="flex items-center gap-2">
-            <span
-              aria-hidden
-              className="size-3.5 rounded-[4px] bg-gradient-to-br from-[#1a6b6a] to-[#2a9d8f] shadow-[0_0_0_3px_rgba(42,157,143,0.18)]"
-            />
-            <span className="font-display text-lg font-semibold tracking-tight text-[#0a1c26] [text-shadow:0_1px_12px_rgba(246,249,250,0.9)]">
+          <Link href="/" className="inline-flex items-center gap-2.5">
+            <AlpactoMark size="sm" />
+            <span className="font-display text-[1.5625rem] leading-none font-semibold tracking-tight text-[#0a1c26] [text-shadow:0_1px_12px_rgba(246,249,250,0.9)]">
               Alpacto
             </span>
           </Link>
@@ -527,7 +560,23 @@ export default function LandingPage() {
           <div className="absolute inset-0 bg-gradient-to-t from-[#f6f9fa] via-transparent to-[#f6f9fa]/40" />
         </div>
 
-        <div className="relative z-10 mx-auto w-full max-w-6xl px-6 pt-28 pb-20">
+        <div aria-hidden className="lp-altitude-hero pointer-events-none absolute inset-0 z-[5] overflow-hidden">
+          {HERO_DRIFT_CLOUDS.map((c, i) => (
+            <span
+              key={i}
+              className="lp-drift-hero absolute rounded-[50%] blur-[34px] will-change-transform"
+              style={{
+                top: c.top,
+                width: c.w,
+                height: c.h,
+                opacity: Math.min(1, c.opacity * HERO_DRIFT_OPACITY_BOOST),
+                background: heroDriftCloudBackground(i),
+              }}
+            />
+          ))}
+        </div>
+
+        <div className="relative z-20 mx-auto w-full max-w-6xl px-6 pt-28 pb-20">
           <div className="max-w-2xl">
             <h1 className="lp-hero-title font-display text-5xl leading-[0.98] font-semibold tracking-tight sm:text-7xl lg:text-8xl">
               Un pacto justo por{" "}
@@ -792,9 +841,9 @@ export default function LandingPage() {
         </div>
 
         <div className="relative mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 py-14 text-sm sm:flex-row">
-          <div className="flex items-center gap-2">
-            <span aria-hidden className="size-3 rounded-[3px] bg-gradient-to-br from-[#7fd1c7] to-[#2a9d8f]" />
-            <span className="font-display font-semibold text-white">Alpacto</span>
+          <div className="inline-flex items-center gap-2.5">
+            <AlpactoMark size="sm" onDark />
+            <span className="font-display text-[1.40625rem] leading-none font-semibold text-white">Alpacto</span>
           </div>
           <p className="text-center text-[#d4efeb] sm:text-right">Plataforma Impulsada con Arbitrum</p>
         </div>
