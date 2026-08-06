@@ -705,7 +705,12 @@ export default function LandingPage() {
       <section className="mx-auto max-w-6xl px-6 py-28">
         <div className="lp-reveal grid gap-12 lg:grid-cols-2 lg:items-center">
           <div className="relative order-2 lg:order-1">
-            <div className="relative overflow-hidden rounded-2xl border border-[#0f2430]/10 shadow-lg shadow-[#0f2430]/8">
+            <div
+              className="relative overflow-hidden border border-[#0f2430]/10 shadow-lg shadow-[#0f2430]/8"
+              style={{
+                clipPath: "polygon(0 18%, 18% 0, 100% 0, 100% 82%, 82% 100%, 0 100%)",
+              }}
+            >
               <Image
                 src={fiberTexture}
                 alt="Fibra de alpaca"
@@ -715,7 +720,10 @@ export default function LandingPage() {
             </div>
             <div
               aria-hidden
-              className="absolute -inset-4 -z-10 rounded-3xl bg-gradient-to-tr from-[#1a6b6a]/12 to-transparent blur-2xl"
+              className="absolute -inset-4 -z-10 bg-gradient-to-tr from-[#1a6b6a]/12 to-transparent blur-2xl"
+              style={{
+                clipPath: "polygon(0 18%, 18% 0, 100% 0, 100% 82%, 82% 100%, 0 100%)",
+              }}
             />
           </div>
           <div className="order-1 lg:order-2">
