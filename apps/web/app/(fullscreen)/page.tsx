@@ -632,18 +632,35 @@ export default function LandingPage() {
             </blockquote>
           </div>
           <div className="relative">
-            <div className="relative overflow-hidden rounded-2xl border border-[#0f2430]/10 shadow-lg shadow-[#0f2430]/8">
+            {/*
+              Oblique corner cuts (same tilt as 105° hatch ≈ 15° from vertical).
+              Removes top-left and bottom-right tips beyond the cut lines.
+            */}
+            <div
+              className="relative overflow-hidden border border-[#0f2430]/10 shadow-lg shadow-[#0f2430]/8"
+              style={{
+                clipPath: "polygon(0 18%, 18% 0, 100% 0, 100% 82%, 82% 100%, 0 100%)",
+              }}
+            >
               <Image
                 src={alpacaPortrait}
                 alt="Alpaca"
                 className="h-auto w-full object-cover"
                 sizes="(min-width: 1024px) 40vw, 100vw"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0f2430]/25 via-transparent to-transparent" />
+              <div
+                className="absolute inset-0 bg-gradient-to-t from-[#0f2430]/25 via-transparent to-transparent"
+                style={{
+                  clipPath: "polygon(0 18%, 18% 0, 100% 0, 100% 82%, 82% 100%, 0 100%)",
+                }}
+              />
             </div>
             <div
               aria-hidden
-              className="absolute -inset-4 -z-10 rounded-3xl bg-gradient-to-br from-[#1a6b6a]/15 to-transparent blur-2xl"
+              className="absolute -inset-4 -z-10 bg-gradient-to-br from-[#1a6b6a]/15 to-transparent blur-2xl"
+              style={{
+                clipPath: "polygon(0 18%, 18% 0, 100% 0, 100% 82%, 82% 100%, 0 100%)",
+              }}
             />
           </div>
         </div>
