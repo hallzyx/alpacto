@@ -906,7 +906,7 @@ export default function LandingPage() {
             <AlpactoMark size="sm" onDark />
             <span className="font-display text-[1.40625rem] leading-none font-semibold text-white">Alpacto</span>
           </div>
-          <p className="text-center text-[#d4efeb] sm:text-right">Plataforma Impulsada con Arbitrum</p>
+          <p className="pt-3 text-center text-[17px] text-[#d4efeb] sm:text-right">Plataforma Impulsada con Arbitrum</p>
         </div>
       </footer>
     </div>
