@@ -87,7 +87,7 @@ const ROLES = [
   {
     label: "Inspector",
     body: "Pesa, clasifica y firma con evidencia.",
-    image: "/roles/ayni_inspector.png?v=4",
+    image: "/roles/ayni_inspector.png",
   },
   {
     label: "Comprador",
@@ -768,12 +768,12 @@ export default function LandingPage() {
       </section>
 
       {/* ── CTA final ───────────────────────────────────────── */}
-      <section className="relative overflow-hidden py-32">
+      <section className="relative overflow-x-clip pt-32 pb-[11.5rem] sm:pb-[14.5rem]">
         <div
           aria-hidden
           className="absolute inset-0 bg-[radial-gradient(80%_60%_at_50%_100%,rgba(42,157,143,0.14),transparent_70%)]"
         />
-        <div className="lp-reveal relative mx-auto max-w-3xl px-6 text-center">
+        <div className="lp-reveal relative z-[1] mx-auto max-w-3xl px-6 text-center">
           <h2 className="font-display text-4xl leading-tight font-semibold tracking-tight sm:text-6xl">
             Que ningún pesaje se decida a espaldas del productor
           </h2>
@@ -796,10 +796,46 @@ export default function LandingPage() {
             </Button>
           </div>
         </div>
+
+        {/* Ground fauna — same section so the teal wash reaches the footer unbroken */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-40 translate-y-[10px] sm:h-52 sm:translate-y-[14px]"
+        >
+          <div className="mx-auto flex h-full max-w-6xl items-end justify-between gap-2 px-3 sm:px-8">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/ground/ground_alpaca.png"
+              alt=""
+              width={549}
+              height={722}
+              className="h-[95%] w-auto max-w-[30%] shrink-0 -scale-x-100 object-contain object-bottom sm:max-w-none"
+              decoding="async"
+            />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/ground/ground_flower.png"
+              alt=""
+              width={1172}
+              height={612}
+              className="mb-2 h-[29%] w-auto max-w-[12%] shrink-0 object-contain object-bottom sm:h-[30%] sm:max-w-none"
+              decoding="async"
+            />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/ground/ground_animals.png"
+              alt=""
+              width={1129}
+              height={597}
+              className="h-[82%] w-auto max-w-[38%] shrink-0 object-contain object-bottom sm:h-[90%] sm:max-w-none"
+              decoding="async"
+            />
+          </div>
+        </div>
       </section>
 
       {/* ── Footer = superficie en verde de marca ───────────── */}
-      <footer className="lp-footer relative z-10 overflow-hidden bg-[#145a59]">
+      <footer className="lp-footer relative z-10 overflow-x-clip bg-[#145a59]">
         <div aria-hidden className="lp-ground pointer-events-none absolute inset-0">
           {/* Brand teal earth — always visible */}
           <div
