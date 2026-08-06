@@ -73,10 +73,26 @@ const FEATURES = [
 ] as const;
 
 const ROLES = [
-  { label: "Productor", body: "Revisa y acepta tu pago en soles." },
-  { label: "Asociación", body: "Registra lotes y coordina el acopio." },
-  { label: "Inspector", body: "Pesa, clasifica y firma con evidencia." },
-  { label: "Comprador", body: "Fondea la orden y garantiza el pago." },
+  {
+    label: "Productor",
+    body: "Revisa y acepta tu pago en soles.",
+    image: "/roles/ayni_producer.png",
+  },
+  {
+    label: "Asociación",
+    body: "Registra lotes y coordina el acopio.",
+    image: "/roles/ayni_association.png",
+  },
+  {
+    label: "Inspector",
+    body: "Pesa, clasifica y firma con evidencia.",
+    image: "/roles/ayni_inspector.png?v=4",
+  },
+  {
+    label: "Comprador",
+    body: "Fondea la orden y garantiza el pago.",
+    image: "/roles/ayni_buyer.png?v=4",
+  },
 ] as const;
 
 /** Soft cloud blobs: side + size/position for the entrance curtain */
@@ -101,6 +117,20 @@ const CLOUD_BLOBS: Array<{
   { side: "right", w: "38vw", h: "34vh", top: "70%", right: "2%", opacity: 0.78 },
   { side: "left", w: "34vw", h: "26vh", top: "40%", left: "18%", opacity: 0.55 },
   { side: "right", w: "32vw", h: "24vh", top: "42%", right: "16%", opacity: 0.55 },
+];
+
+/** Ambient drift clouds while scrolling (altitude → surface) */
+const DRIFT_CLOUDS = [
+  { dir: "ltr" as const, top: "10%", w: 360, h: 120, opacity: 0.69, duration: 16, delay: 0 },
+  { dir: "rtl" as const, top: "22%", w: 300, h: 100, opacity: 0.6, duration: 18, delay: 0.5 },
+  { dir: "ltr" as const, top: "38%", w: 420, h: 140, opacity: 0.53, duration: 20, delay: 1 },
+  { dir: "rtl" as const, top: "52%", w: 320, h: 110, opacity: 0.63, duration: 15, delay: 0.2 },
+  { dir: "ltr" as const, top: "68%", w: 280, h: 90, opacity: 0.5, duration: 17, delay: 1.5 },
+  { dir: "rtl" as const, top: "78%", w: 380, h: 130, opacity: 0.56, duration: 19, delay: 0.8 },
+  { dir: "ltr" as const, top: "15%", w: 220, h: 70, opacity: 0.48, duration: 13, delay: 2 },
+  { dir: "rtl" as const, top: "45%", w: 260, h: 85, opacity: 0.45, duration: 14, delay: 2.5 },
+  { dir: "ltr" as const, top: "60%", w: 340, h: 115, opacity: 0.5, duration: 16, delay: 1.2 },
+  { dir: "rtl" as const, top: "88%", w: 300, h: 95, opacity: 0.44, duration: 12, delay: 0.4 },
 ];
 
 export default function LandingPage() {
@@ -237,6 +267,106 @@ export default function LandingPage() {
             scrollTrigger: { trigger: ".lp-steps", start: "top 80%" },
           },
         );
+
+        // ── Altitude descent: drift clouds + approach surface ──
+        if (!reduce) {
+          const driftLayer = rootRef.current?.querySelector(".lp-altitude");
+          const ground = rootRef.current?.querySelector(".lp-ground");
+          const drifts = gsap.utils.toArray<HTMLElement>(".lp-drift");
+
+          drifts.forEach((el, i) => {
+            const cfg = DRIFT_CLOUDS[i];
+            if (!cfg) return;
+            // Stagger start X so some clouds are already on-screen at load
+            const startFrac = (i % 5) / 5;
+            const fromX = cfg.dir === "ltr" ? -30 : 110;
+            const toX = cfg.dir === "ltr" ? 110 : -30;
+            const startX = `${fromX + (toX - fromX) * startFrac}vw`;
+            gsap.set(el, { x: startX, y: 0 });
+            gsap.to(el, {
+              x: `${toX}vw`,
+              duration: cfg.duration * (1 - startFrac),
+              delay: cfg.delay,
+              ease: "none",
+              onComplete: () => {
+                gsap.set(el, { x: `${fromX}vw` });
+                gsap.to(el, {
+                  x: `${toX}vw`,
+                  duration: cfg.duration,
+                  ease: "none",
+                  repeat: -1,
+                });
+              },
+            });
+            gsap.to(el, {
+              y: i % 2 === 0 ? 14 : -12,
+              duration: 6 + (i % 4),
+              ease: "sine.inOut",
+              yoyo: true,
+              repeat: -1,
+              delay: cfg.delay * 0.2,
+            });
+          });
+
+          // As you scroll down: fewer / fainter clouds (descending altitude)
+          // Keep a visible floor so clouds don't vanish mid-page
+          if (driftLayer) {
+            gsap.fromTo(
+              driftLayer,
+              { autoAlpha: 1 },
+              {
+                autoAlpha: 0.25,
+                ease: "none",
+                scrollTrigger: {
+                  trigger: rootRef.current,
+                  start: "top top",
+                  end: "bottom bottom",
+                  scrub: 1.2,
+                },
+              },
+            );
+          }
+
+          // Soft rise of hill silhouettes only — ground color stays always visible
+          if (ground) {
+            gsap.fromTo(
+              ground,
+              { yPercent: 12 },
+              {
+                yPercent: 0,
+                ease: "none",
+                scrollTrigger: {
+                  trigger: ".lp-footer",
+                  start: "top 90%",
+                  end: "top 45%",
+                  scrub: 0.8,
+                },
+              },
+            );
+          }
+
+          // Atmosphere cools from high sky → warmer ground haze
+          const atmosphere = rootRef.current?.querySelector(".lp-atmosphere");
+          if (atmosphere) {
+            gsap.fromTo(
+              atmosphere,
+              { autoAlpha: 0 },
+              {
+                autoAlpha: 1,
+                ease: "none",
+                scrollTrigger: {
+                  trigger: rootRef.current,
+                  start: "55% top",
+                  end: "bottom bottom",
+                  scrub: 1,
+                },
+              },
+            );
+          }
+        } else {
+          gsap.set(".lp-altitude", { autoAlpha: 0 });
+          gsap.set(".lp-ground", { autoAlpha: 1, yPercent: 0 });
+        }
       }, rootRef);
 
       if (reduce) {
@@ -299,6 +429,36 @@ export default function LandingPage() {
           />
         ))}
       </div>
+
+      {/* Ambient altitude clouds — behind content, never blocks clicks */}
+      <div aria-hidden className="lp-altitude pointer-events-none fixed inset-0 z-[5] overflow-hidden">
+        {DRIFT_CLOUDS.map((c, i) => (
+          <span
+            key={i}
+            className="lp-drift absolute rounded-[50%] blur-[28px] will-change-transform"
+            style={{
+              top: c.top,
+              width: c.w,
+              height: c.h,
+              opacity: c.opacity,
+              background:
+                i % 2 === 0
+                  ? "radial-gradient(ellipse at center, rgba(255,255,255,0.98) 0%, rgba(210,235,232,0.75) 42%, transparent 70%)"
+                  : "radial-gradient(ellipse at center, rgba(255,255,255,0.95) 0%, rgba(190,220,216,0.7) 45%, transparent 72%)",
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Ground haze that grows as altitude drops */}
+      <div
+        aria-hidden
+        className="lp-atmosphere pointer-events-none fixed inset-0 z-[1] opacity-0"
+        style={{
+          background:
+            "linear-gradient(to top, rgba(26, 107, 106, 0.2) 0%, rgba(42, 157, 143, 0.1) 28%, transparent 55%)",
+        }}
+      />
 
       {/* subtle fiber weave texture over the whole page */}
       <div
@@ -528,14 +688,30 @@ export default function LandingPage() {
               Cada actor ve solo lo que necesita, con explicaciones en soles y sin jerga cripto.
             </p>
           </div>
-          <div className="lp-reveal mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="lp-reveal mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {ROLES.map(r => (
               <div
                 key={r.label}
-                className="rounded-2xl border border-[#0f2430]/10 bg-white p-6 transition hover:border-[#2a9d8f]/40"
+                className="group flex flex-col overflow-hidden rounded-2xl border border-[#0f2430]/10 bg-white shadow-sm transition hover:-translate-y-1 hover:border-[#2a9d8f]/40 hover:shadow-md"
               >
-                <h3 className="font-display text-lg font-semibold text-[#0f2430]">{r.label}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-[#4a5d68]">{r.body}</p>
+                <div className="relative aspect-[4/5] w-full overflow-hidden bg-gradient-to-b from-[#dff3f0] via-[#eef8f7] to-white">
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute left-1/2 top-8 size-40 -translate-x-1/2 rounded-full bg-[#2a9d8f]/20 blur-2xl"
+                  />
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={r.image}
+                    alt={`Avatar ${r.label}`}
+                    className="absolute inset-0 z-[1] h-full w-full object-contain object-bottom p-3 transition duration-500 group-hover:scale-[1.04]"
+                    loading="eager"
+                    decoding="async"
+                  />
+                </div>
+                <div className="flex flex-1 flex-col px-5 pb-5 pt-3">
+                  <h3 className="font-display text-lg font-semibold text-[#0f2430]">{r.label}</h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-[#4a5d68]">{r.body}</p>
+                </div>
               </div>
             ))}
           </div>
@@ -573,14 +749,54 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Footer ──────────────────────────────────────────── */}
-      <footer className="border-t border-[#0f2430]/8 py-10">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 text-sm text-[#5c6f7a] sm:flex-row">
+      {/* ── Footer = superficie en verde de marca ───────────── */}
+      <footer className="lp-footer relative z-10 overflow-hidden bg-[#145a59]">
+        <div aria-hidden className="lp-ground pointer-events-none absolute inset-0">
+          {/* Brand teal earth — always visible */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background: "linear-gradient(180deg, #1a6b6a 0%, #145a59 32%, #0f4847 68%, #0a3534 100%)",
+            }}
+          />
+          {/* Soft mint wash */}
+          <div
+            className="absolute inset-0 opacity-35"
+            style={{
+              background: "radial-gradient(120% 80% at 50% 100%, rgba(42,157,143,0.22) 0%, transparent 55%)",
+            }}
+          />
+          {/* Hill silhouettes in deeper brand teal */}
+          <svg
+            className="absolute bottom-0 left-0 h-full w-full"
+            viewBox="0 0 1440 160"
+            preserveAspectRatio="none"
+            aria-hidden
+          >
+            <path
+              fill="rgba(10, 53, 52, 0.55)"
+              d="M0,70 C200,30 340,95 520,60 C700,25 860,10 1040,45 C1220,80 1340,40 1440,55 L1440,160 L0,160 Z"
+            />
+            <path
+              fill="rgba(6, 40, 39, 0.7)"
+              d="M0,100 C240,70 420,120 600,95 C820,65 980,90 1180,80 C1320,74 1400,95 1440,90 L1440,160 L0,160 Z"
+            />
+          </svg>
+          <div
+            className="absolute inset-x-0 bottom-0 h-16 opacity-25"
+            style={{
+              backgroundImage:
+                "repeating-linear-gradient(100deg, transparent 0, transparent 14px, rgba(255,255,255,0.12) 14px, rgba(255,255,255,0.12) 15px)",
+            }}
+          />
+        </div>
+
+        <div className="relative mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 py-14 text-sm sm:flex-row">
           <div className="flex items-center gap-2">
-            <span aria-hidden className="size-3 rounded-[3px] bg-gradient-to-br from-[#1a6b6a] to-[#2a9d8f]" />
-            <span className="font-display font-semibold text-[#0f2430]">Alpacto</span>
+            <span aria-hidden className="size-3 rounded-[3px] bg-gradient-to-br from-[#7fd1c7] to-[#2a9d8f]" />
+            <span className="font-display font-semibold text-white">Alpacto</span>
           </div>
-          <p>Un pacto justo por cada fibra. MVP en Arbitrum Sepolia.</p>
+          <p className="text-center text-[#d4efeb] sm:text-right">Plataforma Impulsada con Arbitrum</p>
         </div>
       </footer>
     </div>

@@ -665,8 +665,17 @@ h4 {
   visibility: hidden !important;
 }
 
+/* Keep landing content above ambient altitude clouds */
+.lp > header,
+.lp > section,
+.lp > footer {
+  position: relative;
+  z-index: 10;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .lp-clouds {
+  .lp-clouds,
+  .lp-altitude {
     display: none !important;
   }
 
