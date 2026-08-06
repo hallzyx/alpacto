@@ -1,5 +1,6 @@
 "use client";
 
+import { Toaster } from "react-hot-toast";
 import { AppSidebar } from "~~/components/alpacto/AppSidebar";
 import { AyniAssociationChat, AyniBuyerChat, AyniProducerChat } from "~~/components/alpacto/AyniGuideChat";
 import { useAuth } from "~~/components/alpacto/AuthProvider";
@@ -35,6 +36,14 @@ export function AppShell({ children, showNav = true }: { children: React.ReactNo
         </SidebarInset>
       </SidebarProvider>
       <AyniChatForRole role={user.role} />
+      <Toaster
+        position="bottom-right"
+        toastOptions={{
+          duration: 4000,
+          className: "!bg-card !text-foreground !border !border-border !shadow-lg !text-sm",
+          success: { iconTheme: { primary: "hsl(var(--primary))", secondary: "hsl(var(--primary-foreground))" } },
+        }}
+      />
     </div>
   );
 }

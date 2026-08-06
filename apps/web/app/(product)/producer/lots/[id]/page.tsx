@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, ClipboardCheck, FileText, Scale, ShieldAlert, Wallet } from "lucide-react";
+import toast from "react-hot-toast";
 import {
   ErrorBanner,
   ProducerOrderContextCard,
@@ -126,6 +127,7 @@ function ProducerLotInner() {
         method: "POST",
         body: { reasonCode: "weight_dispute", reasonText: "Solicito nuevo pesaje" },
       });
+      toast.success("Nuevo pesaje solicitado. El inspector será notificado.");
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo solicitar nuevo pesaje");
@@ -155,7 +157,13 @@ function ProducerLotInner() {
     !awaitingConfirm &&
     !declined;
   const ayniNeedsAttention =
-    latestAudit && ["review_required", "warning", "unreadable"].includes(latestAudit.resultCode ?? "");
+    latestAudit &&
+    (["review_required", "warning", "unreadable", "failed"].includes(latestAudit.resultCode ?? "") ||
+      latestAudit.status === "failed" ||
+      data.lot.status === "audit_failed");
+  const showAyniCard =
+    Boolean(auditDetail) &&
+    (ayniNeedsAttention || (auditDetail?.findings.length ?? 0) > 0 || Boolean(auditDetail?.progressLabel));
 
   return (
     <div className="flex flex-col gap-6">
@@ -251,7 +259,7 @@ function ProducerLotInner() {
 
       {orderContext ? <ProducerOrderContextCard participation={orderContext} highlightLotId={id} compact /> : null}
 
-      {auditDetail && (ayniNeedsAttention || auditDetail.findings.length > 0) ? (
+      {showAyniCard && auditDetail ? (
         <Card>
           <CardHeader>
             <CardTitle>Qué encontró Ayni</CardTitle>
@@ -264,11 +272,18 @@ function ProducerLotInner() {
               <span className="text-sm text-muted-foreground">Resultado:</span>
               <StatusPill status={auditDetail.resultCode ?? auditDetail.status} />
             </div>
+            {auditDetail.status === "failed" && auditDetail.progressLabel && !auditDetail.findings.length ? (
+              <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-foreground">
+                Motivo del fallo: {auditDetail.progressLabel}
+              </p>
+            ) : null}
             {!auditDetail.findings.length ? (
               <p className="text-sm text-muted-foreground">
                 {auditDetail.resultCode === "pass"
                   ? "Todo cuadra con la evidencia. Puedes seguir hacia la liquidación cuando esté listo."
-                  : "Ayni marcó revisión. Si no estás de acuerdo con el pesaje, pide un nuevo pesaje."}
+                  : auditDetail.status === "failed"
+                    ? "La auditoría no terminó bien. Pide a la asociación o al inspector que vuelva a enviar la inspección."
+                    : "Ayni marcó revisión. Si no estás de acuerdo con el pesaje, pide un nuevo pesaje."}
               </p>
             ) : (
               <ul className="flex flex-col gap-3">

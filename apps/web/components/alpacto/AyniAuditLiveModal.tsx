@@ -288,12 +288,19 @@ export function AyniAuditLiveModal({
                 }`}
               >
                 <p className="font-display text-lg font-semibold">
-                  {ok ? "Ayni aprobó la revisión" : "Ayni no aprobó — se requiere revisión"}
+                  {ok
+                    ? "Ayni aprobó la revisión"
+                    : detail.status === "failed"
+                      ? "Ayni no pudo completar la auditoría"
+                      : "Ayni no aprobó — se requiere revisión"}
                 </p>
                 <p className="mt-1 text-sm text-muted-foreground">
                   Resultado: <strong>{statusLabel(detail.resultCode ?? detail.status)}</strong>
                   {detail.resultCode === "warning" ? " (aviso leve; liquidación permitida)" : null}
                 </p>
+                {detail.status === "failed" && detail.progressLabel && !detail.findings.length ? (
+                  <p className="mt-2 text-sm text-foreground">Motivo: {detail.progressLabel}</p>
+                ) : null}
                 {!ok && detail.findings.length ? (
                   <ul className="mt-3 space-y-2 text-sm">
                     {detail.findings.map(f => (
