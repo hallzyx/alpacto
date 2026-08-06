@@ -45,6 +45,34 @@ export type AuditJobData = {
   inspectionVersion: number;
 };
 
+const PHASE_LABELS: Record<string, string> = {
+  queued: "En cola…",
+  context: "Cargando contexto del lote…",
+  scale: "Leyendo la foto de la balanza…",
+  classification: "Revisando la clasificación…",
+  settlement: "Calculando liquidación estimada…",
+  compare: "Comparando declarado vs evidencia…",
+  report: "Generando informe de auditoría…",
+  attest: "Registrando attestation on-chain…",
+  done: "Auditoría completa",
+  failed: "Auditoría fallida",
+};
+
+async function setProgress(
+  db: Database,
+  auditRunId: string,
+  phase: string,
+  label?: string,
+) {
+  await db
+    .update(auditRuns)
+    .set({
+      progressPhase: phase,
+      progressLabel: label ?? PHASE_LABELS[phase] ?? phase,
+    })
+    .where(eq(auditRuns.id, auditRunId));
+}
+
 type AuditContext = {
   lot: typeof lots.$inferSelect;
   inspection: typeof inspections.$inferSelect;
@@ -198,11 +226,13 @@ export async function processAuditJob(
 
   await db
     .update(auditRuns)
-    .set({ status: "running", startedAt: new Date(), provider: "deepseek" })
+    .set({ status: "running", startedAt: new Date(), provider: "deepseek", progressPhase: "context", progressLabel: PHASE_LABELS.context })
     .where(eq(auditRuns.id, data.auditRunId));
 
   const handlers: Record<string, (args: Record<string, unknown>) => Promise<unknown>> = {
-    get_audit_context: async () => ({
+    get_audit_context: async () => {
+      await setProgress(db, data.auditRunId, "context");
+      return {
       lotId: ctx.lot.id,
       onchainLotId: ctx.lot.onchainLotId?.toString() ?? null,
       inspectionVersion: ctx.inspection.version,
@@ -210,8 +240,10 @@ export async function processAuditJob(
       categoryCode: ctx.inspection.categoryCode,
       inspector: ctx.inspectorName,
       evidenceCount: ctx.evidence.length,
-    }),
+    };
+    },
     extract_scale_evidence: async () => {
+      await setProgress(db, data.auditRunId, "scale");
       if (config.ayni.useFixtureVision) {
         const { scaleEvidenceSchema } = await import("@alpacto/shared-schemas");
         scaleReading = scaleEvidenceSchema.parse(
@@ -245,6 +277,7 @@ export async function processAuditJob(
       return scaleReading;
     },
     extract_classification_document: async () => {
+      await setProgress(db, data.auditRunId, "classification");
       if (config.ayni.useFixtureVision) {
         const { classificationDocSchema } = await import("@alpacto/shared-schemas");
         classification = classificationDocSchema.parse(
@@ -277,6 +310,7 @@ export async function processAuditJob(
       return classification;
     },
     calculate_settlement: async () => {
+      await setProgress(db, data.auditRunId, "settlement");
       const penPerUsdcMicros =
         ctx.policy.penPerUsdcMicros > 0n ? ctx.policy.penPerUsdcMicros : 3_750_000n;
       settlement = calculateSettlementPreview({
@@ -295,6 +329,7 @@ export async function processAuditJob(
       };
     },
     compare_audit_values: async () => {
+      await setProgress(db, data.auditRunId, "compare");
       compareResult = compareAuditValues({
         declaredWeightGrams: ctx.inspection.weightGrams,
         observedWeightKg: scaleReading?.weightValueKg ?? null,
@@ -306,6 +341,7 @@ export async function processAuditJob(
       return compareResult;
     },
     create_audit_report: async () => {
+      await setProgress(db, data.auditRunId, "report");
       if (!compareResult) throw new Error("compare_audit_values must run first");
       const report = {
         lotId: ctx.lot.id,
@@ -369,6 +405,7 @@ export async function processAuditJob(
       return { reportHash, storageKey, resultCode: compareResult.resultCode };
     },
     submit_audit_attestation: async () => {
+      await setProgress(db, data.auditRunId, "attest");
       if (!compareResult || !reportHash) {
         throw new Error("create_audit_report must run first");
       }
@@ -376,7 +413,7 @@ export async function processAuditJob(
         onLog("skip onchain attestation — no onchainLotId or contract");
         await db
           .update(auditRuns)
-          .set({ status: "attested" })
+          .set({ status: "attested", progressPhase: "done", progressLabel: PHASE_LABELS.done })
           .where(eq(auditRuns.id, data.auditRunId));
         return { skipped: true, reason: "offchain_only" };
       }
@@ -395,7 +432,7 @@ export async function processAuditJob(
         onLog("AYNI_SERIALIZED_SESSION missing — offchain attestation only");
         await db
           .update(auditRuns)
-          .set({ status: "attested" })
+          .set({ status: "attested", progressPhase: "done", progressLabel: PHASE_LABELS.done })
           .where(eq(auditRuns.id, data.auditRunId));
         return { skipped: true, reason: "no_serialized_session" };
       }
@@ -422,7 +459,7 @@ export async function processAuditJob(
       onchainTxHash = receipt.receipt.transactionHash;
       await db
         .update(auditRuns)
-        .set({ status: "attested", onchainTxHash })
+        .set({ status: "attested", onchainTxHash, progressPhase: "done", progressLabel: PHASE_LABELS.done })
         .where(eq(auditRuns.id, data.auditRunId));
 
       return { onchainTxHash };
@@ -470,6 +507,7 @@ Never calculate money yourself. Stop after attestation.`;
   }
 
   onLog(`audit complete result=${compareResult?.resultCode ?? "unknown"}`);
+  await setProgress(db, data.auditRunId, "done", PHASE_LABELS.done);
   return {
     auditRunId: data.auditRunId,
     resultCode: compareResult?.resultCode,
@@ -486,7 +524,12 @@ export async function markAuditFailed(
 ) {
   await db
     .update(auditRuns)
-    .set({ status: "failed", completedAt: new Date() })
+    .set({
+      status: "failed",
+      completedAt: new Date(),
+      progressPhase: "failed",
+      progressLabel: reason.slice(0, 255),
+    })
     .where(eq(auditRuns.id, auditRunId));
   await db
     .update(lots)
