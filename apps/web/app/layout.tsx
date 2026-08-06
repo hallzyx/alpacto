@@ -1,9 +1,9 @@
 import { Fraunces, Source_Sans_3, Inter, Orbitron, Geist } from "next/font/google";
 import "@rainbow-me/rainbowkit/styles.css";
-import { Metadata } from "next";
 import { ThemeProvider } from "~~/components/ThemeProvider";
 import { AuthProvider } from "~~/components/alpacto/AuthProvider";
 import { TooltipProvider } from "~~/components/ui/tooltip";
+import { buildRootMetadata } from "~~/lib/metadata";
 import "~~/styles/globals.css";
 import { cn } from "~~/lib/utils";
 
@@ -33,47 +33,11 @@ const orbitron = Orbitron({
   weight: ["400", "700", "900"],
 });
 
-const baseUrl = process.env.VERCEL_URL
-  ? `https://${process.env.VERCEL_URL}`
-  : `http://localhost:${process.env.PORT || 3000}`;
-const imageUrl = `${baseUrl}/thumbnail.jpg`;
-
-const title = "Alpacto";
-const titleTemplate = "%s · Alpacto";
-const description = "Un pacto justo por cada fibra.";
-
-export const metadata: Metadata = {
-  metadataBase: new URL(baseUrl),
-  title: {
-    default: title,
-    template: titleTemplate,
-  },
-  description,
-  openGraph: {
-    title: {
-      default: title,
-      template: titleTemplate,
-    },
-    description,
-    images: [{ url: imageUrl }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    images: [imageUrl],
-    title: {
-      default: title,
-      template: titleTemplate,
-    },
-    description,
-  },
-  icons: {
-    icon: [{ url: "/favicon.png", sizes: "32x32", type: "image/png" }],
-  },
-};
+export const metadata = buildRootMetadata();
 
 const RootLayout = ({ children }: { children: React.ReactNode }) => {
   return (
-    <html suppressHydrationWarning className={cn("font-sans", geist.variable)}>
+    <html lang="es" suppressHydrationWarning className={cn("font-sans", geist.variable)}>
       <body
         className={`${fraunces.variable} ${sourceSans.variable} ${inter.variable} ${orbitron.variable} font-body`}
         suppressHydrationWarning

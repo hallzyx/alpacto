@@ -1,5 +1,24 @@
 {
-  "name": "Scaffold-Stylus DApp",
-  "description": "A DApp built with Scaffold-Stylus",
-  "iconPath": "logo.svg"
+  "name": "Alpacto",
+  "short_name": "Alpacto",
+  "description": "Un pacto justo por cada fibra. Comercio justo de fibra de alpaca con escrow, evidencia y pagos onchain.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f6f9fa",
+  "theme_color": "#145a59",
+  "lang": "es",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/og-image.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
 }
