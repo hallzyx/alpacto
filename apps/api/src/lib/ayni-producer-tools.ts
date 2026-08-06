@@ -116,7 +116,8 @@ export const AYNI_PRODUCER_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] =
     type: "function",
     function: {
       name: "get_my_ayni_findings",
-      description: "Hallazgos de la última auditoría Ayni de un lote propio.",
+      description:
+        "Hallazgos de la última auditoría Ayni de un lote propio. Incluye resultCode, findings y failureReason si el pipeline falló.",
       parameters: {
         type: "object",
         properties: {
@@ -336,7 +337,7 @@ export function createAyniProducerToolHandlers(opts: {
         .select()
         .from(auditRuns)
         .where(eq(auditRuns.lotId, lot.id))
-        .orderBy(desc(auditRuns.createdAt))
+        .orderBy(desc(auditRuns.startedAt))
         .limit(1);
       if (!audit) return { lotId: lot.id, audit: null, message: "Ayni aún no auditó este lote." };
       const findings = await db
@@ -348,6 +349,8 @@ export function createAyniProducerToolHandlers(opts: {
         shortId: shortId(lot.id),
         resultCode: audit.resultCode,
         status: audit.status,
+        failureReason: audit.status === "failed" ? audit.progressLabel : null,
+        progressPhase: audit.progressPhase,
         findings: findings.map((f) => ({
           code: f.code,
           severity: f.severity,

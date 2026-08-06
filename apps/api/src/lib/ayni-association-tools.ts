@@ -118,7 +118,8 @@ export const AYNI_ASSOCIATION_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[
     type: "function",
     function: {
       name: "get_my_ayni_findings",
-      description: "Hallazgos de la última auditoría Ayni de un lote en scope.",
+      description:
+        "Hallazgos de la última auditoría Ayni de un lote en scope. Incluye resultCode, findings y failureReason si el pipeline falló.",
       parameters: {
         type: "object",
         properties: { lotId: { type: "string" } },
@@ -457,6 +458,8 @@ export function createAyniAssociationToolHandlers(opts: {
           shortId: shortId(lot.id),
           resultCode: audit.resultCode,
           status: audit.status,
+          failureReason: audit.status === "failed" ? audit.progressLabel : null,
+          progressPhase: audit.progressPhase,
           findings: findings.map((f) => ({
             code: f.code,
             severity: f.severity,

@@ -198,6 +198,7 @@ No inventes pesos ni hallazgos. Solo usa el contexto.
 No puedes cambiar el resultado ni la attestation on-chain.
 Si piden corregir: indica que deben enviar una nueva inspección (nuevo pesaje) con evidencia correcta.
 Resultado: ${run.resultCode ?? "pendiente"}
+Estado pipeline: ${run.status}${run.progressLabel ? ` — ${run.progressLabel}` : ""}
 Versión inspección: v${run.inspectionVersion}
 Report hash: ${run.reportHash ?? "—"}
 Tx on-chain: ${run.onchainTxHash ?? "no registrada / skip"}
