@@ -161,38 +161,38 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <div ref={rootRef} className="lp relative min-h-svh overflow-x-clip bg-[#0b1c2c] text-[#f6f9fa]">
+    <div ref={rootRef} className="lp relative min-h-svh overflow-x-clip bg-[#f6f9fa] text-[#0f2430]">
       {/* subtle fiber weave texture over the whole page */}
       <div
         aria-hidden
-        className="pointer-events-none fixed inset-0 z-[1] opacity-[0.05]"
+        className="pointer-events-none fixed inset-0 z-[1] opacity-[0.06]"
         style={{
           backgroundImage:
-            "repeating-linear-gradient(105deg, transparent 0, transparent 9px, rgba(127,209,199,0.7) 9px, rgba(127,209,199,0.7) 10px)",
+            "repeating-linear-gradient(105deg, transparent 0, transparent 9px, rgba(26,107,106,0.6) 9px, rgba(26,107,106,0.6) 10px)",
         }}
       />
       {/* ── Nav ─────────────────────────────────────────────── */}
-      <header className="lp-nav absolute inset-x-0 top-0 z-40 border-b border-white/10 bg-[#0b1c2c]/70 backdrop-blur-md">
+      <header className="lp-nav absolute inset-x-0 top-0 z-40 border-b border-[#0f2430]/8 bg-[#f6f9fa]/85 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
           <Link href="/" className="flex items-center gap-2">
             <span
               aria-hidden
-              className="size-3.5 rounded-[4px] bg-gradient-to-br from-[#1a6b6a] to-[#2a9d8f] shadow-[0_0_0_3px_rgba(42,157,143,0.25)]"
+              className="size-3.5 rounded-[4px] bg-gradient-to-br from-[#1a6b6a] to-[#2a9d8f] shadow-[0_0_0_3px_rgba(42,157,143,0.18)]"
             />
             <span className="font-display text-lg font-semibold tracking-tight">Alpacto</span>
           </Link>
-          <nav className="hidden items-center gap-8 text-sm text-white/70 md:flex">
-            <a href="#como-funciona" className="transition hover:text-white">
+          <nav className="hidden items-center gap-8 text-sm text-[#41525e] md:flex">
+            <a href="#como-funciona" className="transition hover:text-[#0f2430]">
               Cómo funciona
             </a>
-            <a href="#vision" className="transition hover:text-white">
+            <a href="#vision" className="transition hover:text-[#0f2430]">
               Visión
             </a>
-            <a href="#roles" className="transition hover:text-white">
+            <a href="#roles" className="transition hover:text-[#0f2430]">
               Roles
             </a>
           </nav>
-          <Button asChild size="sm" className="bg-[#2a9d8f] text-[#0b1c2c] hover:bg-[#2faba0]">
+          <Button asChild size="sm" className="bg-[#1a6b6a] text-white hover:bg-[#145a59]">
             <Link href="/login">Entrar</Link>
           </Button>
         </div>
@@ -209,27 +209,27 @@ export default function LandingPage() {
             sizes="100vw"
             className="lp-hero-media object-cover opacity-0"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0b1c2c] via-[#0b1c2c]/78 to-[#0b1c2c]/25" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0b1c2c] via-transparent to-[#0b1c2c]/40" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#f6f9fa] via-[#f6f9fa]/78 to-[#f6f9fa]/25" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#f6f9fa] via-transparent to-[#f6f9fa]/40" />
         </div>
 
         <div className="relative z-10 mx-auto w-full max-w-6xl px-6 pt-28 pb-20">
           <div className="max-w-2xl">
-            <p className="lp-hero-tag mb-4 inline-flex items-center gap-2 rounded-full border border-[#2a9d8f]/40 bg-[#2a9d8f]/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.14em] text-[#7fd1c7]">
+            <p className="lp-hero-tag mb-4 inline-flex items-center gap-2 rounded-full border border-[#2a9d8f]/35 bg-[#2a9d8f]/12 px-3 py-1 text-xs font-medium uppercase tracking-[0.14em] text-[#155e5d]">
               Fibra de alpaca · Web 2.5
             </p>
             <h1 className="lp-hero-title font-display text-5xl leading-[0.98] font-semibold tracking-tight sm:text-7xl lg:text-8xl">
               Un pacto justo por{" "}
-              <span className="bg-gradient-to-r from-[#2faba0] to-[#2a9d8f] bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-[#1a6b6a] to-[#2a9d8f] bg-clip-text text-transparent">
                 cada fibra
               </span>
             </h1>
-            <p className="lp-hero-tag mt-6 max-w-xl text-lg leading-relaxed text-white/75 sm:text-xl">
+            <p className="lp-hero-tag mt-6 max-w-xl text-lg leading-relaxed text-[#2d3f4a] sm:text-xl">
               El comprador asegura los fondos, cada pesaje queda con evidencia y responsable, y el productor acepta su
               liquidación antes de entregar. Arbitrum ejecuta las reglas.
             </p>
             <div className="lp-hero-cta mt-10 flex flex-wrap items-center gap-4">
-              <Button asChild size="lg" className="bg-[#2a9d8f] text-[#0b1c2c] hover:bg-[#2faba0]">
+              <Button asChild size="lg" className="bg-[#1a6b6a] text-white hover:bg-[#145a59]">
                 <Link href="/login">
                   Entrar a Alpacto <ArrowRight className="h-4 w-4" />
                 </Link>
@@ -238,7 +238,7 @@ export default function LandingPage() {
                 asChild
                 size="lg"
                 variant="outline"
-                className="border-white/25 bg-transparent text-white hover:bg-white/10"
+                className="border-[#0f2430]/20 bg-transparent text-[#0f2430] hover:bg-[#0f2430]/5"
               >
                 <a href="#como-funciona">Ver cómo funciona</a>
               </Button>
@@ -248,7 +248,7 @@ export default function LandingPage() {
 
         <div
           aria-hidden
-          className="absolute bottom-6 left-1/2 z-10 -translate-x-1/2 text-xs uppercase tracking-[0.3em] text-white/40"
+          className="absolute bottom-6 left-1/2 z-10 -translate-x-1/2 text-xs uppercase tracking-[0.3em] text-[#6b7d88]"
         >
           Desplázate
         </div>
@@ -258,62 +258,65 @@ export default function LandingPage() {
       <section id="vision" className="relative mx-auto max-w-6xl px-6 py-28">
         <div className="lp-reveal grid gap-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
           <div>
-            <p className="mb-3 text-xs font-medium uppercase tracking-[0.2em] text-[#7fd1c7]">Nuestra visión</p>
+            <p className="mb-3 text-xs font-medium uppercase tracking-[0.2em] text-[#155e5d]">Nuestra visión</p>
             <h2 className="font-display text-3xl leading-tight font-semibold tracking-tight sm:text-5xl">
               La infraestructura de liquidación justa para fibras naturales
             </h2>
-            <p className="mt-6 text-lg leading-relaxed text-white/70">
+            <p className="mt-6 text-lg leading-relaxed text-[#2d3f4a]">
               Alpacto protege el valor de la fibra desde el pesaje hasta el pago: el comprador asegura los fondos, Ayni
               Auditor revisa la evidencia y el productor acepta una liquidación transparente sin tener que entender
               criptomonedas.
             </p>
-            <blockquote className="mt-8 border-l-2 border-[#2a9d8f] pl-5 text-white/85 italic">
+            <blockquote className="mt-8 border-l-2 border-[#2a9d8f] pl-5 text-[#1e3a45] italic">
               “La IA recomienda, las personas autorizadas deciden y el contrato ejecuta.”
             </blockquote>
           </div>
           <div className="relative">
-            <div className="relative overflow-hidden rounded-2xl border border-white/10 shadow-2xl shadow-black/40">
+            <div className="relative overflow-hidden rounded-2xl border border-[#0f2430]/10 shadow-lg shadow-[#0f2430]/8">
               <Image
                 src={alpacaPortrait}
                 alt="Alpaca"
                 className="h-auto w-full object-cover"
                 sizes="(min-width: 1024px) 40vw, 100vw"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0b1c2c]/60 via-transparent to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0f2430]/25 via-transparent to-transparent" />
             </div>
             <div
               aria-hidden
-              className="absolute -inset-4 -z-10 rounded-3xl bg-gradient-to-br from-[#1a6b6a]/30 to-transparent blur-2xl"
+              className="absolute -inset-4 -z-10 rounded-3xl bg-gradient-to-br from-[#1a6b6a]/15 to-transparent blur-2xl"
             />
           </div>
         </div>
       </section>
 
       {/* ── Cómo funciona (pacto) ───────────────────────────── */}
-      <section id="como-funciona" className="relative border-y border-white/8 bg-[#0e2334] py-28">
+      <section id="como-funciona" className="relative border-y border-[#0f2430]/6 bg-[#edf3f4] py-28">
         <div className="mx-auto max-w-6xl px-6">
           <div className="lp-reveal max-w-2xl">
-            <p className="mb-3 text-xs font-medium uppercase tracking-[0.2em] text-[#7fd1c7]">El pacto</p>
+            <p className="mb-3 text-xs font-medium uppercase tracking-[0.2em] text-[#155e5d]">El pacto</p>
             <h2 className="font-display text-3xl leading-tight font-semibold tracking-tight sm:text-5xl">
               De tu fibra a tu pago, sin intermediarios invisibles
             </h2>
           </div>
 
-          <ol className="lp-steps mt-16 grid gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/10 sm:grid-cols-2 lg:grid-cols-5">
+          <ol className="lp-steps mt-16 grid gap-px overflow-hidden rounded-2xl border border-[#0f2430]/10 bg-[#0f2430]/8 sm:grid-cols-2 lg:grid-cols-5">
             {PACT_STEPS.map((step, i) => (
               <li
                 key={step.title}
-                className="lp-step group relative flex flex-col gap-4 bg-[#0e2334] p-6 transition hover:bg-[#122b3f]"
+                className="lp-step group relative flex flex-col gap-4 bg-white p-6 transition hover:bg-[#f0f7f6]"
               >
-                <span aria-hidden className="absolute right-4 top-4 font-display text-5xl font-semibold text-white/8">
+                <span
+                  aria-hidden
+                  className="absolute right-4 top-4 font-display text-5xl font-semibold text-[#0f2430]/8"
+                >
                   {i + 1}
                 </span>
-                <span className="flex size-11 items-center justify-center rounded-xl border border-[#2a9d8f]/30 bg-[#2a9d8f]/10 text-[#2faba0]">
+                <span className="flex size-11 items-center justify-center rounded-xl border border-[#2a9d8f]/25 bg-[#2a9d8f]/10 text-[#1a6b6a]">
                   <step.icon className="h-5 w-5" />
                 </span>
                 <div>
-                  <h3 className="font-semibold text-white">{step.title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-white/60">{step.body}</p>
+                  <h3 className="font-semibold text-[#0f2430]">{step.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-[#4a5d68]">{step.body}</p>
                 </div>
               </li>
             ))}
@@ -325,7 +328,7 @@ export default function LandingPage() {
       <section className="mx-auto max-w-6xl px-6 py-28">
         <div className="lp-reveal grid gap-12 lg:grid-cols-2 lg:items-center">
           <div className="relative order-2 lg:order-1">
-            <div className="relative overflow-hidden rounded-2xl border border-white/10 shadow-2xl shadow-black/40">
+            <div className="relative overflow-hidden rounded-2xl border border-[#0f2430]/10 shadow-lg shadow-[#0f2430]/8">
               <Image
                 src={fiberTexture}
                 alt="Fibra de alpaca"
@@ -335,11 +338,11 @@ export default function LandingPage() {
             </div>
             <div
               aria-hidden
-              className="absolute -inset-4 -z-10 rounded-3xl bg-gradient-to-tr from-[#1a6b6a]/25 to-transparent blur-2xl"
+              className="absolute -inset-4 -z-10 rounded-3xl bg-gradient-to-tr from-[#1a6b6a]/12 to-transparent blur-2xl"
             />
           </div>
           <div className="order-1 lg:order-2">
-            <p className="mb-3 text-xs font-medium uppercase tracking-[0.2em] text-[#7fd1c7]">Qué es Alpacto</p>
+            <p className="mb-3 text-xs font-medium uppercase tracking-[0.2em] text-[#155e5d]">Qué es Alpacto</p>
             <h2 className="font-display text-3xl leading-tight font-semibold tracking-tight sm:text-4xl">
               No un marketplace. No una wallet. Un pacto verificable.
             </h2>
@@ -348,13 +351,13 @@ export default function LandingPage() {
                 <div
                   key={f.title}
                   className={cn(
-                    "rounded-xl border border-white/10 bg-white/[0.04] p-5",
-                    "transition hover:border-[#2a9d8f]/40 hover:bg-[#2a9d8f]/10",
+                    "rounded-xl border border-[#0f2430]/10 bg-white p-5",
+                    "transition hover:border-[#2a9d8f]/40 hover:bg-[#2a9d8f]/6",
                   )}
                 >
-                  <f.icon className="h-5 w-5 text-[#2faba0]" />
-                  <h3 className="mt-3 font-semibold text-white">{f.title}</h3>
-                  <p className="mt-1.5 text-sm leading-relaxed text-white/60">{f.body}</p>
+                  <f.icon className="h-5 w-5 text-[#1a6b6a]" />
+                  <h3 className="mt-3 font-semibold text-[#0f2430]">{f.title}</h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-[#4a5d68]">{f.body}</p>
                 </div>
               ))}
             </div>
@@ -363,14 +366,14 @@ export default function LandingPage() {
       </section>
 
       {/* ── Roles ───────────────────────────────────────────── */}
-      <section id="roles" className="relative border-t border-white/8 bg-[#0e2334] py-28">
+      <section id="roles" className="relative border-t border-[#0f2430]/6 bg-[#edf3f4] py-28">
         <div className="mx-auto max-w-6xl px-6">
           <div className="lp-reveal mx-auto max-w-2xl text-center">
-            <p className="mb-3 text-xs font-medium uppercase tracking-[0.2em] text-[#7fd1c7]">Para quién</p>
+            <p className="mb-3 text-xs font-medium uppercase tracking-[0.2em] text-[#155e5d]">Para quién</p>
             <h2 className="font-display text-3xl leading-tight font-semibold tracking-tight sm:text-5xl">
               Cuatro roles, un mismo pacto
             </h2>
-            <p className="mt-5 text-white/65">
+            <p className="mt-5 text-[#4a5d68]">
               Cada actor ve solo lo que necesita, con explicaciones en soles y sin jerga cripto.
             </p>
           </div>
@@ -378,10 +381,10 @@ export default function LandingPage() {
             {ROLES.map(r => (
               <div
                 key={r.label}
-                className="rounded-2xl border border-white/10 bg-[#0b1c2c]/60 p-6 transition hover:border-[#2a9d8f]/40"
+                className="rounded-2xl border border-[#0f2430]/10 bg-white p-6 transition hover:border-[#2a9d8f]/40"
               >
-                <h3 className="font-display text-lg font-semibold text-white">{r.label}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-white/60">{r.body}</p>
+                <h3 className="font-display text-lg font-semibold text-[#0f2430]">{r.label}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-[#4a5d68]">{r.body}</p>
               </div>
             ))}
           </div>
@@ -392,17 +395,17 @@ export default function LandingPage() {
       <section className="relative overflow-hidden py-32">
         <div
           aria-hidden
-          className="absolute inset-0 bg-[radial-gradient(80%_60%_at_50%_100%,rgba(42,157,143,0.22),transparent_70%)]"
+          className="absolute inset-0 bg-[radial-gradient(80%_60%_at_50%_100%,rgba(42,157,143,0.14),transparent_70%)]"
         />
         <div className="lp-reveal relative mx-auto max-w-3xl px-6 text-center">
           <h2 className="font-display text-4xl leading-tight font-semibold tracking-tight sm:text-6xl">
             Que ningún pesaje se decida a espaldas del productor
           </h2>
-          <p className="mx-auto mt-6 max-w-xl text-lg text-white/70">
+          <p className="mx-auto mt-6 max-w-xl text-lg text-[#2d3f4a]">
             Empieza con una orden financiada y una evidencia. El resto lo ejecuta el contrato.
           </p>
           <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-            <Button asChild size="lg" className="bg-[#2a9d8f] text-[#0b1c2c] hover:bg-[#2faba0]">
+            <Button asChild size="lg" className="bg-[#1a6b6a] text-white hover:bg-[#145a59]">
               <Link href="/login">
                 Entrar <ArrowRight className="h-4 w-4" />
               </Link>
@@ -411,7 +414,7 @@ export default function LandingPage() {
               asChild
               size="lg"
               variant="outline"
-              className="border-white/25 bg-transparent text-white hover:bg-white/10"
+              className="border-[#0f2430]/20 bg-transparent text-[#0f2430] hover:bg-[#0f2430]/5"
             >
               <Link href="/auth/producer">Soy productor — crear cuenta</Link>
             </Button>
@@ -420,11 +423,11 @@ export default function LandingPage() {
       </section>
 
       {/* ── Footer ──────────────────────────────────────────── */}
-      <footer className="border-t border-white/10 py-10">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 text-sm text-white/50 sm:flex-row">
+      <footer className="border-t border-[#0f2430]/8 py-10">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 text-sm text-[#5c6f7a] sm:flex-row">
           <div className="flex items-center gap-2">
             <span aria-hidden className="size-3 rounded-[3px] bg-gradient-to-br from-[#1a6b6a] to-[#2a9d8f]" />
-            <span className="font-display font-semibold text-white/80">Alpacto</span>
+            <span className="font-display font-semibold text-[#0f2430]">Alpacto</span>
           </div>
           <p>Un pacto justo por cada fibra. MVP en Arbitrum Sepolia.</p>
         </div>
