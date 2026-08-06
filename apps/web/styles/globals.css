@@ -656,6 +656,30 @@ h4 {
   z-index: 1;
 }
 
+/* Landing intro: hide content until GSAP marks .lp-ready (prevents FOUC) */
+.lp:not(.lp-ready) .lp-nav,
+.lp:not(.lp-ready) .lp-hero-title,
+.lp:not(.lp-ready) .lp-hero-tag,
+.lp:not(.lp-ready) .lp-hero-cta {
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-clouds {
+    display: none !important;
+  }
+
+  .lp .lp-nav,
+  .lp .lp-hero-title,
+  .lp .lp-hero-tag,
+  .lp .lp-hero-cta,
+  .lp .lp-hero-media {
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+}
+
 /* Dashboard main panel — flat surface + oblique lines (wins over Tailwind bg-background) */
 [data-slot="sidebar-inset"].alpacto-dashboard-panel {
   position: relative;
