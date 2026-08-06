@@ -522,19 +522,53 @@ export async function markAuditFailed(
   lotId: string,
   reason: string,
 ) {
+  const trimmed = reason.slice(0, 2000);
+  const [existing] = await db
+    .select()
+    .from(auditRuns)
+    .where(eq(auditRuns.id, auditRunId))
+    .limit(1);
+
+  // Keep a prior compare verdict (pass / review_required / …) if the pipeline
+  // failed later (e.g. attestation). Only invent "failed" when nothing was decided.
+  const resultCode = existing?.resultCode ?? "failed";
+
   await db
     .update(auditRuns)
     .set({
       status: "failed",
       completedAt: new Date(),
       progressPhase: "failed",
-      progressLabel: reason.slice(0, 255),
+      progressLabel: trimmed.slice(0, 255),
+      resultCode,
     })
     .where(eq(auditRuns.id, auditRunId));
-  await db
-    .update(lots)
-    .set({ status: "audit_failed", updatedAt: new Date() })
-    .where(eq(lots.id, lotId));
+
+  const priorFindings = await db
+    .select({ id: auditFindings.id })
+    .from(auditFindings)
+    .where(eq(auditFindings.auditRunId, auditRunId))
+    .limit(1);
+
+  if (priorFindings.length === 0) {
+    await db.insert(auditFindings).values({
+      auditRunId,
+      code: "PIPELINE_FAILED",
+      severity: "critical",
+      declaredValue: null,
+      observedValue: null,
+      explanation: trimmed,
+    });
+  }
+
+  // If compare already set lot status (ready_for_review / review_required), keep it.
+  if (!existing?.resultCode) {
+    await db
+      .update(lots)
+      .set({ status: "audit_failed", updatedAt: new Date() })
+      .where(eq(lots.id, lotId));
+  }
+
   return reason;
 }
 
