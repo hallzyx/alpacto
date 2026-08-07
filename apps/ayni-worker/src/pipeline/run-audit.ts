@@ -19,12 +19,14 @@ import {
   type AuditResultCode,
 } from "@alpacto/domain";
 import { createHash } from "node:crypto";
-import { keccak256, parseAbi, toBytes, type Address, type Hex } from "viem";
+import { keccak256, parseAbi, toBytes, createWalletClient, type Address, type Hex } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { arbitrumSepolia } from "viem/chains";
 import {
   createAlpactoPublicClient,
-  createSessionKernelClient,
+  createPublicRpcTransport,
   loadZeroDevConfigFromEnv,
-  sendSponsoredCall,
+  trySessionSponsoredThenSelfFunded,
 } from "@alpacto/zero-dev";
 import {
   extractClassificationDocument,
@@ -37,7 +39,78 @@ import type OpenAI from "openai";
 
 const alpactoAbi = parseAbi([
   "function submitAuditAttestation(uint256 lotId, uint32 version, bytes32 reportHash, uint8 result)",
+  "function grantRole(bytes32 role, address account)",
+  "function auditorAgentRole() view returns (bytes32)",
+  "function hasRole(bytes32 role, address account) view returns (bool)",
 ]);
+
+function normalizePrivateKey(key: string): Hex {
+  const trimmed = key.trim();
+  return (trimmed.startsWith("0x") ? trimmed : `0x${trimmed}`) as Hex;
+}
+
+async function fundEthFromTreasury(to: Address): Promise<void> {
+  const treasuryKey = process.env["TREASURY_PRIVATE_KEY"]?.trim();
+  if (!treasuryKey) {
+    throw new Error("TREASURY_PRIVATE_KEY required to top-up Ayni Kernel gas");
+  }
+  const publicClient = createAlpactoPublicClient({
+    ...loadZeroDevConfigFromEnv(),
+    publicRpc: config.chain.rpcUrl,
+  });
+  const bal = await publicClient.getBalance({ address: to });
+  if (bal >= 10n ** 15n) return;
+
+  const account = privateKeyToAccount(normalizePrivateKey(treasuryKey));
+  const wallet = createWalletClient({
+    account,
+    chain: arbitrumSepolia,
+    transport: http(config.chain.rpcUrl),
+  });
+  const hash = await wallet.sendTransaction({ to, value: 10n ** 16n });
+  await publicClient.waitForTransactionReceipt({ hash });
+}
+
+async function ensureAyniAuditorRole(onLog: (msg: string) => void): Promise<void> {
+  const ayniSa = config.ayni.smartAccount.trim();
+  const core = config.chain.alpactoContract as Address;
+  if (!ayniSa || !core) return;
+
+  const treasuryKey = process.env["TREASURY_PRIVATE_KEY"]?.trim();
+  if (!treasuryKey) return;
+
+  const publicClient = createAlpactoPublicClient({
+    ...loadZeroDevConfigFromEnv(),
+    publicRpc: config.chain.rpcUrl,
+  });
+  const auditorRole = await publicClient.readContract({
+    address: core,
+    abi: alpactoAbi,
+    functionName: "auditorAgentRole",
+  });
+  const hasRole = await publicClient.readContract({
+    address: core,
+    abi: alpactoAbi,
+    functionName: "hasRole",
+    args: [auditorRole, ayniSa as Address],
+  });
+  if (hasRole) return;
+
+  onLog(`grant AUDITOR_AGENT_ROLE to Ayni SA ${ayniSa}`);
+  const admin = privateKeyToAccount(normalizePrivateKey(treasuryKey));
+  const wallet = createWalletClient({
+    account: admin,
+    chain: arbitrumSepolia,
+    transport: createPublicRpcTransport(config.chain.rpcUrl),
+  });
+  const hash = await wallet.writeContract({
+    address: core,
+    abi: alpactoAbi,
+    functionName: "grantRole",
+    args: [auditorRole, ayniSa as Address],
+  });
+  await publicClient.waitForTransactionReceipt({ hash });
+}
 
 export type AuditJobData = {
   auditRunId: string;
@@ -53,10 +126,31 @@ const PHASE_LABELS: Record<string, string> = {
   settlement: "Calculando liquidación estimada…",
   compare: "Comparando declarado vs evidencia…",
   report: "Generando informe de auditoría…",
-  attest: "Registrando attestation on-chain…",
+  attest: "Registrando el veredicto…",
   done: "Auditoría completa",
   failed: "Auditoría fallida",
 };
+
+/** Hide RPC URLs / API keys / viem dumps from producer/inspector-facing labels. */
+export function sanitizeAuditFailureLabel(reason: string): string {
+  const raw = reason.trim();
+  if (/Requested resource not found|Unable to complete request|429|rate limit|ECONNRESET|ETIMEDOUT|fetch failed/i.test(raw)) {
+    return "No se pudo registrar el veredicto ahora (la red falló un momento). El informe de Ayni sí está listo; reintenta en unos segundos.";
+  }
+  let s = raw
+    .replace(/https?:\/\/[^\s)'"`]+/gi, "[RPC]")
+    .replace(/Request body:[\s\S]{0,800}/gi, "")
+    .replace(/Raw Call Arguments:[\s\S]{0,500}/gi, "")
+    .replace(/Contract Call:[\s\S]{0,600}/gi, "")
+    .replace(/Docs:[\s\S]{0,300}/gi, "")
+    .replace(/Version: viem@[^\s]+/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!s || s.length < 8) {
+    return "No se pudo completar el registro del veredicto. Reintenta en unos segundos.";
+  }
+  return s.slice(0, 255);
+}
 
 async function setProgress(
   db: Database,
@@ -224,10 +318,51 @@ export async function processAuditJob(
   let reportHash: Hex | null = null;
   let onchainTxHash: string | null = null;
 
-  await db
-    .update(auditRuns)
-    .set({ status: "running", startedAt: new Date(), provider: "deepseek", progressPhase: "context", progressLabel: PHASE_LABELS.context })
-    .where(eq(auditRuns.id, data.auditRunId));
+  const [existingRun] = await db
+    .select()
+    .from(auditRuns)
+    .where(eq(auditRuns.id, data.auditRunId))
+    .limit(1);
+
+  // BullMQ retries restart this function. If a prior attempt already wrote the
+  // report, resume at attestation only — never rewind the live modal to "context".
+  const canResumeAttest =
+    Boolean(existingRun?.reportHash) &&
+    Boolean(existingRun?.resultCode) &&
+    existingRun?.status !== "attested" &&
+    !existingRun?.onchainTxHash;
+
+  if (canResumeAttest && existingRun?.reportHash && existingRun.resultCode) {
+    reportHash = existingRun.reportHash as Hex;
+    compareResult = {
+      resultCode: existingRun.resultCode as AuditResultCode,
+      findings: [],
+      weightDeltaBps: null,
+    };
+    onLog(
+      `resume audit run=${data.auditRunId} from attest (report already exists, skip OCR/compare)`,
+    );
+    await db
+      .update(auditRuns)
+      .set({
+        status: "running",
+        provider: "deepseek",
+        progressPhase: "attest",
+        progressLabel: PHASE_LABELS.attest,
+      })
+      .where(eq(auditRuns.id, data.auditRunId));
+  } else {
+    await db
+      .update(auditRuns)
+      .set({
+        status: "running",
+        startedAt: existingRun?.startedAt ?? new Date(),
+        provider: "deepseek",
+        progressPhase: "context",
+        progressLabel: PHASE_LABELS.context,
+      })
+      .where(eq(auditRuns.id, data.auditRunId));
+  }
 
   const handlers: Record<string, (args: Record<string, unknown>) => Promise<unknown>> = {
     get_audit_context: async () => {
@@ -368,6 +503,9 @@ export async function processAuditJob(
       reportHash = keccak256(toBytes(reportJson)) as Hex;
       const storageKey = `audits/${data.auditRunId}.json`;
 
+      // Idempotent: DeepSeek / finishDeterministic may call this more than once.
+      await db.delete(auditFindings).where(eq(auditFindings.auditRunId, data.auditRunId));
+
       for (const finding of compareResult.findings) {
         await db.insert(auditFindings).values({
           auditRunId: data.auditRunId,
@@ -437,26 +575,43 @@ export async function processAuditJob(
         return { skipped: true, reason: "no_serialized_session" };
       }
 
-      const client = await createSessionKernelClient({
-        publicClient,
-        config: zd,
-        serializedSession: serialized,
-        sessionPrivateKey: sessionKey,
-      });
-
       const resultU8 = auditResultCodeToOnchain(
         compareResult.resultCode as AuditResultCode,
       );
 
-      const { receipt } = await sendSponsoredCall({
-        client,
-        to: config.chain.alpactoContract as Address,
-        abi: alpactoAbi,
-        functionName: "submitAuditAttestation",
-        args: [ctx.lot.onchainLotId, ctx.inspection.version, reportHash, resultU8],
-      });
+      await ensureAyniAuditorRole(onLog);
 
-      onchainTxHash = receipt.receipt.transactionHash;
+      const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+      let lastErr: unknown;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          const { receipt } = await trySessionSponsoredThenSelfFunded({
+            publicClient,
+            config: zd,
+            serializedSession: serialized,
+            sessionPrivateKey: sessionKey,
+            fundEth: fundEthFromTreasury,
+            to: config.chain.alpactoContract as Address,
+            abi: alpactoAbi,
+            functionName: "submitAuditAttestation",
+            args: [ctx.lot.onchainLotId, ctx.inspection.version, reportHash, resultU8],
+          });
+          onchainTxHash = receipt.receipt.transactionHash;
+          lastErr = undefined;
+          break;
+        } catch (err) {
+          lastErr = err;
+          const msg = err instanceof Error ? err.message : String(err);
+          onLog(`attestation attempt ${attempt}/3 failed: ${msg.slice(0, 200)}`);
+          if (attempt < 3) await sleep(800 * attempt);
+        }
+      }
+      if (lastErr || !onchainTxHash) {
+        throw lastErr instanceof Error
+          ? lastErr
+          : new Error(String(lastErr ?? "attestation failed"));
+      }
+
       await db
         .update(auditRuns)
         .set({ status: "attested", onchainTxHash, progressPhase: "done", progressLabel: PHASE_LABELS.done })
@@ -478,36 +633,55 @@ Never calculate money yourself. Stop after attestation.`;
 
   onLog(`audit start run=${data.auditRunId}`);
 
-  try {
-    await runDeepSeekToolLoop({
-      systemPrompt,
-      userMessage: `Audit lot ${data.lotId} inspection v${data.inspectionVersion}`,
-      tools: TOOL_DEFINITIONS,
-      handlers,
-    });
-  } catch (err) {
-    onLog(`DeepSeek loop failed, running deterministic fallback: ${err}`);
-    await handlers.get_audit_context({});
-    await handlers.extract_scale_evidence({});
-    await handlers.extract_classification_document({});
-    await handlers.calculate_settlement({});
-    await handlers.compare_audit_values({});
-    await handlers.create_audit_report({});
-    await handlers.submit_audit_attestation({});
+  const finishDeterministic = async () => {
+    if (!compareResult) {
+      await handlers.get_audit_context({});
+      await handlers.extract_scale_evidence({});
+      await handlers.extract_classification_document({});
+      await handlers.calculate_settlement({});
+      await handlers.compare_audit_values({});
+      await handlers.create_audit_report({});
+    }
+    if (!onchainTxHash && ctx.lot.onchainLotId && config.chain.alpactoContract) {
+      await handlers.submit_audit_attestation({});
+    }
+  };
+
+  if (canResumeAttest) {
+    // Skip DeepSeek entirely on BullMQ retries after the report is already saved.
+    await finishDeterministic();
+  } else {
+    try {
+      await runDeepSeekToolLoop({
+        systemPrompt,
+        userMessage: `Audit lot ${data.lotId} inspection v${data.inspectionVersion}`,
+        tools: TOOL_DEFINITIONS,
+        handlers,
+      });
+    } catch (err) {
+      onLog(`DeepSeek loop failed, finishing remaining steps: ${err}`);
+      await finishDeterministic();
+    }
+
+    if (!compareResult || (!onchainTxHash && ctx.lot.onchainLotId && config.chain.alpactoContract)) {
+      await finishDeterministic();
+    }
   }
 
   if (!compareResult) {
-    await handlers.get_audit_context({});
-    await handlers.extract_scale_evidence({});
-    await handlers.extract_classification_document({});
-    await handlers.calculate_settlement({});
-    await handlers.compare_audit_values({});
-    await handlers.create_audit_report({});
-    await handlers.submit_audit_attestation({});
+    throw new Error("Audit pipeline did not produce a compare result");
   }
 
-  onLog(`audit complete result=${compareResult?.resultCode ?? "unknown"}`);
-  await setProgress(db, data.auditRunId, "done", PHASE_LABELS.done);
+  // Report is done but attestation still missing → fail without claiming success,
+  // so BullMQ can retry from attest (resume path above).
+  if (!onchainTxHash && ctx.lot.onchainLotId && config.chain.alpactoContract) {
+    throw new Error("Audit report ready but veredicto registration failed");
+  }
+
+  onLog(`audit complete result=${compareResult.resultCode}`);
+  if (onchainTxHash) {
+    await setProgress(db, data.auditRunId, "done", PHASE_LABELS.done);
+  }
   return {
     auditRunId: data.auditRunId,
     resultCode: compareResult?.resultCode,
@@ -522,7 +696,7 @@ export async function markAuditFailed(
   lotId: string,
   reason: string,
 ) {
-  const trimmed = reason.slice(0, 2000);
+  const trimmed = sanitizeAuditFailureLabel(reason);
   const [existing] = await db
     .select()
     .from(auditRuns)
