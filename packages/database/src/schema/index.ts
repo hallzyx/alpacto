@@ -50,6 +50,23 @@ export const ayniSessionKeys = pgTable("ayni_session_keys", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Backend session key for Google/OTP producers (accept/settle/reweigh). Seed producers skip this. */
+export const producerSessionKeys = pgTable("producer_session_keys", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id),
+  smartAccountAddress: varchar("smart_account_address", { length: 42 }).notNull(),
+  sessionPublicAddress: varchar("session_public_address", { length: 42 }).notNull(),
+  /** MVP: stored plaintext hex; not committed to git. */
+  sessionPrivateKey: varchar("session_private_key", { length: 66 }),
+  serializedSession: text("serialized_session"),
+  status: varchar("status", { length: 32 }).notNull().default("pending"),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const organizations = pgTable("organizations", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
@@ -142,6 +159,10 @@ export const orders = pgTable("orders", {
   remainingUsdcUnits: bigint("remaining_usdc_units", { mode: "bigint" }).notNull(),
   status: varchar("status", { length: 32 }).notNull().default("draft"),
   txHash: varchar("tx_hash", { length: 66 }),
+  /** Tx hash of buyer withdrawRemainder (leftover escrow → buyer). */
+  remainderWithdrawTxHash: varchar("remainder_withdraw_tx_hash", { length: 66 }),
+  /** USDC units returned to buyer on remainder withdraw (set before remaining is zeroed). */
+  remainderWithdrawnUsdcUnits: bigint("remainder_withdrawn_usdc_units", { mode: "bigint" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -183,6 +204,8 @@ export const lots = pgTable("lots", {
   status: varchar("status", { length: 32 }).notNull().default("awaiting_producer_confirmation"),
   currentInspectionVersion: integer("current_inspection_version").notNull().default(0),
   acceptedInspectionVersion: integer("accepted_inspection_version"),
+  /** Tx hash of AlpactoCore.registerLot. */
+  registerTxHash: varchar("register_tx_hash", { length: 66 }),
   producerConfirmedAt: timestamp("producer_confirmed_at", { withTimezone: true }),
   producerDeclinedAt: timestamp("producer_declined_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
