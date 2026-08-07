@@ -17,7 +17,7 @@
 - **Local token:** `mock-usdc` (OZ Erc20, 6 decimals, admin `mint`). Sepolia USDC deferred to later phases via env.
 - **USDC address zero:** When `usdc == address(0)`, transfers are skipped (accounting-only) for Stylus unit tests.
 - **IDs:** Caller-provided `orderId` / `lotId` (offchain correlation); no auto-increment.
-- **`createOrder` signature:** `(orderId, buyer, association, pricingPolicyHash, budgetUsdcUnits)`.
+- **`createOrder` signature (original Phase 1):** `(orderId, buyer, association, pricingPolicyHash, budgetUsdcUnits)`. Superseded 2026-08-06 — now also requires `targetWeightGrams`.
 - **`fundOrder`:** Platform admin; unique `paymentReferenceHash`; IERC20 `transferFrom` caller → contract.
 - **Deploy:** `yarn deploy` deploys `mock-usdc` then `alpacto-core(admin, mockUsdc)`. Demo scripts: `yarn phase1` / `yarn phase1 -- --flow=reweigh`.
 - **Deploy tooling:** `executeCommand` treats cargo-stylus stderr as success when exit code is 0 unless a real rustc `error` is present (address logs live on stderr).
@@ -70,8 +70,20 @@
 
 - **Platform fee:** `platformFeeBps = 50` (0.5%) on every lot settlement, stored on `pricing_policies` and applied in `@alpacto/domain` `calculateSettlementPreview`. Split is three-way from gross subtotal: association + platform + producer remainder. Escrow estimate covers all three.
 - **On-chain:** `acceptSettlement` / `settleLot` take `platformUsdcUnits`; USDC pushed to `platform_treasury` (admin-set via `setPlatformTreasury`). Requires contract redeploy after this change.
-- **Dust / close order (agreed, not yet implemented):** when Σ kg of settled lots (Ayni pass/warning) ≥ `targetWeightGrams` (tolerance TBD), sweep remaining escrow USDC to platform and mark order `completed`. If kg target is not met and buyer closes early, remanente returns to buyer — not platform. Cap dust later if remanente grows on large orders.
 - **Association fee:** unchanged demo default 300 bps (3%).
+
+## 2026-08-06 — Kg tracking + buyer remainder withdrawal
+
+- **`createOrder` signature (breaking):** `(orderId, buyer, association, pricingPolicyHash, budgetUsdcUnits, targetWeightGrams)` — `targetWeightGrams > 0` required.
+- **Weight accounting on-chain:**
+  - Ayni PASS/WARNING → reserves inspection weight grams against order capacity (`reservedWeightGrams`).
+  - `settleLot` → reserved → fulfilled (CEI); only producer or `PLATFORM_ADMIN` may settle.
+  - `requestReweighing` → releases the lot’s reservation.
+  - Zero inspection weight rejected.
+- **`withdrawRemainder(orderId)`:** buyer only; requires `fulfilled >= target`, `reserved == 0`, `remaining USDC > 0`; sends leftover escrow to buyer and marks order COMPLETED. Remanente goes to the **buyer**, not the platform.
+- **`getOrder` returns 11 values** (adds `targetWeightGrams`, `reservedWeightGrams`, `fulfilledWeightGrams`). **`getLot` returns 12** (adds lot `reservedWeightGrams`).
+- **API:** `GET /orders/:id/funding-status` includes chain weight fields + `canWithdrawRemainder`. `POST /orders/:id/withdraw-remainder` runs buyer Kernel UserOp then sets DB `remainingUsdcUnits=0`, `status=completed`.
+- **Sepolia redeploy (2026-08-06):** `AlpactoCore` → `0x3d9c424814a9038ba7d4dd39c1e6a1bb58a3fc5f` (Arbitrum Sepolia). Root `.env` `ALPACTO_CONTRACT_ADDRESS` + `apps/web/contracts/deployedContracts.ts` updated. Post-deploy: `setPlatformTreasury`, `yarn seed:wallets` (buyer/association/inspector roles), grant `AUDITOR_AGENT_ROLE` → `AYNI_SMART_ACCOUNT`, `PLATFORM_ADMIN_ROLE` → treasury. **Orders created on the previous core are not migrated** — create/fund new orders against this address.
 
 - **Visual:** “Altiplano contemporáneo” — Fraunces + Source Sans 3; night indigo/teal atmosphere; brand-first landing at `/`.
 - **Roles seed:** buyer/inspector/association/admin via `demo-login` from `/login`.
@@ -81,3 +93,13 @@
 - **API gaps:** `GET /orders`, `GET /lots`, `GET /pricing-policies/:id`, producer may `settlement/accept`, local payout simulate, enriched lot timeline, producer session.
 - **Docs:** `docs/demo-script.md`; smoke `yarn phase6`.
 - **Checkpoint:** UI demo end-to-end per demo script (API smoke verifies list/session surfaces).
+
+## 2026-08-07 — Producer session keys (seed + Google)
+
+- **Problem:** Backend `demoKernelForEmail(DEMO_WALLET_SEED)` only signs when `users.smart_account_address` matches the seed Kernel. Google/OTP producers store a ZeroDev wallet address the API cannot own → Kernel mismatch on `acceptSettlement` / `settleLot` / `requestReweighing`.
+- **Approach:** Agent-created ZeroDev session keys (transaction automation). Server generates keypair (`POST /auth/producer/session-key/prepare`); browser owner signs empty-account approval + call policies; `complete` stores `serializedSession` + `sessionPrivateKey`. Later UserOps use `createSessionKernelClient` so `msg.sender` remains the producer’s SA.
+- **Persistence:** `producer_session_keys` (mirror of `ayni_session_keys`): pending → active; prior actives revoked on rotate.
+- **Policies:** Call-policy on `ALPACTO_CONTRACT_ADDRESS` limited to `acceptSettlement`, `settleLot`, `requestReweighing` (`@alpacto/zero-dev` helpers). Google wallets use Kernel **v3.3** (wallet-react); Ayni stays on v3.1.
+- **Seed path unchanged:** If derived seed Kernel address matches DB → ECDSA owner key; no grant UX (`needsGrant: false`, `signerKind: seed`).
+- **Missing grant:** API returns **409** `PRODUCER_SESSION_REQUIRED` (not opaque Kernel mismatch). Web shows one-time grant banner / retry on settle + reweigh.
+- **MVP secret storage:** `sessionPrivateKey` stored plaintext in Postgres (not in git). Acceptable for demo; encrypt at rest before production. Buyer/association/inspector Google session keys out of scope.
