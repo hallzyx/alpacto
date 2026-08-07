@@ -90,7 +90,7 @@
 - **Producer auth:** three ZeroDev-oriented paths in UI — Google, Email OTP, Passkey — then `POST /auth/producer/session` → JWT. Video prefers Martina seed (real SA) for on-chain; live Google/OTP remain for Web 2.5 UX.
 - **Screens:** `/`, `/login`, `/producer`, `/inspector`, `/association`, `/buyer/orders`, `/admin`.
 - **API gaps:** `GET /orders`, `GET /lots`, `GET /pricing-policies/:id`, producer may `settlement/accept`, local payout simulate, enriched lot timeline, producer session.
-- **Docs:** `docs/demo-script.md`; smoke `yarn phase6`.
+- **Docs:** `docs/DEMO.md`; smoke `yarn phase6`.
 - **Checkpoint:** UI demo end-to-end per demo script (API smoke verifies list/session surfaces).
 
 ## 2026-08-07 — Producer session keys (seed + Google)

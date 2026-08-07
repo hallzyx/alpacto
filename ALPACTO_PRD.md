@@ -541,11 +541,15 @@ alpacto/
 │   ├── deployment/
 │   └── scripts/
 ├── docs/
-│   ├── architecture.md
-│   ├── demo-script.md
-│   ├── contract-spec.md
-│   ├── agent-security.md
-│   └── threat-model.md
+│   ├── ARCHITECTURE.md
+│   ├── GETTING_STARTED.md
+│   ├── CONFIGURATION.md
+│   ├── ARBITRUM.md
+│   ├── AYNI.md
+│   ├── OPERATIONS.md
+│   ├── TESTING.md
+│   ├── SECURITY.md
+│   └── DEMO.md
 └── README.md
 ```
 
@@ -1196,16 +1200,9 @@ GET  /admin/treasury
 
 ### 19.6 Debug
 
-#### `/debug`
+#### `/debug` (removed)
 
-Conservar las utilidades de Scaffold-Stylus para:
-
-- Leer estado.
-- Ejecutar funciones de desarrollo.
-- Ver eventos.
-- Ver direcciones.
-
-No debe estar enlazado desde la navegación principal.
+Scaffold-Stylus `/debug` and `/blockexplorer` UI were removed from the product web app (2026-08-07). Contract inspection now uses `apps/web/contracts/deployedContracts.ts`, Arbiscan, and `yarn export-abi` / deploy tooling. See `docs/ARBITRUM.md`.
 
 ---
 
@@ -1534,7 +1531,7 @@ No guardar secretos en `.env.example`.
 11. No presentar OCR como medición oficial.
 12. Cada fase debe incluir tests y un checkpoint verificable.
 13. Mantener un `DECISIONS.md` con decisiones técnicas relevantes.
-14. Mantener `docs/demo-script.md` actualizado.
+14. Mantener `docs/DEMO.md` actualizado.
 15. Crear commits pequeños por épica.
 
 ---

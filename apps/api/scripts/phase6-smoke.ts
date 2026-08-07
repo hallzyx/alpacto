@@ -64,7 +64,7 @@ async function main() {
   console.log("orders:", orders.orders.length, "lots:", lots.lots?.length ?? 0);
   console.log("producer session ok:", producer.user.email);
   console.log("\n✅ Phase 6 API smoke OK — open http://localhost:3000 for UX demo");
-  console.log("   See docs/demo-script.md");
+  console.log("   See docs/DEMO.md");
 }
 
 main().catch((err) => {

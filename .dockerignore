@@ -13,7 +13,6 @@
 **/coverage
 **/.turbo
 **/*.md
-!docs/vps-deploy.md
 !apps/api/content/**/*.md
 nitro-devnode
 apps/api/dist
