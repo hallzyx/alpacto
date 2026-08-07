@@ -1,4 +1,9 @@
-name: alpacto
+# Project name comes from Compose CLI (-p / Dokploy). Do not hardcode `name:` —
+# fixed names fight Dokploy's project prefix and can strand containers on old networks.
+
+x-env-file: &default-env-file
+  - path: .env
+    required: false
 
 services:
   postgres:
@@ -18,6 +23,7 @@ services:
       timeout: 5s
       retries: 10
     restart: unless-stopped
+    networks: [alpacto]
 
   redis:
     image: redis:7-alpine
@@ -30,6 +36,7 @@ services:
       timeout: 3s
       retries: 10
     restart: unless-stopped
+    networks: [alpacto]
 
   minio:
     image: minio/minio:latest
@@ -45,6 +52,7 @@ services:
       - alpacto_minio_data:/data
     # minio-init polls readiness; official image often lacks curl/wget.
     restart: unless-stopped
+    networks: [alpacto]
 
   minio-init:
     image: minio/mc:latest
@@ -63,20 +71,21 @@ services:
       exit 0;
       "
     restart: "no"
+    networks: [alpacto]
 
   migrate:
     build:
       context: ../..
       dockerfile: infra/docker/Dockerfile.migrate
     container_name: alpacto-migrate
-    env_file:
-      - .env
+    env_file: *default-env-file
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql://alpacto:alpacto@postgres:5432/alpacto}
     depends_on:
       postgres:
         condition: service_healthy
     restart: "no"
+    networks: [alpacto]
 
   # First empty volume only: db:seed + seed:wallets. Skips when demo users/wallets exist.
   bootstrap:
@@ -85,8 +94,7 @@ services:
       dockerfile: infra/docker/Dockerfile.api
     container_name: alpacto-bootstrap
     entrypoint: ["/usr/local/bin/bootstrap.sh"]
-    env_file:
-      - .env
+    env_file: *default-env-file
     environment:
       NODE_ENV: production
       DATABASE_URL: ${DATABASE_URL:-postgresql://alpacto:alpacto@postgres:5432/alpacto}
@@ -96,6 +104,7 @@ services:
       migrate:
         condition: service_completed_successfully
     restart: "no"
+    networks: [alpacto]
 
   # MVP: fetch CLI whsec once so API can verify without Dashboard endpoint.
   # Uses Docker DNS name `api` (not host localhost). Dokploy public URL is only for browsers.
@@ -110,14 +119,14 @@ services:
       - alpacto_stripe_whsec:/shared
     entrypoint: ["/bin/sh", "/stripe-whsec.sh"]
     restart: "no"
+    networks: [alpacto]
 
   api:
     build:
       context: ../..
       dockerfile: infra/docker/Dockerfile.api
     container_name: alpacto-api
-    env_file:
-      - .env
+    env_file: *default-env-file
     environment:
       NODE_ENV: production
       HOST: 0.0.0.0
@@ -165,6 +174,7 @@ services:
       retries: 10
       start_period: 40s
     restart: unless-stopped
+    networks: [alpacto]
 
   # Forwards Stripe → http://api:4000/... on the compose network (not the Dokploy public URL).
   stripe:
@@ -183,14 +193,14 @@ services:
       stripe-whsec:
         condition: service_completed_successfully
     restart: unless-stopped
+    networks: [alpacto]
 
   ayni:
     build:
       context: ../..
       dockerfile: infra/docker/Dockerfile.ayni
     container_name: alpacto-ayni
-    env_file:
-      - .env
+    env_file: *default-env-file
     environment:
       NODE_ENV: production
       DATABASE_URL: ${DATABASE_URL:-postgresql://alpacto:alpacto@postgres:5432/alpacto}
@@ -215,6 +225,7 @@ services:
       api:
         condition: service_started
     restart: unless-stopped
+    networks: [alpacto]
 
   web:
     build:
@@ -234,6 +245,7 @@ services:
       api:
         condition: service_healthy
     restart: unless-stopped
+    networks: [alpacto]
 
   # Optional: seed demo data after migrate (docker compose --profile seed up)
   seed:
@@ -242,15 +254,19 @@ services:
       context: ../..
       dockerfile: infra/docker/Dockerfile.migrate
     container_name: alpacto-seed
-    env_file:
-      - .env
+    env_file: *default-env-file
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql://alpacto:alpacto@postgres:5432/alpacto}
-    command: ["yarn", "workspace", "@alpacto/database", "seed"]
+    entrypoint: ["yarn", "workspace", "@alpacto/database", "seed"]
     depends_on:
       migrate:
         condition: service_completed_successfully
     restart: "no"
+    networks: [alpacto]
+
+networks:
+  alpacto:
+    driver: bridge
 
 volumes:
   alpacto_pg_data:

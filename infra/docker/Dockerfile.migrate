@@ -24,4 +24,6 @@ FROM base AS runner
 ENV NODE_ENV=production
 COPY --from=deps /app /app
 COPY packages/database ./packages/database
-CMD ["yarn", "workspace", "@alpacto/database", "migrate"]
+COPY infra/docker/migrate-entrypoint.sh /usr/local/bin/migrate-entrypoint.sh
+RUN chmod +x /usr/local/bin/migrate-entrypoint.sh
+ENTRYPOINT ["/usr/local/bin/migrate-entrypoint.sh"]
