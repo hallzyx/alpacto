@@ -2,6 +2,7 @@
 # Wait for Postgres DNS + TCP, then run migrations with retries.
 # Dokploy/Compose often report postgres healthy while embedded DNS is briefly unavailable (EAI_AGAIN).
 set -eu
+cd /app
 
 MAX_ATTEMPTS="${MIGRATE_MAX_ATTEMPTS:-30}"
 SLEEP_SECS="${MIGRATE_RETRY_SLEEP:-2}"
@@ -40,7 +41,7 @@ if [ "$i" -ge 60 ]; then
 fi
 
 echo "Ensuring target database exists..."
-if ! yarn --cwd /app workspace @alpacto/database exec node /usr/local/bin/ensure-database.mjs; then
+if ! yarn workspace @alpacto/database exec node scripts/ensure-database.mjs; then
   echo "❌ ensure-database failed"
   exit 1
 fi
