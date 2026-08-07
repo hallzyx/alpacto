@@ -53,6 +53,11 @@ export const config = {
   },
   demo: {
     maxFundingUsdc: parseBigIntEnv("DEMO_MAX_FUNDING_USDC", 10_000n),
+    /**
+     * When set, POST /orders/:id/funding-session requires matching `confirmPassword`
+     * (public demo guard so strangers cannot drain Sepolia USDC via Stripe → Kernel fund).
+     */
+    fundingPassword: process.env["DEMO_FUNDING_PASSWORD"]?.trim() ?? "",
   },
   admin: {
     /** When set, POST /admin/ayni/session-key/revoke requires matching `confirmPassword`. */

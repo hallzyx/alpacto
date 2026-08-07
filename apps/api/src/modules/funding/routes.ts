@@ -14,7 +14,9 @@ import { paymentReferenceHashFromStripeId, readOrderEscrow } from "../../lib/tre
 import { isChainConfigured } from "../../lib/onchain-ids.js";
 import { resolveOrderAddresses } from "../../lib/funding-helpers.js";
 import { withdrawRemainderAsBuyer } from "../../lib/buyer-funding.js";
+import { assertConfirmPassword } from "../../lib/confirm-password.js";
 import type { Address } from "viem";
+import { z } from "zod";
 
 function serializeFundingIntent(row: typeof fundingIntents.$inferSelect) {
   return {
@@ -59,6 +61,17 @@ export async function registerFundingRoutes(
       const { id: orderId } = request.params as { id: string };
       const order = await loadOrderForFunding(db, orderId);
       assertBuyerAccess(user, order);
+
+      const body = z
+        .object({
+          confirmPassword: z.string().optional(),
+        })
+        .parse(request.body ?? {});
+
+      assertConfirmPassword(config.demo.fundingPassword, body.confirmPassword, {
+        missingMessage: "Confirmation password required to start funding (public demo guard)",
+        invalidMessage: "Invalid confirmation password",
+      });
 
       if (!["draft", "payment_pending", "funding_failed"].includes(order.status)) {
         throw new ApiError(400, "Order is not eligible for funding");
@@ -202,6 +215,7 @@ export async function registerFundingRoutes(
         onchainRemainingUsdcUnits,
         onchainStatus,
         canWithdrawRemainder,
+        fundingPasswordRequired: Boolean(config.demo.fundingPassword),
         intent: intent ? serializeFundingIntent(intent) : null,
       };
     },

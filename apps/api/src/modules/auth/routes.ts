@@ -1,5 +1,4 @@
 import type { FastifyInstance } from "fastify";
-import { timingSafeEqual } from "node:crypto";
 import { and, desc, eq, sql } from "drizzle-orm";
 import {
   generateRegistrationOptions,
@@ -36,6 +35,7 @@ import { demoLoginSchema } from "@alpacto/shared-schemas";
 import { z } from "zod";
 import { signToken, type AuthUser } from "../../plugins/auth.js";
 import { ApiError } from "../../lib/errors.js";
+import { assertConfirmPassword } from "../../lib/confirm-password.js";
 import { config } from "../../config.js";
 import { ensureProducerInDemoAssociation } from "../../lib/demo-association.js";
 
@@ -358,18 +358,7 @@ export async function registerAuthRoutes(
         })
         .parse(request.body ?? {});
 
-      const expected = config.admin.ayniRevokePassword;
-      if (expected) {
-        const provided = body.confirmPassword?.trim() ?? "";
-        if (!provided) {
-          throw new ApiError(403, "Confirmation password required");
-        }
-        const a = Buffer.from(provided, "utf8");
-        const b = Buffer.from(expected, "utf8");
-        if (a.length !== b.length || !timingSafeEqual(a, b)) {
-          throw new ApiError(403, "Invalid confirmation password");
-        }
-      }
+      assertConfirmPassword(config.admin.ayniRevokePassword, body.confirmPassword);
 
       const rows = await db.select().from(ayniSessionKeys);
       const targets = rows.filter((r) => {

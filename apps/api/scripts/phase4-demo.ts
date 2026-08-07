@@ -147,9 +147,12 @@ async function main() {
   );
 
   console.log("💳 create Stripe Checkout session");
+  const fundingBody = process.env["DEMO_FUNDING_PASSWORD"]?.trim()
+    ? JSON.stringify({ confirmPassword: process.env["DEMO_FUNDING_PASSWORD"].trim() })
+    : "{}";
   const session = await req(
     `/orders/${order.id}/funding-session`,
-    { method: "POST", body: "{}" },
+    { method: "POST", body: fundingBody },
     buyerToken,
   );
   console.log("  checkout url:", session.url);

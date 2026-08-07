@@ -11,6 +11,16 @@ import type { Campaign, Lot, Order } from "~~/lib/types";
 import { Badge } from "~~/components/ui/badge";
 import { Button } from "~~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~~/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "~~/components/ui/dialog";
+import { Input } from "~~/components/ui/input";
+import { Label } from "~~/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~~/components/ui/table";
 import { cn } from "~~/lib/utils";
 
@@ -24,6 +34,7 @@ type FundingStatus = {
   fulfilledWeightGrams?: string | null;
   onchainRemainingUsdcUnits?: string | null;
   canWithdrawRemainder?: boolean;
+  fundingPasswordRequired?: boolean;
   intent: { status: string } | null;
 };
 
@@ -60,6 +71,9 @@ function BuyerOrderInner() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [fundModalOpen, setFundModalOpen] = useState(false);
+  const [fundPassword, setFundPassword] = useState("");
+  const [fundModalError, setFundModalError] = useState("");
 
   const load = useCallback(async () => {
     setError("");
@@ -104,25 +118,52 @@ function BuyerOrderInner() {
     return () => clearInterval(t);
   }, [order, funding?.intent?.status, load]);
 
-  const fund = async () => {
+  const startFundingSession = async (opts?: { confirmPassword?: string; fromModal?: boolean }) => {
     setBusy(true);
     setError("");
+    setFundModalError("");
     try {
       const session = await apiFetch<{ url: string | null }>(`/orders/${id}/funding-session`, {
         method: "POST",
-        body: {},
+        body: opts?.confirmPassword ? { confirmPassword: opts.confirmPassword } : {},
       });
       if (session.url) {
         window.open(session.url, "_blank", "noopener,noreferrer");
       } else {
         setError("Sesión de pago creada, pero sin URL (revisa Stripe).");
       }
+      setFundModalOpen(false);
+      setFundPassword("");
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo iniciar el depósito de fondos");
+      const message = err instanceof Error ? err.message : "No se pudo iniciar el depósito de fondos";
+      if (opts?.fromModal) {
+        setFundModalError(message);
+      } else {
+        setError(message);
+      }
     } finally {
       setBusy(false);
     }
+  };
+
+  const onFundClick = () => {
+    setError("");
+    setFundModalError("");
+    if (funding?.fundingPasswordRequired) {
+      setFundPassword("");
+      setFundModalOpen(true);
+      return;
+    }
+    void startFundingSession();
+  };
+
+  const confirmFundWithPassword = () => {
+    if (!fundPassword.trim()) {
+      setFundModalError("Ingresa la clave de confirmación del demo.");
+      return;
+    }
+    void startFundingSession({ confirmPassword: fundPassword.trim(), fromModal: true });
   };
 
   const withdrawRemainder = async () => {
@@ -194,7 +235,7 @@ function BuyerOrderInner() {
         {canFund || canWithdraw ? (
           <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
             {canFund ? (
-              <Button onClick={() => void fund()} disabled={busy}>
+              <Button onClick={onFundClick} disabled={busy}>
                 {busy ? "Abriendo…" : order.status === "funding_failed" ? "Reintentar depósito" : "Financiar orden"}
               </Button>
             ) : null}
@@ -208,6 +249,55 @@ function BuyerOrderInner() {
       </div>
 
       {error ? <ErrorBanner message={error} onDismiss={() => setError("")} /> : null}
+
+      <Dialog
+        open={fundModalOpen}
+        onOpenChange={open => {
+          setFundModalOpen(open);
+          if (!open) {
+            setFundPassword("");
+            setFundModalError("");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirmar depósito (demo público)</DialogTitle>
+            <DialogDescription>
+              Este entorno es público. El depósito mueve USDC de prueba del comprador demo hacia el escrow on-chain.
+              Pedimos una clave para que un visitante curioso no vacíe el saldo del demo.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="demo-funding-password">Clave de confirmación</Label>
+            <Input
+              id="demo-funding-password"
+              type="password"
+              autoComplete="off"
+              autoFocus
+              placeholder="Clave del demo"
+              value={fundPassword}
+              disabled={busy}
+              onChange={e => setFundPassword(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  confirmFundWithPassword();
+                }
+              }}
+            />
+            {fundModalError ? <p className="text-sm text-destructive">{fundModalError}</p> : null}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" disabled={busy} onClick={() => setFundModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button type="button" disabled={busy || !fundPassword.trim()} onClick={confirmFundWithPassword}>
+              {busy ? "Abriendo Stripe…" : "Continuar a Stripe"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* KPI cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
