@@ -1,6 +1,6 @@
 # Alpacto
 
-*Un pacto justo por cada fibra.*
+![Un pacto justo por cada fibra.](docs/images/banner_docs.png)
 
 Alpacto is a Web 2.5 fair-trade platform for alpaca fiber settlement. Buyers lock USDC in on-chain escrow, associations register lots, inspectors submit evidence, the Ayni auditor agent attests findings, and producers accept settlement before fiber is released. Crypto complexity is hidden behind ZeroDev smart accounts; settlement rules run on **Arbitrum Sepolia** via a Stylus (`AlpactoCore`) contract.
 
