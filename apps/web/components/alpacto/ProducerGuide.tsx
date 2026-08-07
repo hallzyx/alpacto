@@ -68,7 +68,7 @@ const GLOSSARY = [
     icon: ShoppingCart,
     simple: "El contrato de compra ya fondeado.",
     detail:
-      "Es el pedido concreto del comprador dentro de una campaña. Tiene dinero apartado en una cuenta de garantía (escrow).",
+      "Es el pedido concreto del comprador dentro de una campaña. Tiene dinero apartado en una cuenta de garantía.",
     example: "Ej. “Orden ALP-2026-001” por 41 kg con fondos asegurados.",
   },
   {
@@ -109,7 +109,7 @@ const GLOSSARY = [
     example: "42.5 kg FINE = S/ X bruto + prima − comisiones = S/ Y neto.",
   },
   {
-    term: "Escrow / fondos asegurados",
+    term: "Fondos asegurados",
     icon: Wallet,
     simple: "Dinero separado para tu pago.",
     detail: "Es una cuenta de garantía donde el comprador aparta el dinero antes de que entregues tu fibra.",
@@ -149,7 +149,7 @@ const FAQ = [
     a: "Tu lote pasa a estado “Nuevo pesaje”. El inspector vuelve a pesar y revisar, y Ayni lo vuelve a revisar. Después tú decides si aceptas la nueva liquidación.",
   },
   {
-    q: "¿Por qué el botón “Aceptar liquidación” está apagado?",
+    q: "¿Por qué el botón “Aceptar y retirar” está apagado?",
     a: "Solo se activa cuando Ayni ya aprobó tu lote (o dio aviso leve) y aún no está liquidado. Si está apagado, es porque falta la revisión o porque ya lo cobraste.",
   },
   {

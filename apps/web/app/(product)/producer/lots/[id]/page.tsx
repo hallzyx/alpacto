@@ -8,13 +8,15 @@ import toast from "react-hot-toast";
 import {
   ErrorBanner,
   ProducerOrderContextCard,
+  ProducerSessionKeyGrant,
   RequireAuth,
   Skeleton,
   StatusPill,
   Timeline,
 } from "~~/components/alpacto";
-import { apiFetch } from "~~/lib/api";
+import { apiFetch, ApiError } from "~~/lib/api";
 import { formatKg, formatPen, orderDisplayRef, statusLabel } from "~~/lib/format";
+import { isProducerSessionRequired } from "~~/lib/producer-session-grant";
 import type { AuditRunDetail, LotTimeline, ProducerOrderParticipation, SettlementPreview } from "~~/lib/types";
 import { Badge } from "~~/components/ui/badge";
 import { Button } from "~~/components/ui/button";
@@ -46,6 +48,7 @@ function ProducerLotInner() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [needsSessionGrant, setNeedsSessionGrant] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -122,6 +125,7 @@ function ProducerLotInner() {
   const requestReweigh = async () => {
     setBusy(true);
     setError("");
+    setNeedsSessionGrant(false);
     try {
       await apiFetch(`/lots/${id}/reweigh-request`, {
         method: "POST",
@@ -130,7 +134,12 @@ function ProducerLotInner() {
       toast.success("Nuevo pesaje solicitado. El inspector será notificado.");
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo solicitar nuevo pesaje");
+      if (isProducerSessionRequired(err) || (err instanceof ApiError && err.code === "PRODUCER_SESSION_REQUIRED")) {
+        setNeedsSessionGrant(true);
+        setError("Configura tu firma (arriba) y vuelve a solicitar el re-pesaje.");
+      } else {
+        setError(err instanceof Error ? err.message : "No se pudo solicitar nuevo pesaje");
+      }
     } finally {
       setBusy(false);
     }
@@ -197,12 +206,23 @@ function ProducerLotInner() {
             </Button>
           ) : null}
           {canSettle ? (
-            <Button onClick={() => router.push(`/producer/lots/${id}/settlement`)}>Aceptar liquidación</Button>
+            <Button onClick={() => router.push(`/producer/lots/${id}/settlement`)}>Aceptar y retirar</Button>
           ) : null}
         </div>
       </div>
 
       {error ? <ErrorBanner message={error} onDismiss={() => setError("")} /> : null}
+
+      {needsSessionGrant ? (
+        <ProducerSessionKeyGrant
+          force
+          onGranted={() => {
+            setNeedsSessionGrant(false);
+            setError("");
+            void requestReweigh();
+          }}
+        />
+      ) : null}
 
       {awaitingConfirm ? (
         <Card className="border-primary/30 bg-primary/5">

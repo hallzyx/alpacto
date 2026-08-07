@@ -111,7 +111,7 @@ function BuyerOverviewInner() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">Comprador</h1>
-          <p className="text-muted-foreground">Resumen de campañas, órdenes y fondeo.</p>
+          <p className="text-muted-foreground">Resumen de campañas, órdenes y fondos reservados.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button asChild variant="outline">
@@ -151,7 +151,7 @@ function BuyerOverviewInner() {
           </CardHeader>
           <CardContent>
             <p className="font-display text-3xl font-semibold text-primary">{formatUsdCents(totalBudgetCents)}</p>
-            <p className="text-xs text-muted-foreground">en escrow</p>
+            <p className="text-xs text-muted-foreground">en cuenta de garantía</p>
           </CardContent>
         </Card>
         <Card>
@@ -172,7 +172,7 @@ function BuyerOverviewInner() {
         <Card className="lg:col-span-3">
           <CardHeader>
             <CardTitle>Presupuesto por campaña</CardTitle>
-            <CardDescription>USD comprometidos en escrow por marco comercial.</CardDescription>
+            <CardDescription>USD comprometidos en cuenta de garantía por marco comercial.</CardDescription>
           </CardHeader>
           <CardContent>
             {!budgetByCampaign.length ? (
@@ -260,7 +260,7 @@ function BuyerOverviewInner() {
                     <th className="px-4 py-2 font-medium">Restante</th>
                     <th className="px-4 py-2 font-medium">Estado</th>
                     <th className="px-4 py-2 font-medium">Fecha</th>
-                    <th className="px-4 py-2 font-medium">Tx</th>
+                    <th className="px-4 py-2 font-medium">Comprobante</th>
                   </tr>
                 </thead>
                 <tbody>

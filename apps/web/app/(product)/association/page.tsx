@@ -345,7 +345,7 @@ function AssociationOverviewInner() {
                     <th className="px-4 py-2 font-medium">Restante</th>
                     <th className="px-4 py-2 font-medium">Estado</th>
                     <th className="px-4 py-2 font-medium">Fecha</th>
-                    <th className="px-4 py-2 font-medium">Tx</th>
+                    <th className="px-4 py-2 font-medium">Comprobante</th>
                   </tr>
                 </thead>
                 <tbody>

@@ -37,7 +37,7 @@ function BuyerOrdersInner() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">Órdenes</h1>
-          <p className="text-muted-foreground">Meta de kg, presupuesto y estado de fondeo.</p>
+          <p className="text-muted-foreground">Meta de kg, presupuesto y estado de los fondos.</p>
         </div>
         <Button asChild>
           <Link href="/buyer/orders/new">Nueva orden</Link>

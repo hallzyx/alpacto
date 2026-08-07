@@ -7,12 +7,17 @@ export const API_URL = (typeof process !== "undefined" && process.env.NEXT_PUBLI
 export class ApiError extends Error {
   status: number;
   body: unknown;
+  code?: string;
 
   constructor(status: number, message: string, body?: unknown) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.body = body;
+    if (body && typeof body === "object" && body !== null && "code" in body) {
+      const c = (body as { code: unknown }).code;
+      if (typeof c === "string") this.code = c;
+    }
   }
 }
 
@@ -88,6 +93,18 @@ export async function producerSession(input: {
   authMethod: "google" | "email_otp" | "passkey";
 }): Promise<AuthSession & { authMethod: string }> {
   return apiFetch("/auth/producer/session", {
+    method: "POST",
+    body: input,
+    auth: false,
+  });
+}
+
+/** Resume JWT for a producer already linked to this ZeroDev smart account. */
+export async function producerResume(input: {
+  smartAccountAddress: string;
+  authMethod: "google" | "email_otp" | "passkey";
+}): Promise<AuthSession & { authMethod: string }> {
+  return apiFetch("/auth/producer/resume", {
     method: "POST",
     body: input,
     auth: false,

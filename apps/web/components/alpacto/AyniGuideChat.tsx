@@ -51,13 +51,13 @@ function orderIdFromAnyPath(pathname: string): string | undefined {
 }
 
 const PRODUCER_WELCOME =
-  "Hola, soy **Ayni**. Puedo explicar el flujo, consultar **tus lotes** (orden, campaña, liquidación), estimar kg disponibles en tus órdenes, y verificar que Postgres y la blockchain coincidan.\n\n¿Qué quieres saber?";
+  "Hola, soy **Ayni**. Puedo explicar el flujo, consultar **tus lotes** (orden, campaña, liquidación), estimar kg disponibles en tus órdenes, y verificar que los datos del sistema coincidan.\n\n¿Qué quieres saber?";
 
 const ASSOCIATION_WELCOME =
   "Hola, soy **Ayni**. Puedo consultar **campañas, órdenes, lotes y disputas de tu asociación**, liquidaciones y hallazgos de auditoría. No resuelvo disputas ni registro lotes por chat — eso es el panel.\n\n¿Qué quieres revisar?";
 
 const BUYER_WELCOME =
-  "Hola, soy **Ayni**. Puedo consultar **tus órdenes**, fondeo/escrow, lotes que entran a ellas y precios de tus campañas. Para financiar, usa el botón de la orden.\n\n¿Qué necesitas?";
+  "Hola, soy **Ayni**. Puedo consultar **tus órdenes**, fondos reservados, lotes que entran a ellas y precios de tus campañas. Para financiar, usa el botón de la orden.\n\n¿Qué necesitas?";
 
 function historyForApi(messages: ChatMessage[], welcome: string): ChatMessage[] {
   return messages.filter((m, i) => !(i === 0 && m.role === "assistant" && m.content === welcome));

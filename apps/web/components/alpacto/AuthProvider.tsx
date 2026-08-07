@@ -6,15 +6,22 @@ import {
   demoLogin as apiDemoLogin,
   fetchMe,
   getStoredToken,
+  producerResume as apiProducerResume,
   producerSession as apiProducerSession,
   roleHomePath,
   setStoredToken,
 } from "~~/lib/api";
 import type { AuthUser, UserRole } from "~~/lib/types";
+import { disconnectZeroDevWallet } from "~~/lib/zerodev-wagmi";
 
 type ProducerSessionInput = {
   email: string;
   name: string;
+  smartAccountAddress: string;
+  authMethod: "google" | "email_otp" | "passkey";
+};
+
+type ProducerResumeInput = {
   smartAccountAddress: string;
   authMethod: "google" | "email_otp" | "passkey";
 };
@@ -25,6 +32,7 @@ type AuthContextValue = {
   loading: boolean;
   demoLogin: (email: string) => Promise<AuthUser>;
   producerSession: (input: ProducerSessionInput) => Promise<AuthUser>;
+  producerResume: (input: ProducerResumeInput) => Promise<AuthUser>;
   logout: () => void;
   refresh: () => Promise<void>;
   requireRole: (roles: UserRole | UserRole[]) => boolean;
@@ -90,10 +98,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [applySession, router],
   );
 
+  const producerResume = useCallback(
+    async (input: ProducerResumeInput) => {
+      const session = await apiProducerResume(input);
+      applySession(session.token, session.user);
+      router.push(roleHomePath(session.user.role));
+      return session.user;
+    },
+    [applySession, router],
+  );
+
   const logout = useCallback(() => {
     setStoredToken(null);
     setToken(null);
     setUser(null);
+    // Producer Google/OTP leaves the ZeroDev wagmi connector connected; clear it
+    // or the next "Continuar con Google" throws "Connector already connected".
+    void disconnectZeroDevWallet();
     router.push("/");
   }, [router]);
 
@@ -121,12 +142,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       demoLogin,
       producerSession,
+      producerResume,
       logout,
       refresh,
       requireRole,
       goHome,
     }),
-    [user, token, loading, demoLogin, producerSession, logout, refresh, requireRole, goHome],
+    [user, token, loading, demoLogin, producerSession, producerResume, logout, refresh, requireRole, goHome],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

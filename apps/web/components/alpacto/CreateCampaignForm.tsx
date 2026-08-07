@@ -37,7 +37,7 @@ export function CreateCampaignForm({ onCreated }: CreateCampaignFormProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  const needsBuyerPicker = user?.role === "association" || user?.role === "admin";
+  const needsBuyerPicker = user?.role === "admin";
   const isBuyer = user?.role === "buyer";
 
   useEffect(() => {
@@ -219,7 +219,7 @@ export function CreateCampaignForm({ onCreated }: CreateCampaignFormProps) {
                     const tag = own ? "tuya" : p.createdBy ? "comprador" : "plataforma";
                     return (
                       <SelectItem key={p.id} value={p.id}>
-                        v{p.version} ({tag}) · fee {(p.associationFeeBps / 100).toFixed(1)}% ·{" "}
+                        v{p.version} ({tag}) · comisión {(p.associationFeeBps / 100).toFixed(1)}% ·{" "}
                         {p.categories.map(c => c.code).join(", ") || "sin categorías"}
                       </SelectItem>
                     );

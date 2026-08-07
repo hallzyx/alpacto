@@ -19,3 +19,4 @@ export { ProducerGuideLink } from "./ProducerGuideLink";
 export { AyniGuideChat, AyniProducerChat, AyniAssociationChat, AyniBuyerChat, openAyniChat } from "./AyniGuideChat";
 export { AyniAuditLiveModal } from "./AyniAuditLiveModal";
 export { AyniMarkdown } from "./AyniMarkdown";
+export { ProducerSessionKeyGrant } from "./ProducerSessionKeyGrant";

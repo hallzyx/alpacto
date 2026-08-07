@@ -8,6 +8,7 @@ import { Button } from "~~/components/ui/button";
 import { Field, FieldGroup, FieldLabel } from "~~/components/ui/field";
 import { Input } from "~~/components/ui/input";
 import { demoSmartAccountAddress } from "~~/lib/demo-account";
+import { maybeGrantProducerSessionKey } from "~~/lib/producer-session-grant";
 import { isZeroDevConfigured, resolveZeroDevSmartAccountAddress } from "~~/lib/zerodev-wagmi";
 
 const DEMO_OTP = "123456";
@@ -181,6 +182,7 @@ function ProducerEmailOtpLiveForm({ busy, setBusy, setError }: Props) {
         smartAccountAddress,
         authMethod: "email_otp",
       });
+      await maybeGrantProducerSessionKey(wagmiConfig);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error de autenticación");
     } finally {
@@ -196,7 +198,7 @@ function ProducerEmailOtpLiveForm({ busy, setBusy, setError }: Props) {
     <form onSubmit={e => void onSubmit(e)}>
       <FieldGroup className="gap-4">
         <FormNote>
-          Te enviaremos un código a tu correo (ZeroDev). Revisa bandeja y spam. Luego vinculamos tu sesión en Alpacto.
+          Te enviaremos un código a tu correo. Revisa bandeja y spam. Luego vinculamos tu sesión en Alpacto.
         </FormNote>
         <Field>
           <FieldLabel htmlFor="o-email">Correo</FieldLabel>

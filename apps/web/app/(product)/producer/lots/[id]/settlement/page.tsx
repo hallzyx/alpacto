@@ -3,12 +3,12 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, CheckCircle2, CreditCard, FileText, Wallet } from "lucide-react";
-import { ErrorBanner, RequireAuth, Skeleton, StatusPill } from "~~/components/alpacto";
-import { apiFetch } from "~~/lib/api";
+import { ArrowLeft, CheckCircle2, ExternalLink, FileText, Wallet } from "lucide-react";
+import { ErrorBanner, ProducerSessionKeyGrant, RequireAuth, Skeleton, StatusPill } from "~~/components/alpacto";
+import { apiFetch, ApiError } from "~~/lib/api";
 import { formatKg, formatPen } from "~~/lib/format";
-import type { LocalPayout, Settlement, SettlementPreview } from "~~/lib/types";
-import { Badge } from "~~/components/ui/badge";
+import { isProducerSessionRequired } from "~~/lib/producer-session-grant";
+import type { Settlement, SettlementPreview } from "~~/lib/types";
 import { Button } from "~~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~~/components/ui/card";
 
@@ -16,15 +16,19 @@ function shortLotId(id: string) {
   return `Lote ${id.slice(0, 8)}`;
 }
 
+function txExplorerUrl(hash: string) {
+  return `https://sepolia.arbiscan.io/tx/${hash}`;
+}
+
 function SettlementInner() {
   const params = useParams();
   const id = String(params.id);
   const [preview, setPreview] = useState<SettlementPreview | null>(null);
   const [settlement, setSettlement] = useState<Settlement | null>(null);
-  const [payout, setPayout] = useState<LocalPayout | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [needsSessionGrant, setNeedsSessionGrant] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -39,11 +43,6 @@ function SettlementInner() {
     } catch {
       setSettlement(null);
     }
-    try {
-      setPayout(await apiFetch<LocalPayout>(`/lots/${id}/local-payout`));
-    } catch {
-      setPayout(null);
-    }
     setLoading(false);
   }, [id]);
 
@@ -54,25 +53,17 @@ function SettlementInner() {
   const accept = async () => {
     setBusy(true);
     setError("");
+    setNeedsSessionGrant(false);
     try {
       const s = await apiFetch<Settlement>(`/lots/${id}/settlement/accept`, { method: "POST", body: {} });
       setSettlement(s);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo aceptar la liquidación");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const simulatePayout = async () => {
-    setBusy(true);
-    setError("");
-    try {
-      const p = await apiFetch<LocalPayout>(`/lots/${id}/local-payout/simulate`, { method: "POST", body: {} });
-      setPayout(p);
-      await load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo simular el pago");
+      if (isProducerSessionRequired(err) || (err instanceof ApiError && err.code === "PRODUCER_SESSION_REQUIRED")) {
+        setNeedsSessionGrant(true);
+        setError("Configura tu firma (arriba) y vuelve a aceptar la liquidación.");
+      } else {
+        setError(err instanceof Error ? err.message : "No se pudo aceptar la liquidación");
+      }
     } finally {
       setBusy(false);
     }
@@ -81,10 +72,10 @@ function SettlementInner() {
   if (loading) return <Skeleton rows={5} />;
 
   const amounts = settlement ?? preview;
+  const isDone = settlement != null && ["accepted", "settled"].includes(settlement.status);
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Header */}
       <div className="flex flex-col gap-4">
         <Link
           href={`/producer/lots/${id}`}
@@ -96,26 +87,31 @@ function SettlementInner() {
         <div>
           <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">Liquidación</h1>
           <p className="text-muted-foreground">
-            Resumen final en soles para {shortLotId(id)}. Confirmación simple, sin gas ni wallets.
+            Resumen final en soles para {shortLotId(id)}. Al aceptar, el dinero apartado se envía a tu cuenta de pago.
           </p>
         </div>
         {settlement ? (
           <div className="flex items-center gap-2">
             <StatusPill status={settlement.status} />
-            {payout ? (
-              <Badge variant="outline" className="gap-1">
-                Pago local: <StatusPill status={payout.status} />
-              </Badge>
-            ) : null}
           </div>
         ) : null}
       </div>
 
       {error ? <ErrorBanner message={error} onDismiss={() => setError("")} /> : null}
 
+      {needsSessionGrant ? (
+        <ProducerSessionKeyGrant
+          force
+          onGranted={() => {
+            setNeedsSessionGrant(false);
+            setError("");
+            void accept();
+          }}
+        />
+      ) : null}
+
       {amounts ? (
         <>
-          {/* Summary cards */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -166,7 +162,6 @@ function SettlementInner() {
             </Card>
           </div>
 
-          {/* Breakdown */}
           <Card>
             <CardHeader>
               <CardTitle>Desglose detallado</CardTitle>
@@ -210,53 +205,52 @@ function SettlementInner() {
         </>
       ) : null}
 
-      {/* Actions */}
-      <div className="flex gap-2">
-        {!settlement ? (
+      {!isDone ? (
+        <div className="flex gap-2">
           <Button onClick={() => void accept()} disabled={busy || !preview} size="lg">
-            {busy ? "Confirmando…" : "Aceptar liquidación"}
+            <Wallet className="h-4 w-4" />
+            {busy ? "Transfiriendo tu pago…" : "Aceptar y recibir en mi cuenta"}
           </Button>
-        ) : (
-          <Button onClick={() => void simulatePayout()} disabled={busy || !!payout} size="lg">
-            {busy ? "…" : payout ? "Pago simulado" : "Simular pago local"}
-          </Button>
-        )}
-      </div>
-
-      {/* Payout card */}
-      {payout ? (
+        </div>
+      ) : (
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
               <div>
-                <CardTitle>Pago local</CardTitle>
-                <CardDescription>Simulación de transferencia</CardDescription>
+                <CardTitle>Pago enviado a tu cuenta</CardTitle>
+                <CardDescription>
+                  Aceptaste la liquidación. Liberamos los fondos reservados hacia tu cuenta Alpacto.
+                </CardDescription>
               </div>
-              <Badge variant="secondary" className="gap-1">
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                Simulación
-              </Badge>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="flex flex-col gap-1 rounded-lg border p-4">
-                <span className="text-sm text-muted-foreground">Monto</span>
-                <span className="text-lg font-semibold">{formatPen(payout.amountPenMinor)}</span>
-              </div>
-              <div className="flex flex-col gap-1 rounded-lg border p-4">
-                <span className="text-sm text-muted-foreground">Referencia</span>
-                <span className="text-lg font-semibold font-mono">{payout.reference ?? "—"}</span>
-              </div>
+          <CardContent className="flex flex-col gap-3">
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <span className="text-muted-foreground">Estado</span>
+              <StatusPill status={settlement.status} />
             </div>
-            <div className="mt-4 flex items-center gap-2">
-              <Wallet className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">{payout.label}</span>
-              <StatusPill status={payout.status} />
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <span className="text-muted-foreground">Neto</span>
+              <span className="font-medium">{formatPen(settlement.netPenMinor)}</span>
             </div>
+            {settlement.settlementTxHash ? (
+              <a
+                href={txExplorerUrl(settlement.settlementTxHash)}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 text-sm text-primary underline-offset-4 hover:underline"
+              >
+                Ver comprobante del pago
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            ) : null}
+            <Button asChild variant="outline" className="w-fit">
+              <Link href={`/producer/lots/${id}`}>Volver al lote</Link>
+            </Button>
           </CardContent>
         </Card>
-      ) : null}
+      )}
     </div>
   );
 }

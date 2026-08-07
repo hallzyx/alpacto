@@ -8,6 +8,7 @@ import {
   ErrorBanner,
   ProducerGuideLink,
   ProducerOrderContextCard,
+  ProducerSessionKeyGrant,
   RequireAuth,
   Skeleton,
   StatusPill,
@@ -172,6 +173,8 @@ function ProducerDashboardInner() {
       </div>
 
       {error ? <ErrorBanner message={error} /> : null}
+
+      <ProducerSessionKeyGrant />
 
       {/* KPI row */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

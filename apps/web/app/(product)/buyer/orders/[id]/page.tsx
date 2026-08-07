@@ -19,6 +19,11 @@ type FundingStatus = {
   orderStatus: string;
   fundedUsdcUnits: string;
   remainingUsdcUnits: string;
+  targetWeightGrams?: string | null;
+  reservedWeightGrams?: string | null;
+  fulfilledWeightGrams?: string | null;
+  onchainRemainingUsdcUnits?: string | null;
+  canWithdrawRemainder?: boolean;
   intent: { status: string } | null;
 };
 
@@ -36,12 +41,12 @@ function shortId(id: string) {
   return id.slice(0, 8);
 }
 
-function progressPercent(funded: string, remaining: string): number {
-  const f = Number(funded);
-  const r = Number(remaining);
-  const total = f + r;
-  if (!Number.isFinite(total) || total <= 0) return 0;
-  return Math.round((f / total) * 100);
+function progressPercent(fundedUsdcUnits: string, budgetUsdCents: string): number {
+  const funded = Number(fundedUsdcUnits);
+  // budget is USD cents; USDC uses 6 decimals → 1 cent = 10_000 units
+  const budgetUsdc = Number(budgetUsdCents) * 10_000;
+  if (!Number.isFinite(funded) || !Number.isFinite(budgetUsdc) || budgetUsdc <= 0) return 0;
+  return Math.min(100, Math.round((funded / budgetUsdc) * 100));
 }
 
 function BuyerOrderInner() {
@@ -114,7 +119,23 @@ function BuyerOrderInner() {
       }
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo iniciar el fondeo");
+      setError(err instanceof Error ? err.message : "No se pudo iniciar el depósito de fondos");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const withdrawRemainder = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      await apiFetch(`/orders/${id}/withdraw-remainder`, {
+        method: "POST",
+        body: {},
+      });
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo retirar el remanente");
     } finally {
       setBusy(false);
     }
@@ -125,8 +146,16 @@ function BuyerOrderInner() {
 
   const funded = funding?.fundedUsdcUnits ?? order.fundedUsdcUnits;
   const remaining = funding?.remainingUsdcUnits ?? order.remainingUsdcUnits;
-  const percent = progressPercent(funded, remaining);
+  const percent = progressPercent(funded, order.budgetUsdCents);
   const canFund = ["draft", "payment_pending", "funding_failed"].includes(order.status);
+  const targetGrams = funding?.targetWeightGrams ?? order.targetWeightGrams ?? null;
+  const reservedGrams = funding?.reservedWeightGrams ?? null;
+  const fulfilledGrams = funding?.fulfilledWeightGrams ?? null;
+  const canWithdraw = Boolean(funding?.canWithdrawRemainder);
+  const weightProgress =
+    targetGrams && Number(targetGrams) > 0 && fulfilledGrams != null
+      ? Math.min(100, Math.round((Number(fulfilledGrams) / Number(targetGrams)) * 100))
+      : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -162,10 +191,19 @@ function BuyerOrderInner() {
             ) : null}
           </div>
         </div>
-        {canFund ? (
-          <Button onClick={() => void fund()} disabled={busy} className="shrink-0">
-            {busy ? "Abriendo…" : order.status === "funding_failed" ? "Reintentar fondeo" : "Financiar orden"}
-          </Button>
+        {canFund || canWithdraw ? (
+          <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+            {canFund ? (
+              <Button onClick={() => void fund()} disabled={busy}>
+                {busy ? "Abriendo…" : order.status === "funding_failed" ? "Reintentar depósito" : "Financiar orden"}
+              </Button>
+            ) : null}
+            {canWithdraw ? (
+              <Button onClick={() => void withdrawRemainder()} disabled={busy} variant="secondary">
+                {busy ? "Retirando…" : "Retirar remanente"}
+              </Button>
+            ) : null}
+          </div>
         ) : null}
       </div>
 
@@ -192,14 +230,20 @@ function BuyerOrderInner() {
           </CardHeader>
           <CardContent>
             <p className="font-display text-2xl font-semibold text-foreground">
-              {order.targetWeightGrams ? formatKg(order.targetWeightGrams) : "—"}
+              {targetGrams ? formatKg(targetGrams) : "—"}
             </p>
+            {fulfilledGrams != null || reservedGrams != null ? (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Cumplido {fulfilledGrams != null ? formatKg(fulfilledGrams) : "—"}
+                {reservedGrams != null ? ` · reservado ${formatKg(reservedGrams)}` : null}
+              </p>
+            ) : null}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Fondeado en escrow</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Reservado en garantía</CardTitle>
             <Wallet className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -223,9 +267,9 @@ function BuyerOrderInner() {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Progreso de fondeo</CardTitle>
+              <CardTitle>Progreso del depósito</CardTitle>
               <CardDescription>
-                {formatEscrowUsd(funded)} de {formatUsdCents(order.budgetUsdCents)} en escrow
+                {formatEscrowUsd(funded)} de {formatUsdCents(order.budgetUsdCents)} en cuenta de garantía
               </CardDescription>
             </div>
             <span className="text-2xl font-semibold tabular-nums">{percent}%</span>
@@ -239,11 +283,46 @@ function BuyerOrderInner() {
             />
           </div>
           <div className="mt-2 flex justify-between text-xs text-muted-foreground">
-            <span>Fondeado</span>
-            <span>Restante: {formatEscrowUsd(remaining)}</span>
+            <span>Reservado vs presupuesto</span>
+            <span>Disponible en cuenta de garantía: {formatEscrowUsd(remaining)}</span>
           </div>
         </CardContent>
       </Card>
+
+      {weightProgress != null ? (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Progreso de acopio</CardTitle>
+                <CardDescription>
+                  {formatKg(fulfilledGrams!)} cumplidos de {formatKg(targetGrams!)}
+                  {reservedGrams != null && Number(reservedGrams) > 0
+                    ? ` · ${formatKg(reservedGrams)} en reserva`
+                    : null}
+                </CardDescription>
+              </div>
+              <span className="text-2xl font-semibold tabular-nums">{weightProgress}%</span>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className={cn(
+                  "h-full rounded-full transition-all",
+                  weightProgress >= 100 ? "bg-primary" : "bg-chart-2",
+                )}
+                style={{ width: `${weightProgress}%` }}
+              />
+            </div>
+            {canWithdraw ? (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Meta alcanzada y sin reservas — puedes retirar el remanente en dólares de la cuenta de garantía.
+              </p>
+            ) : null}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Pricing policy */}

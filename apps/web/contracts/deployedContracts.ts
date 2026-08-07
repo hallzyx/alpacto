@@ -1087,8 +1087,8 @@ const deployedContracts = {
   },
   "421614": {
     "alpacto-core": {
-      address: "0xe651750934308720f305c5dae257d4ea1c013cdf",
-      txHash: "0x65b6c65d16192058e185d41c02e08e8138d95dd48a483f323475daf67a3f8f47",
+      address: "0x3d9c424814a9038ba7d4dd39c1e6a1bb58a3fc5f",
+      txHash: "0x3971cbcb2440e1d50102f47043a9e4b1ced10080ea4915c632105d8c4dcc637b",
       abi: [
         {
           inputs: [],
@@ -1198,6 +1198,27 @@ const deployedContracts = {
           type: "error",
         },
         {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+            {
+              internalType: "uint64",
+              name: "",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "",
+              type: "uint64",
+            },
+          ],
+          name: "InsufficientWeightCapacity",
+          type: "error",
+        },
+        {
           inputs: [],
           name: "InvalidAmount",
           type: "error",
@@ -1301,6 +1322,22 @@ const deployedContracts = {
               type: "address",
             },
           ],
+          name: "NotBuyer",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+          ],
           name: "NotProducer",
           type: "error",
         },
@@ -1359,6 +1396,27 @@ const deployedContracts = {
           type: "error",
         },
         {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+            {
+              internalType: "uint64",
+              name: "",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "",
+              type: "uint64",
+            },
+          ],
+          name: "TargetWeightNotMet",
+          type: "error",
+        },
+        {
           inputs: [],
           name: "TokenTransferFailed",
           type: "error",
@@ -1393,6 +1451,22 @@ const deployedContracts = {
             },
           ],
           name: "VersionMismatch",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+            {
+              internalType: "uint64",
+              name: "",
+              type: "uint64",
+            },
+          ],
+          name: "WeightStillReserved",
           type: "error",
         },
         {
@@ -1531,6 +1605,11 @@ const deployedContracts = {
               internalType: "uint256",
               name: "budget_usdc_units",
               type: "uint256",
+            },
+            {
+              internalType: "uint64",
+              name: "target_weight_grams",
+              type: "uint64",
             },
           ],
           name: "createOrder",
@@ -1699,6 +1778,11 @@ const deployedContracts = {
               name: "",
               type: "bool",
             },
+            {
+              internalType: "uint64",
+              name: "",
+              type: "uint64",
+            },
           ],
           stateMutability: "view",
           type: "function",
@@ -1752,6 +1836,21 @@ const deployedContracts = {
               internalType: "bool",
               name: "",
               type: "bool",
+            },
+            {
+              internalType: "uint64",
+              name: "",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "",
+              type: "uint64",
+            },
+            {
+              internalType: "uint64",
+              name: "",
+              type: "uint64",
             },
           ],
           stateMutability: "view",
@@ -1935,6 +2034,19 @@ const deployedContracts = {
             },
           ],
           stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "order_id",
+              type: "uint256",
+            },
+          ],
+          name: "withdrawRemainder",
+          outputs: [],
+          stateMutability: "nonpayable",
           type: "function",
         },
       ],

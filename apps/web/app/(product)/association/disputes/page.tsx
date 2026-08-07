@@ -126,7 +126,7 @@ function AssociationDisputesInner() {
             isIntegrity ? (
               <div className="flex flex-col gap-3">
                 <p className="text-sm text-destructive">
-                  Anomalía de integridad (Postgres vs blockchain). Revisa montos/estado on-chain antes de cerrar.
+                  Anomalía de integridad: los datos del sistema no coinciden. Revisa montos y estado antes de cerrar.
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <Button
@@ -209,7 +209,7 @@ function AssociationDisputesInner() {
       <div>
         <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">Disputas</h1>
         <p className="text-muted-foreground">
-          Declives de productores y anomalías de integridad (Postgres ↔ blockchain) aparecen aquí.
+          Declives de productores y anomalías de integridad (cuando los datos del sistema no coinciden) aparecen aquí.
         </p>
       </div>
 

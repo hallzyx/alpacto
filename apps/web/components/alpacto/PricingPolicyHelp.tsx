@@ -77,7 +77,7 @@ export function PricingPolicyHelpModal({ policy, open, onClose }: PricingPolicyH
 
         <p className="alp-muted" style={{ marginTop: "0.5rem", marginBottom: "1rem" }}>
           Define cómo se calcula el valor de cada lote al inspeccionar: precio por calidad, comisión de la asociación,
-          conversión a dólares en escrow y tolerancia para la auditoría Ayni.
+          conversión a dólares en cuenta de garantía y tolerancia para la auditoría Ayni.
         </p>
 
         <dl className="alp-policy-help">
@@ -101,9 +101,9 @@ export function PricingPolicyHelpModal({ policy, open, onClose }: PricingPolicyH
             </dd>
           </div>
           <div className="alp-policy-help__row">
-            <dt>Comisión asociación (fee)</dt>
+            <dt>Comisión asociación</dt>
             <dd>
-              <strong>{feePct}%</strong> ({policy.associationFeeBps} bps)
+              <strong>{feePct}%</strong>
               <span className="alp-policy-help__hint">
                 Porcentaje que retiene la asociación sobre el valor bruto del lote. En demo: AlpaSur.
               </span>
@@ -112,9 +112,9 @@ export function PricingPolicyHelpModal({ policy, open, onClose }: PricingPolicyH
           <div className="alp-policy-help__row">
             <dt>Comisión plataforma</dt>
             <dd>
-              <strong>{platformFeePct}%</strong> ({policy.platformFeeBps ?? 50} bps)
+              <strong>{platformFeePct}%</strong>
               <span className="alp-policy-help__hint">
-                Fee de Alpacto sobre el valor bruto. Va a la tesorería de la plataforma al liquidar cada lote.
+                Comisión de Alpacto sobre el valor bruto. Se aparta al liquidar cada lote.
               </span>
             </dd>
           </div>
@@ -123,15 +123,15 @@ export function PricingPolicyHelpModal({ policy, open, onClose }: PricingPolicyH
             <dd>
               <strong>S/ {fx} = USD 1</strong>
               <span className="alp-policy-help__hint">
-                Tasa hardcodeada del MVP (equivalente a {DEMO_PEN_PER_USDC} soles por dólar). Convierte el neto en soles
-                al saldo en escrow de la orden. No es un oráculo en tiempo real.
+                Tasa fija del demo (equivalente a {DEMO_PEN_PER_USDC} soles por dólar). Convierte el neto en soles al
+                saldo reservado de la orden. No es una cotización en tiempo real.
               </span>
             </dd>
           </div>
           <div className="alp-policy-help__row">
             <dt>Tolerancia de peso</dt>
             <dd>
-              <strong>{tolerance}</strong> ({policy.weightToleranceBps} bps)
+              <strong>{tolerance}</strong>
               <span className="alp-policy-help__hint">
                 Margen permitido entre el peso del inspector y la evidencia (Ayni). Si la diferencia supera esto, la
                 auditoría pide revisión o nuevo pesaje.
@@ -169,7 +169,8 @@ export function PricingPolicyHelpModal({ policy, open, onClose }: PricingPolicyH
             <strong>Ejemplo (41.5 kg FINE)</strong>
           </p>
           <p style={{ margin: 0 }}>
-            Bruto ≈ 41.5 × precio/kg → menos {feePct}% comisión → neto en soles → convertido a USD en escrow (S/ {fx}
+            Bruto ≈ 41.5 × precio/kg → menos {feePct}% comisión → neto en soles → convertido a USD en cuenta de garantía
+            (S/ {fx}
             /USD). Ese saldo se descuenta de la orden al liquidar el lote.
           </p>
         </section>

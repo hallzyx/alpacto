@@ -14,10 +14,12 @@ import deployedContracts from "~~/contracts/deployedContracts";
 const FILTERS: Array<{ id: "all" | OnchainActivityType; label: string }> = [
   { id: "all", label: "Todas" },
   { id: "order_funded", label: "Fondeos" },
-  { id: "settlement", label: "Liquidaciones" },
-  { id: "audit_attest", label: "Attests Ayni" },
+  { id: "lot_registered", label: "Lotes" },
   { id: "inspection", label: "Inspecciones" },
+  { id: "audit_attest", label: "Attests Ayni" },
   { id: "reweigh", label: "Re-pesajes" },
+  { id: "settlement", label: "Liquidaciones" },
+  { id: "remainder_withdraw", label: "Remanentes" },
 ];
 
 function formatWhen(iso: string): string {
@@ -36,8 +38,10 @@ function typeTone(type: string): "default" | "secondary" | "outline" | "destruct
     case "settlement":
       return "default";
     case "order_funded":
+    case "remainder_withdraw":
       return "secondary";
     case "audit_attest":
+    case "lot_registered":
       return "outline";
     default:
       return "outline";

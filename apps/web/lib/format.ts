@@ -32,7 +32,14 @@ export function formatEscrowUsd(usdcUnits: string | number | bigint | null | und
   if (usdcUnits === null || usdcUnits === undefined || usdcUnits === "") return "$—";
   const n = typeof usdcUnits === "bigint" ? Number(usdcUnits) : Number(usdcUnits);
   if (!Number.isFinite(n)) return "$—";
-  return `$${(n / 1_000_000).toFixed(2)}`;
+  const usd = n / 1_000_000;
+  if (usd === 0) return "$0.00";
+  // Dust remainders (rounding) would otherwise collapse to "$0.00".
+  if (Math.abs(usd) < 0.01) {
+    const s = usd.toFixed(6).replace(/\.?0+$/, "");
+    return `$${s}`;
+  }
+  return `$${usd.toFixed(2)}`;
 }
 
 /** Shorten a 0x transaction hash for display. */
@@ -42,11 +49,13 @@ export function shortTxHash(hash: string | null | undefined): string {
 }
 
 export const ONCHAIN_ACTIVITY_LABELS: Record<string, string> = {
-  order_funded: "Fondeo orden",
-  inspection: "Inspección on-chain",
-  audit_attest: "Attest Ayni",
+  order_funded: "Depósito orden",
+  lot_registered: "Registro lote",
+  inspection: "Inspección registrada",
+  audit_attest: "Veredicto Ayni",
   settlement: "Liquidación",
   reweigh: "Re-pesaje",
+  remainder_withdraw: "Retiro remanente",
 };
 
 /** Human-readable lot / order status (Spanish). */
@@ -70,7 +79,7 @@ export function statusLabel(status: string): string {
     settled: "Liquidado",
     draft: "Borrador",
     payment_pending: "Pago pendiente",
-    funded: "Fondeado",
+    funded: "Con fondos",
     accepting_lots: "Recibiendo lotes",
     partially_settled: "Parcialmente liquidado",
     closed: "Cerrado",
@@ -88,7 +97,7 @@ export function statusLabel(status: string): string {
     open: "Abierta",
     investigating: "En investigación",
     resolved_acknowledged: "Reconocida",
-    data_mismatch: "Anomalía Postgres ↔ cadena",
+    data_mismatch: "Datos del sistema no coinciden",
     wrong_weight: "Peso incorrecto",
     wrong_producer: "Productor equivocado",
     not_my_fiber: "No es mi fibra",

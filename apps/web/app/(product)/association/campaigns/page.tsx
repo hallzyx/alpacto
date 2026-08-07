@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { CampaignDetails, EmptyState, ErrorBanner, RequireAuth, Skeleton, StatusPill } from "~~/components/alpacto";
-import { Button } from "~~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~~/components/ui/card";
 import { apiFetch } from "~~/lib/api";
 import type { Campaign } from "~~/lib/types";
@@ -42,14 +40,11 @@ function CampaignsInner() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">Campañas</h1>
-          <p className="text-muted-foreground">Gestiona el marco comercial y las órdenes asociadas.</p>
-        </div>
-        <Button asChild>
-          <Link href="/association/campaigns/new">Nueva campaña</Link>
-        </Button>
+      <div>
+        <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">Campañas</h1>
+        <p className="text-muted-foreground">
+          Campañas donde tu asociación es la de acopio. Las crea el comprador; aquí solo las consultas.
+        </p>
       </div>
 
       {error ? <ErrorBanner message={error} /> : null}
@@ -57,7 +52,10 @@ function CampaignsInner() {
       {!campaigns.length ? (
         <Card>
           <CardContent className="pt-6">
-            <EmptyState title="Sin campañas" description="Crea la primera campaña para empezar." />
+            <EmptyState
+              title="Sin campañas"
+              description="Cuando un comprador te asigne a una campaña, aparecerá aquí."
+            />
           </CardContent>
         </Card>
       ) : (

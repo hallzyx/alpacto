@@ -246,7 +246,7 @@ export function CreateOrderForm({ existingOrders = [], onCreated, redirectToDeta
                 required
               />
               <p className="text-xs text-muted-foreground">
-                Cantidad que quieres cubrir con el escrow. Los lotes se irán descontando de este tope.
+                Cantidad que quieres cubrir con fondos reservados. Los lotes se irán descontando de este tope.
               </p>
             </Field>
 
@@ -288,7 +288,7 @@ export function CreateOrderForm({ existingOrders = [], onCreated, redirectToDeta
                     <dd className="font-medium">S/ {estimate.fx} por USD</dd>
                   </div>
                   <div>
-                    <dt className="text-muted-foreground">A fondear en escrow</dt>
+                    <dt className="text-muted-foreground">A depositar en cuenta de garantía</dt>
                     <dd className="font-semibold text-primary">
                       {formatUsdCents(estimate.budgetUsdCents)}{" "}
                       <span className="font-normal text-muted-foreground">
@@ -299,7 +299,8 @@ export function CreateOrderForm({ existingOrders = [], onCreated, redirectToDeta
                 </dl>
                 <p className="mt-3 text-xs text-muted-foreground">
                   Estimado a precio <strong>{estimate.category.code}</strong>. Si el inspector clasifica otra categoría
-                  o llega menos peso, puede sobrar saldo; si llega de más, el escrow no permite pasarse del tope.
+                  o llega menos peso, puede sobrar saldo; si llega de más, la cuenta de garantía no permite pasarse del
+                  tope.
                 </p>
               </div>
             ) : (

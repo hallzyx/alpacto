@@ -75,10 +75,6 @@ const ROLE_NAV: Record<UserRole, { label: string; items: NavItem[] }> = {
         href: "/association/campaigns",
         label: "Campañas",
         icon: CalendarRange,
-        items: [
-          { href: "/association/campaigns", label: "Listado" },
-          { href: "/association/campaigns/new", label: "Nueva campaña" },
-        ],
       },
       {
         href: "/association/lots/register",

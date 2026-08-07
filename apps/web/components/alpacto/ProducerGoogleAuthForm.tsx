@@ -7,8 +7,15 @@ import { useAuth } from "~~/components/alpacto/AuthProvider";
 import { Button } from "~~/components/ui/button";
 import { Field, FieldGroup, FieldLabel } from "~~/components/ui/field";
 import { Input } from "~~/components/ui/input";
+import { ApiError } from "~~/lib/api";
 import { demoSmartAccountAddress } from "~~/lib/demo-account";
-import { fetchZeroDevEmailContact, isZeroDevConfigured, resolveZeroDevSmartAccountAddress } from "~~/lib/zerodev-wagmi";
+import { maybeGrantProducerSessionKey } from "~~/lib/producer-session-grant";
+import {
+  disconnectZeroDevWallet,
+  fetchZeroDevEmailContact,
+  isZeroDevConfigured,
+  resolveZeroDevSmartAccountAddress,
+} from "~~/lib/zerodev-wagmi";
 
 type Props = {
   busy: boolean;
@@ -117,7 +124,7 @@ function ProducerGoogleDemoForm({ busy, setBusy, setError }: Props) {
 }
 
 function ProducerGoogleLiveForm({ busy, setBusy, setError }: Props) {
-  const { producerSession } = useAuth();
+  const { producerSession, producerResume } = useAuth();
   const wagmiConfig = useConfig();
   const authenticateOAuth = useAuthenticateOAuth();
 
@@ -133,29 +140,39 @@ function ProducerGoogleLiveForm({ busy, setBusy, setError }: Props) {
       smartAccountAddress: address,
       authMethod: "google",
     });
+    // One-time session key while ZeroDev wallet is live (first login only).
+    await maybeGrantProducerSessionKey(wagmiConfig);
   };
 
   const connectGoogle = async () => {
     setError("");
     setBusy(true);
     try {
+      // Stale connector from a prior session → wagmi "Connector already connected".
+      await disconnectZeroDevWallet(wagmiConfig);
       await authenticateOAuth.mutateAsync({ provider: OAUTH_PROVIDERS.GOOGLE });
       const address = await resolveZeroDevSmartAccountAddress(wagmiConfig);
       setSmartAccountAddress(address);
 
-      let resolvedEmail: string | null = null;
-      try {
-        resolvedEmail = await fetchZeroDevEmailContact(wagmiConfig);
-      } catch {
-        resolvedEmail = null;
-      }
+      const resolvedEmail = await fetchZeroDevEmailContact(wagmiConfig);
 
       if (resolvedEmail) {
+        // ZeroDev exposes Google email, not display name — derive a short name.
         const display = resolvedEmail.split("@")[0] || "Productor";
         setEmail(resolvedEmail);
         setName(display);
         await finishSession(resolvedEmail, display, address);
         return;
+      }
+
+      // Returning user: wallet is already linked in Alpacto even if ZeroDev
+      // omitted emailContacts after logout → Google re-auth.
+      try {
+        await producerResume({ smartAccountAddress: address, authMethod: "google" });
+        await maybeGrantProducerSessionKey(wagmiConfig);
+        return;
+      } catch (err) {
+        if (!(err instanceof ApiError) || err.status !== 404) throw err;
       }
 
       setNeedsProfile(true);
@@ -189,7 +206,10 @@ function ProducerGoogleLiveForm({ busy, setBusy, setError }: Props) {
     return (
       <form onSubmit={e => void completeProfile(e)}>
         <FieldGroup className="gap-4">
-          <FormNote>Google conectado. Confirma el correo para crear tu sesión en Alpacto.</FormNote>
+          <FormNote>
+            Google conectó tu cuenta, pero no devolvió el correo. Confírmalo para crear tu sesión en Alpacto. (El nombre
+            de Google no siempre está disponible; puedes editarlo aquí.)
+          </FormNote>
           <Field>
             <FieldLabel htmlFor="g-email-live">Correo</FieldLabel>
             <Input
@@ -202,7 +222,7 @@ function ProducerGoogleLiveForm({ busy, setBusy, setError }: Props) {
             />
           </Field>
           <Field>
-            <FieldLabel htmlFor="g-name-live">Nombre</FieldLabel>
+            <FieldLabel htmlFor="g-name-live">Nombre (opcional)</FieldLabel>
             <Input id="g-name-live" value={name} onChange={e => setName(e.target.value)} placeholder="Tu nombre" />
           </Field>
           <Field>

@@ -244,7 +244,14 @@ export type ProducerParticipation = {
   totalLots: number;
 };
 
-export type OnchainActivityType = "order_funded" | "inspection" | "audit_attest" | "settlement" | "reweigh";
+export type OnchainActivityType =
+  | "order_funded"
+  | "lot_registered"
+  | "inspection"
+  | "audit_attest"
+  | "settlement"
+  | "reweigh"
+  | "remainder_withdraw";
 
 export type OnchainActivity = {
   id: string;
