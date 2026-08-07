@@ -1,0 +1,26 @@
+# Dokploy override — do not bind host ports; route via Dokploy domains instead.
+# Use with the base file:
+#   docker compose -f infra/docker/docker-compose.yml -f infra/docker/docker-compose.dokploy.yml up -d
+#
+# In Dokploy → Compose → set both files (or paste this as secondary compose path if supported).
+# Domain UI "Container Port" is the INTERNAL port (web=3000, api=4000), not the host.
+
+services:
+  postgres:
+    ports: !reset []
+
+  redis:
+    ports: !reset []
+
+  minio:
+    ports: !reset []
+
+  api:
+    ports: !reset []
+    expose:
+      - "4000"
+
+  web:
+    ports: !reset []
+    expose:
+      - "3000"

@@ -88,8 +88,47 @@ NEXT_PUBLIC_API_URL=https://api.your.domain
 S3_PUBLIC_ENDPOINT=https://files.your.domain
 ```
 
-4. Fill secrets (JWT, ZeroDev, contract, treasury, Stripe test, AI, Ayni session).
+4. Fill secrets (JWT, ZeroDev, contract, treasury, Stripe test, Ayni session).
 5. `yarn docker:stack` (or Dokploy equivalent pointing at the same compose file).
+
+### Dokploy domains vs Compose host ports
+
+These are **two different layers**:
+
+| Layer | What it is | Example |
+| --- | --- | --- |
+| **Container port** (Dokploy Domain UI) | Port the app listens on **inside** the container | Web `3000`, API `4000` |
+| **Host port** (`WEB_PORT`, `API_PORT` in compose) | Port published on the VPS `0.0.0.0` | `3000:3000` on the host |
+
+Dokploy already uses port `3000` on the host. If compose also maps `WEB_PORT=3000`, deploy fails with `port is already allocated`.
+
+**Recommended for Dokploy (domains + HTTPS):** use the Dokploy override so nothing binds host ports:
+
+```bash
+docker compose \
+  -f infra/docker/docker-compose.yml \
+  -f infra/docker/docker-compose.dokploy.yml \
+  up -d --build
+```
+
+In Dokploy Domain settings:
+
+| Service | Host | Container port |
+| --- | --- | --- |
+| `web` | `alpacto.your.domain` | `3000` |
+| `api` | `api.alpacto.your.domain` | `4000` |
+
+Set env to match:
+
+```dotenv
+APP_URL=https://alpacto.your.domain
+API_URL=https://api.alpacto.your.domain
+NEXT_PUBLIC_API_URL=https://api.alpacto.your.domain
+```
+
+Rebuild **web** after changing `NEXT_PUBLIC_API_URL`.
+
+**Quick workaround (no override):** pick free host ports — `WEB_PORT=3002`, `API_PORT=4002` — and still use Dokploy domains (container ports stay `3000` / `4000`).
 
 Dokploy / public URLs are for **browsers**. Inside Compose, services use Docker DNS (`api`, `minio`, `postgres`).
 
