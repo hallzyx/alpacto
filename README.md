@@ -17,9 +17,19 @@ packages/
   domain/        Integer money helpers
   shared-schemas/ Zod API schemas
   zero-dev/      Kernel / paymaster / session-key helpers
-infra/docker/    Postgres, Redis, MinIO
-docs/            demo-script.md, agent-security.md
+infra/docker/    Full Docker stack (Postgres, Redis, MinIO, API, Ayni, Web) — see docs/vps-deploy.md
+docs/            demo-script.md, agent-security.md, vps-deploy.md
 ```
+
+## Quick start — VPS (full Docker stack)
+
+```bash
+cp infra/docker/.env.example infra/docker/.env   # set public URLs + secrets
+yarn docker:stack                                # postgres, redis, minio, migrate, api, ayni, web
+# optional: yarn docker:seed
+```
+
+See [docs/vps-deploy.md](docs/vps-deploy.md).
 
 ## Prerequisites
 

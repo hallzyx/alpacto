@@ -6,6 +6,9 @@ Checkpoint Fase 6: demo reproducible de inicio a fin desde la UI.
 
 ```bash
 yarn docker:up && yarn db:migrate && yarn db:seed
+
+# Full Docker stack (API + web + Ayni + infra) — see docs/vps-deploy.md
+# yarn docker:stack
 yarn seed:wallets   # Kernel ECDSA real por seed en Arbitrum Sepolia
 yarn fund-demo-buyer -- --amount 90   # USDC Circle test: tesorería → buyer SA (andes@)
 yarn api:dev          # :4000

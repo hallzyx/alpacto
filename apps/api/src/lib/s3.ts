@@ -47,9 +47,14 @@ export async function createPresignedUploadUrl(input: {
   const uploadUrl = await getSignedUrl(getS3Client(), command, {
     expiresIn: 900,
   });
-  return { storageKey, uploadUrl };
+  // SDK signs against the internal endpoint; rewrite for browser access behind Docker.
+  const publicUrl =
+    config.s3.publicEndpoint !== config.s3.endpoint
+      ? uploadUrl.replaceAll(config.s3.endpoint, config.s3.publicEndpoint)
+      : uploadUrl;
+  return { storageKey, uploadUrl: publicUrl };
 }
 
 export function publicEvidenceUrl(storageKey: string): string {
-  return `${config.s3.endpoint}/${config.s3.bucket}/${storageKey}`;
+  return `${config.s3.publicEndpoint}/${config.s3.bucket}/${storageKey}`;
 }

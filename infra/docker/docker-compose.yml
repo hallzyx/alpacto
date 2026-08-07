@@ -1,50 +1,50 @@
+name: alpacto
+
 services:
   postgres:
     image: postgres:16-alpine
     container_name: alpacto-postgres
     environment:
-      POSTGRES_USER: alpacto
-      POSTGRES_PASSWORD: alpacto
-      POSTGRES_DB: alpacto
+      POSTGRES_USER: ${POSTGRES_USER:-alpacto}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-alpacto}
+      POSTGRES_DB: ${POSTGRES_DB:-alpacto}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - alpacto_pg_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U alpacto -d alpacto"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-alpacto} -d ${POSTGRES_DB:-alpacto}"]
       interval: 5s
       timeout: 5s
       retries: 10
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
     container_name: alpacto-redis
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 10
+    restart: unless-stopped
 
   minio:
     image: minio/minio:latest
     container_name: alpacto-minio
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: alpacto
-      MINIO_ROOT_PASSWORD: alpacto123
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-alpacto}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-alpacto123}
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
     volumes:
       - alpacto_minio_data:/data
-    healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-      start_period: 10s
+    # minio-init polls readiness; official image often lacks curl/wget.
+    restart: unless-stopped
 
   minio-init:
     image: minio/mc:latest
@@ -52,13 +52,186 @@ services:
     depends_on:
       minio:
         condition: service_started
+    environment:
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-alpacto}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-alpacto123}
+      S3_BUCKET: ${S3_BUCKET:-alpacto-evidence}
     entrypoint: >
       /bin/sh -c "
-      until mc alias set local http://minio:9000 alpacto alpacto123; do sleep 1; done;
-      mc mb --ignore-existing local/alpacto-evidence;
+      until mc alias set local http://minio:9000 \"$$S3_ACCESS_KEY\" \"$$S3_SECRET_KEY\"; do sleep 1; done;
+      mc mb --ignore-existing local/$$S3_BUCKET;
       exit 0;
       "
+    restart: "no"
+
+  migrate:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.migrate
+    container_name: alpacto-migrate
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://alpacto:alpacto@postgres:5432/alpacto}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  # MVP: fetch CLI whsec once so API can verify without Dashboard endpoint.
+  # Uses Docker DNS name `api` (not host localhost). Dokploy public URL is only for browsers.
+  stripe-whsec:
+    image: stripe/stripe-cli:latest
+    container_name: alpacto-stripe-whsec
+    environment:
+      STRIPE_API_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WHSEC_FILE: /shared/whsec
+    volumes:
+      - ./stripe-whsec.sh:/stripe-whsec.sh:ro
+      - alpacto_stripe_whsec:/shared
+    entrypoint: ["/bin/sh", "/stripe-whsec.sh"]
+    restart: "no"
+
+  api:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.api
+    container_name: alpacto-api
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 4000
+      DATABASE_URL: ${DATABASE_URL:-postgresql://alpacto:alpacto@postgres:5432/alpacto}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      S3_ENDPOINT: ${S3_ENDPOINT:-http://minio:9000}
+      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://localhost:9000}
+      S3_BUCKET: ${S3_BUCKET:-alpacto-evidence}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-alpacto}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-alpacto123}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      APP_URL: ${APP_URL:-http://localhost:3000}
+      API_URL: ${API_URL:-http://localhost:4000}
+      DEMO_WALLET_SEED: ${DEMO_WALLET_SEED:-alpacto-local-demo-wallet-seed-v1}
+      STRIPE_USE_CLI: ${STRIPE_USE_CLI:-1}
+      STRIPE_WHSEC_FILE: /run/stripe/whsec
+    ports:
+      - "${API_PORT:-4000}:4000"
+    volumes:
+      - alpacto_stripe_whsec:/run/stripe:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+      migrate:
+        condition: service_completed_successfully
+      stripe-whsec:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:4000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+    restart: unless-stopped
+
+  # Forwards Stripe → http://api:4000/... on the compose network (not the Dokploy public URL).
+  stripe:
+    image: stripe/stripe-cli:latest
+    container_name: alpacto-stripe
+    environment:
+      STRIPE_API_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_USE_CLI: ${STRIPE_USE_CLI:-1}
+      STRIPE_FORWARD_TO: ${STRIPE_FORWARD_TO:-http://api:4000/webhooks/stripe}
+    volumes:
+      - ./stripe-listen.sh:/stripe-listen.sh:ro
+    entrypoint: ["/bin/sh", "/stripe-listen.sh"]
+    depends_on:
+      api:
+        condition: service_healthy
+      stripe-whsec:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  ayni:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.ayni
+    container_name: alpacto-ayni
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL:-postgresql://alpacto:alpacto@postgres:5432/alpacto}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      S3_ENDPOINT: ${S3_ENDPOINT:-http://minio:9000}
+      S3_BUCKET: ${S3_BUCKET:-alpacto-evidence}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-alpacto}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-alpacto123}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      DEMO_WALLET_SEED: ${DEMO_WALLET_SEED:-alpacto-local-demo-wallet-seed-v1}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+      migrate:
+        condition: service_completed_successfully
+      api:
+        condition: service_started
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.web
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000}
+        NEXT_PUBLIC_ZERODEV_PROJECT_ID: ${NEXT_PUBLIC_ZERODEV_PROJECT_ID:-}
+        NEXT_PUBLIC_ALCHEMY_API_KEY: ${NEXT_PUBLIC_ALCHEMY_API_KEY:-}
+        NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID: ${NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID:-}
+    container_name: alpacto-web
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Optional: seed demo data after migrate (docker compose --profile seed up)
+  seed:
+    profiles: ["seed"]
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.migrate
+    container_name: alpacto-seed
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://alpacto:alpacto@postgres:5432/alpacto}
+    command: ["yarn", "workspace", "@alpacto/database", "seed"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
 
 volumes:
   alpacto_pg_data:
   alpacto_minio_data:
+  alpacto_stripe_whsec:

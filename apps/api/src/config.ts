@@ -23,6 +23,11 @@ export const config = {
   jwtSecret: process.env["JWT_SECRET"] ?? "alpacto-demo-jwt-secret-change-me",
   s3: {
     endpoint: process.env["S3_ENDPOINT"] ?? "http://127.0.0.1:9000",
+    /** Browser-reachable MinIO/S3 URL for presigned uploads (defaults to endpoint). */
+    publicEndpoint:
+      process.env["S3_PUBLIC_ENDPOINT"] ??
+      process.env["S3_ENDPOINT"] ??
+      "http://127.0.0.1:9000",
     region: process.env["S3_REGION"] ?? "us-east-1",
     bucket: process.env["S3_BUCKET"] ?? "alpacto-evidence",
     accessKey: process.env["S3_ACCESS_KEY"] ?? "alpacto",
