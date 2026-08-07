@@ -45,13 +45,13 @@ const alpactoAbi = parseAbi([
   "function inspectorRole() view returns (bytes32)",
   "function auditorAgentRole() view returns (bytes32)",
   "function platformAdminRole() view returns (bytes32)",
-  "function createOrder(uint256 orderId, address buyer, address association, bytes32 pricingPolicyHash, uint256 budgetUsdcUnits)",
+  "function createOrder(uint256 orderId, address buyer, address association, bytes32 pricingPolicyHash, uint256 budgetUsdcUnits, uint64 targetWeightGrams)",
   "function fundOrder(uint256 orderId, uint256 amount, bytes32 paymentReferenceHash)",
   "function registerLot(uint256 orderId, uint256 lotId, address producerAccount)",
   "function submitInspectionReference(uint256 lotId, uint32 version, uint64 weightGrams, uint32 categoryCode, bytes32 evidenceHash)",
   "function submitAuditAttestation(uint256 lotId, uint32 version, bytes32 reportHash, uint8 result)",
   "function requestReweighing(uint256 lotId, bytes32 reasonHash)",
-  "function getLot(uint256 lotId) view returns (uint256, address, uint8, uint32, uint32, bytes32, uint256, uint256, uint256, bool)",
+  "function getLot(uint256 lotId) view returns (uint256, address, uint8, uint32, uint32, bytes32, uint256, uint256, uint256, uint256, bool, uint64)",
 ]);
 
 const erc20Abi = parseAbi([
@@ -173,6 +173,7 @@ async function main() {
   }
 
   const budget = 10_000_000n;
+  const targetWeightGrams = 50_000n; // 50 kg capacity
   const usdcBal = await publicClient.readContract({
     address: USDC,
     abi: erc20Abi,
@@ -223,6 +224,7 @@ async function main() {
       associationAccount.address,
       policyHash,
       budget,
+      targetWeightGrams,
     ],
   });
 

@@ -27,6 +27,7 @@ export {
   isSettlementAllowed,
   kgToGramsFromNumber,
   weightDeltaBps,
+  formatBpsAsPercent,
   type AuditFinding,
   type AuditResultCode,
   type CompareAuditInput,

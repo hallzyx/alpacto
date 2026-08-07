@@ -37,6 +37,12 @@ export function kgToGramsFromNumber(kg: number): bigint {
   return BigInt(Math.round(kg * 1000));
 }
 
+/** Convert basis points to a short percent string for humans (100 bps = 1%). */
+export function formatBpsAsPercent(bps: number): string {
+  const pct = bps / 100;
+  return Number.isInteger(pct) ? `${pct}%` : `${pct.toFixed(1)}%`;
+}
+
 export function compareAuditValues(input: CompareAuditInput): CompareAuditResult {
   const findings: AuditFinding[] = [];
   const tolerance = input.weightToleranceBps ?? DEFAULT_WEIGHT_TOLERANCE_BPS;
@@ -50,7 +56,7 @@ export function compareAuditValues(input: CompareAuditInput): CompareAuditResult
           severity: "critical",
           declaredValue: gramsToKgString(input.declaredWeightGrams),
           observedValue: "unknown",
-          explanation: "Scale evidence could not be read reliably",
+          explanation: "No se pudo leer la balanza con claridad en la evidencia",
         },
       ],
       weightDeltaBps: null,
@@ -61,12 +67,24 @@ export function compareAuditValues(input: CompareAuditInput): CompareAuditResult
   const deltaBps = weightDeltaBps(input.declaredWeightGrams, observedGrams);
 
   if (deltaBps > tolerance) {
+    const declaredKg = gramsToKgString(input.declaredWeightGrams);
+    const observedKg = gramsToKgString(observedGrams);
+    const diffGrams =
+      observedGrams > input.declaredWeightGrams
+        ? observedGrams - input.declaredWeightGrams
+        : input.declaredWeightGrams - observedGrams;
+    const diffKg = gramsToKgString(diffGrams);
+    const maxDiffGrams = (input.declaredWeightGrams * BigInt(tolerance)) / 10_000n;
+    const maxDiffKg = gramsToKgString(maxDiffGrams <= 0n ? 1n : maxDiffGrams);
     findings.push({
       code: "WEIGHT_MISMATCH",
       severity: "critical",
-      declaredValue: gramsToKgString(input.declaredWeightGrams),
-      observedValue: gramsToKgString(observedGrams),
-      explanation: `Weight delta ${deltaBps} bps exceeds tolerance ${tolerance} bps`,
+      declaredValue: declaredKg,
+      observedValue: observedKg,
+      explanation:
+        `En la foto de la balanza se lee ${observedKg} kg, pero en la inspección se declaró ${declaredKg} kg ` +
+        `(${diffKg} kg de diferencia). Solo se admite hasta ~${maxDiffKg} kg de margen ` +
+        `(${formatBpsAsPercent(tolerance)} del peso declarado).`,
     });
   }
 
@@ -79,7 +97,7 @@ export function compareAuditValues(input: CompareAuditInput): CompareAuditResult
       severity: "warning",
       declaredValue: input.declaredCategory,
       observedValue: input.observedCategory,
-      explanation: "Classification document category differs from inspection",
+      explanation: "La categoría del documento no coincide con la inspección",
     });
   }
 
