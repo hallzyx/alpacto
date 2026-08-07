@@ -54,7 +54,7 @@ export const AYNI_BUYER_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     type: "function",
     function: {
       name: "get_my_order_funding",
-      description: "Estado de fondeo / escrow de una orden propia (funded, remaining, intents).",
+      description: "Estado de fondos reservados / cuenta de garantía de una orden propia (reservado, restante, intentos).",
       parameters: {
         type: "object",
         properties: {

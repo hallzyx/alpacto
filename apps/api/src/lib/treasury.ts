@@ -1,26 +1,26 @@
 import {
   createPublicClient,
   createWalletClient,
-  http,
-  keccak256,
   parseAbi,
+  keccak256,
   toBytes,
   type Address,
   type Hex,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { arbitrumSepolia } from "viem/chains";
+import { createPublicRpcTransport } from "@alpacto/zero-dev";
 import { config } from "../config.js";
 
 export const alpactoAbi = parseAbi([
   "function grantRole(bytes32 role, address account)",
   "function buyerRole() view returns (bytes32)",
   "function hasRole(bytes32 role, address account) view returns (bool)",
-  "function createOrder(uint256 orderId, address buyer, address association, bytes32 pricingPolicyHash, uint256 budgetUsdcUnits)",
+  "function createOrder(uint256 orderId, address buyer, address association, bytes32 pricingPolicyHash, uint256 budgetUsdcUnits, uint64 targetWeightGrams)",
   "function fundOrder(uint256 orderId, uint256 amount, bytes32 paymentReferenceHash)",
-  "function getOrder(uint256 orderId) view returns (address, address, bytes32, uint256, uint256, uint256, uint8, bool)",
+  "function withdrawRemainder(uint256 orderId)",
+  "function getOrder(uint256 orderId) view returns (address, address, bytes32, uint256, uint256, uint256, uint8, bool, uint64, uint64, uint64)",
 ]);
-
 export const erc20Abi = parseAbi([
   "function approve(address spender, uint256 amount) returns (bool)",
   "function balanceOf(address) view returns (uint256)",
@@ -54,12 +54,12 @@ export function getTreasuryClients() {
   const account = privateKeyToAccount(normalizePrivateKey(config.chain.treasuryPrivateKey));
   const publicClient = createPublicClient({
     chain: arbitrumSepolia,
-    transport: http(config.chain.rpcUrl),
+    transport: createPublicRpcTransport(config.chain.rpcUrl),
   });
   const walletClient = createWalletClient({
     account,
     chain: arbitrumSepolia,
-    transport: http(config.chain.rpcUrl),
+    transport: createPublicRpcTransport(config.chain.rpcUrl),
   });
 
   return { core, usdc, account, publicClient, walletClient };
@@ -106,6 +106,7 @@ export async function ensureOrderOnchain(opts: {
   associationAddress: Address;
   pricingPolicyHash: Hex;
   budgetUsdcUnits: bigint;
+  targetWeightGrams: bigint;
 }): Promise<void> {
   if (await orderExistsOnchain(opts.onchainOrderId)) return;
 
@@ -123,6 +124,7 @@ export async function ensureOrderOnchain(opts: {
       opts.associationAddress,
       opts.pricingPolicyHash,
       opts.budgetUsdcUnits,
+      opts.targetWeightGrams,
     ],
   });
   await publicClient.waitForTransactionReceipt({ hash });
@@ -179,5 +181,8 @@ export async function readOrderEscrow(onchainOrderId: bigint) {
     remainingUsdc: result[5],
     status: result[6],
     exists: result[7],
+    targetWeightGrams: result[8],
+    reservedWeightGrams: result[9],
+    fulfilledWeightGrams: result[10],
   };
 }

@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import {
   generateRegistrationOptions,
   verifyRegistrationResponse,
@@ -14,14 +14,22 @@ import type {
 import {
   ayniSessionKeys,
   passkeyCredentials,
+  producerSessionKeys,
   users,
   type Database,
 } from "@alpacto/database";
 import {
+  ACCEPT_SETTLEMENT_SELECTOR,
   createAlpactoPublicClient,
   createEcdsaKernelAccount,
+  deriveDemoOwnerKey,
   generateOwnerKey,
+  generatePrivateKey,
   loadZeroDevConfigFromEnv,
+  normalizeSerializedSessionEip7702Auth,
+  privateKeyToAccount,
+  REQUEST_REWEIGHING_SELECTOR,
+  SETTLE_LOT_SELECTOR,
 } from "@alpacto/zero-dev";
 import { demoLoginSchema } from "@alpacto/shared-schemas";
 import { z } from "zod";
@@ -365,6 +373,69 @@ export async function registerAuthRoutes(
     },
   );
 
+  const issueProducerSession = async (
+    user: typeof users.$inferSelect,
+    authMethod: "google" | "email_otp" | "passkey",
+  ) => {
+    if (user.role === "producer") {
+      await ensureProducerInDemoAssociation(db, user.id);
+    }
+
+    const token = await signToken({
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      name: user.name,
+    });
+
+    return {
+      token,
+      authMethod,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        name: user.name,
+        smartAccountAddress: user.smartAccountAddress,
+      },
+    };
+  };
+
+  /**
+   * Resume producer JWT from a ZeroDev wallet already linked in Postgres.
+   * Used when Google reconnects but ZeroDev does not return emailContacts
+   * (common after logout → re-auth). Ownership is proven by the live ZeroDev session.
+   */
+  app.post("/auth/producer/resume", async (request) => {
+    const body = z
+      .object({
+        smartAccountAddress: z
+          .string()
+          .regex(/^0x[a-fA-F0-9]{40}$/),
+        authMethod: z.enum(["google", "email_otp", "passkey"]),
+      })
+      .parse(request.body);
+
+    const address = body.smartAccountAddress.toLowerCase();
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(sql`lower(${users.smartAccountAddress}) = ${address}`)
+      .limit(1);
+
+    if (!user) {
+      throw new ApiError(404, "No producer linked to this wallet");
+    }
+    if (user.role !== "producer" && user.role !== "admin") {
+      throw new ApiError(409, "Wallet linked to a non-producer account");
+    }
+    if (user.status !== "active") {
+      throw new ApiError(403, "Account is not active");
+    }
+
+    return issueProducerSession(user, body.authMethod);
+  });
+
   /** Link ZeroDev producer wallet to app JWT session (Google / Email OTP / Passkey). */
   app.post("/auth/producer/session", async (request) => {
     const body = z
@@ -407,29 +478,7 @@ export async function registerAuthRoutes(
       user = updated!;
     }
 
-    // Demo: auto-join Asociación AlpaSur so association can assign this producer on lots.
-    if (user.role === "producer") {
-      await ensureProducerInDemoAssociation(db, user.id);
-    }
-
-    const token = await signToken({
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      name: user.name,
-    });
-
-    return {
-      token,
-      authMethod: body.authMethod,
-      user: {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        name: user.name,
-        smartAccountAddress: user.smartAccountAddress,
-      },
-    };
+    return issueProducerSession(user, body.authMethod);
   });
 
   app.get(
@@ -450,4 +499,241 @@ export async function registerAuthRoutes(
       };
     },
   );
+
+  const authPre =
+    authenticate ?? (async (_r: unknown, reply: { code: (n: number) => { send: (b: unknown) => void } }) =>
+      reply.code(500).send({ error: "auth missing" }));
+
+  /** Status of backend session key for Google/OTP producers. Seed wallets skip grant. */
+  app.get("/auth/producer/session-key/status", { preHandler: authPre }, async (request) => {
+    const authUser = request.user as AuthUser;
+    if (authUser.role !== "producer" && authUser.role !== "admin") {
+      throw new ApiError(403, "Forbidden");
+    }
+    const [row] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, authUser.id))
+      .limit(1);
+    if (!row?.smartAccountAddress) {
+      return { status: "none" as const, needsGrant: true, signerKind: "unknown" as const };
+    }
+
+    // Seed demo Kernel — backend already has DEMO_WALLET_SEED owner key.
+    try {
+      const masterSeed =
+        process.env["DEMO_WALLET_SEED"]?.trim() || "alpacto-local-demo-wallet-seed-v1";
+      const zd = loadZeroDevConfigFromEnv();
+      const publicClient = createAlpactoPublicClient({
+        ...zd,
+        publicRpc: process.env["ARBITRUM_RPC_URL"] || process.env["RPC_URL_SEPOLIA"],
+      });
+      const seedAccount = await createEcdsaKernelAccount(
+        publicClient,
+        deriveDemoOwnerKey(masterSeed, row.email),
+      );
+      if (seedAccount.address.toLowerCase() === row.smartAccountAddress.toLowerCase()) {
+        return {
+          status: "active" as const,
+          needsGrant: false,
+          signerKind: "seed" as const,
+          smartAccountAddress: row.smartAccountAddress,
+        };
+      }
+    } catch {
+      // ZeroDev env missing in some local setups — fall through to session-key check.
+    }
+
+    const [active] = await db
+      .select()
+      .from(producerSessionKeys)
+      .where(
+        and(
+          eq(producerSessionKeys.userId, authUser.id),
+          eq(producerSessionKeys.status, "active"),
+        ),
+      )
+      .orderBy(desc(producerSessionKeys.updatedAt))
+      .limit(1);
+
+    if (active?.serializedSession) {
+      return {
+        status: "active" as const,
+        needsGrant: false,
+        signerKind: "session" as const,
+        sessionPublicAddress: active.sessionPublicAddress,
+        smartAccountAddress: active.smartAccountAddress,
+      };
+    }
+
+    const [pending] = await db
+      .select()
+      .from(producerSessionKeys)
+      .where(
+        and(
+          eq(producerSessionKeys.userId, authUser.id),
+          eq(producerSessionKeys.status, "pending"),
+        ),
+      )
+      .orderBy(desc(producerSessionKeys.createdAt))
+      .limit(1);
+
+    if (pending) {
+      return {
+        status: "pending" as const,
+        needsGrant: true,
+        signerKind: "session" as const,
+        sessionPublicAddress: pending.sessionPublicAddress,
+        smartAccountAddress: pending.smartAccountAddress,
+      };
+    }
+
+    return {
+      status: "none" as const,
+      needsGrant: true,
+      signerKind: "session" as const,
+      smartAccountAddress: row.smartAccountAddress,
+    };
+  });
+
+  /**
+   * Agent-created session key: server generates keypair, client approves address.
+   * Seed demo producers do not need this (DEMO_WALLET_SEED matches).
+   */
+  app.post("/auth/producer/session-key/prepare", { preHandler: authPre }, async (request) => {
+    const authUser = request.user as AuthUser;
+    if (authUser.role !== "producer" && authUser.role !== "admin") {
+      throw new ApiError(403, "Forbidden");
+    }
+    const [row] = await db.select().from(users).where(eq(users.id, authUser.id)).limit(1);
+    if (!row?.smartAccountAddress) {
+      throw new ApiError(400, "Producer smart account missing — connect Google first");
+    }
+
+    const core = config.chain.alpactoContract;
+    if (!core) {
+      throw new ApiError(400, "ALPACTO_CONTRACT_ADDRESS not configured");
+    }
+
+    const sessionPrivateKey = generatePrivateKey();
+    const sessionAccount = privateKeyToAccount(sessionPrivateKey);
+
+    // Revoke prior pending rows for this user.
+    await db
+      .update(producerSessionKeys)
+      .set({ status: "revoked", revokedAt: new Date(), updatedAt: new Date() })
+      .where(
+        and(
+          eq(producerSessionKeys.userId, authUser.id),
+          eq(producerSessionKeys.status, "pending"),
+        ),
+      );
+
+    const [created] = await db
+      .insert(producerSessionKeys)
+      .values({
+        userId: authUser.id,
+        smartAccountAddress: row.smartAccountAddress,
+        sessionPublicAddress: sessionAccount.address,
+        sessionPrivateKey,
+        status: "pending",
+      })
+      .returning();
+
+    return {
+      id: created!.id,
+      sessionPublicAddress: sessionAccount.address,
+      smartAccountAddress: row.smartAccountAddress,
+      alpactoCore: core as `0x${string}`,
+      chainId: config.chain.chainId,
+      permissions: [
+        { selector: ACCEPT_SETTLEMENT_SELECTOR, name: "acceptSettlement" },
+        { selector: SETTLE_LOT_SELECTOR, name: "settleLot" },
+        { selector: REQUEST_REWEIGHING_SELECTOR, name: "requestReweighing" },
+      ],
+    };
+  });
+
+  app.post("/auth/producer/session-key/complete", { preHandler: authPre }, async (request) => {
+    const authUser = request.user as AuthUser;
+    if (authUser.role !== "producer" && authUser.role !== "admin") {
+      throw new ApiError(403, "Forbidden");
+    }
+    const body = z
+      .object({
+        serializedSession: z.string().min(10),
+        sessionPublicAddress: z
+          .string()
+          .regex(/^0x[a-fA-F0-9]{40}$/)
+          .optional(),
+      })
+      .parse(request.body);
+
+    const [pending] = await db
+      .select()
+      .from(producerSessionKeys)
+      .where(
+        and(
+          eq(producerSessionKeys.userId, authUser.id),
+          eq(producerSessionKeys.status, "pending"),
+        ),
+      )
+      .orderBy(desc(producerSessionKeys.createdAt))
+      .limit(1);
+
+    if (!pending) {
+      throw new ApiError(404, "No pending session key — call prepare first");
+    }
+    if (
+      body.sessionPublicAddress &&
+      body.sessionPublicAddress.toLowerCase() !== pending.sessionPublicAddress.toLowerCase()
+    ) {
+      throw new ApiError(400, "sessionPublicAddress mismatch");
+    }
+
+    // Revoke any previously active keys for this user.
+    await db
+      .update(producerSessionKeys)
+      .set({ status: "revoked", revokedAt: new Date(), updatedAt: new Date() })
+      .where(
+        and(
+          eq(producerSessionKeys.userId, authUser.id),
+          eq(producerSessionKeys.status, "active"),
+        ),
+      );
+
+    const [updated] = await db
+      .update(producerSessionKeys)
+      .set({
+        serializedSession: normalizeSerializedSessionEip7702Auth(body.serializedSession),
+        status: "active",
+        updatedAt: new Date(),
+      })
+      .where(eq(producerSessionKeys.id, pending.id))
+      .returning();
+
+    return {
+      status: "active" as const,
+      sessionPublicAddress: updated!.sessionPublicAddress,
+      smartAccountAddress: updated!.smartAccountAddress,
+    };
+  });
+
+  app.post("/auth/producer/session-key/revoke", { preHandler: authPre }, async (request) => {
+    const authUser = request.user as AuthUser;
+    if (authUser.role !== "producer" && authUser.role !== "admin") {
+      throw new ApiError(403, "Forbidden");
+    }
+    const result = await db
+      .update(producerSessionKeys)
+      .set({ status: "revoked", revokedAt: new Date(), updatedAt: new Date() })
+      .where(
+        and(
+          eq(producerSessionKeys.userId, authUser.id),
+          eq(producerSessionKeys.status, "active"),
+        ),
+      )
+      .returning();
+    return { revoked: result.length };
+  });
 }

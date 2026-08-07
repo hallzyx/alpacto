@@ -23,6 +23,10 @@ import {
 } from "@alpacto/shared-schemas";
 import type { AuthUser } from "../../plugins/auth.js";
 import { ApiError } from "../../lib/errors.js";
+import { isChainConfigured } from "../../lib/onchain-ids.js";
+import { ensureLotRegisteredOnchain } from "../../lib/register-lot-onchain.js";
+import { ensureReweighOnchain, ProducerSessionRequiredError } from "../../lib/request-reweigh-onchain.js";
+import { ensureInspectionReferenceOnchain } from "../../lib/submit-inspection-onchain.js";
 import { z } from "zod";
 
 function serializeLot(row: typeof lots.$inferSelect) {
@@ -116,6 +120,21 @@ export async function registerLotRoutes(
       })
       .returning();
     if (!row) throw new ApiError(500, "Failed to create lot");
+
+    // Funded on-chain orders must register the lot on AlpactoCore immediately so
+    // Ayni can submitAuditAttestation after inspection (not only at settle time).
+    if (order.onchainOrderId && isChainConfigured()) {
+      try {
+        await ensureLotRegisteredOnchain(db, row.id);
+      } catch (err) {
+        await db.delete(lots).where(eq(lots.id, row.id));
+        const msg = err instanceof Error ? err.message : "Failed to register lot on-chain";
+        throw new ApiError(502, msg, "ONCHAIN_REGISTER_LOT_FAILED");
+      }
+      const [updated] = await db.select().from(lots).where(eq(lots.id, row.id)).limit(1);
+      return serializeLot(updated ?? row);
+    }
+
     return serializeLot(row);
   });
 
@@ -297,6 +316,9 @@ export async function registerLotRoutes(
       throw new ApiError(400, "Invalid inspection version");
     }
 
+    const previousVersion = lot.currentInspectionVersion;
+    const previousStatus = lot.status;
+
     let row;
     try {
       [row] = await db
@@ -337,6 +359,31 @@ export async function registerLotRoutes(
       })
       .where(eq(lots.id, lotId));
 
+    // On-chain orders: push inspection reference now so lot → AUDITING and Ayni can attest.
+    if (order.onchainOrderId && isChainConfigured()) {
+      try {
+        await ensureInspectionReferenceOnchain(db, row!.id);
+      } catch (err) {
+        await db
+          .update(evidenceFiles)
+          .set({ inspectionId: null })
+          .where(eq(evidenceFiles.inspectionId, row!.id));
+        await db.delete(inspections).where(eq(inspections.id, row!.id));
+        await db
+          .update(lots)
+          .set({
+            currentInspectionVersion: previousVersion,
+            status: previousStatus,
+            updatedAt: new Date(),
+          })
+          .where(eq(lots.id, lotId));
+        const msg = err instanceof Error ? err.message : "Failed to submit inspection on-chain";
+        throw new ApiError(502, msg, "ONCHAIN_INSPECTION_FAILED");
+      }
+      const [updated] = await db.select().from(inspections).where(eq(inspections.id, row!.id)).limit(1);
+      return serializeInspection(updated ?? row!);
+    }
+
     return serializeInspection(row!);
   });
 
@@ -370,6 +417,18 @@ export async function registerLotRoutes(
       throw new ApiError(400, "Lot has no inspection to dispute");
     }
 
+    const [order] = await db.select().from(orders).where(eq(orders.id, lot.orderId)).limit(1);
+    const onchainLot = Boolean(order?.onchainOrderId && isChainConfigured() && lot.onchainLotId);
+    if (onchainLot && !["ready_for_review", "review_required"].includes(lot.status)) {
+      throw new ApiError(
+        400,
+        "Puedes pedir un nuevo pesaje cuando Ayni termine su revisión (lote listo para liquidar o con revisión requerida)",
+        "REWEIGH_TOO_EARLY",
+      );
+    }
+
+    const previousStatus = lot.status;
+
     const [row] = await db
       .insert(reweighRequests)
       .values({
@@ -385,11 +444,39 @@ export async function registerLotRoutes(
       .set({ status: "reweighing_requested", updatedAt: new Date() })
       .where(eq(lots.id, lotId));
 
+    if (onchainLot) {
+      try {
+        await ensureReweighOnchain(db, row!.id);
+      } catch (err) {
+        await db.delete(reweighRequests).where(eq(reweighRequests.id, row!.id));
+        await db
+          .update(lots)
+          .set({ status: previousStatus, updatedAt: new Date() })
+          .where(eq(lots.id, lotId));
+        if (err instanceof ProducerSessionRequiredError) {
+          throw new ApiError(409, err.message, err.code);
+        }
+        const raw = err instanceof Error ? err.message : "Failed to request reweigh on-chain";
+        const msg =
+          /eip7702Auth|zd_sponsorUserOperation|Validation error|HTTP request failed|viem@/i.test(raw)
+            ? "No se pudo confirmar el nuevo pesaje ahora. Espera unos segundos e inténtalo de nuevo."
+            : raw.slice(0, 280);
+        throw new ApiError(502, msg, "ONCHAIN_REWEIGH_FAILED");
+      }
+    }
+
+    const [updated] = await db
+      .select()
+      .from(reweighRequests)
+      .where(eq(reweighRequests.id, row!.id))
+      .limit(1);
+
     return {
       id: row!.id,
       lotId,
       reasonCode: body.reasonCode,
       status: "reweighing_requested",
+      onchainTxHash: updated?.onchainTxHash ?? null,
     };
   });
 

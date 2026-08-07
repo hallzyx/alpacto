@@ -105,7 +105,7 @@ export const AYNI_ASSOCIATION_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[
     type: "function",
     function: {
       name: "get_my_lot_settlement",
-      description: "Liquidación (PEN/USDC) de un lote en scope. Solo lectura.",
+      description: "Liquidación (soles / dólares) de un lote en scope. Solo lectura.",
       parameters: {
         type: "object",
         properties: { lotId: { type: "string" } },
@@ -132,7 +132,7 @@ export const AYNI_ASSOCIATION_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[
     type: "function",
     function: {
       name: "get_order_capacity",
-      description: "Fondos restantes (USDC) y estado de una orden de tu asociación.",
+      description: "Fondos restantes (dólares) y estado de una orden de tu asociación.",
       parameters: {
         type: "object",
         properties: {

@@ -16,10 +16,12 @@ import { config } from "../../config.js";
 
 export type OnchainActivityType =
   | "order_funded"
+  | "lot_registered"
   | "inspection"
   | "audit_attest"
   | "settlement"
-  | "reweigh";
+  | "reweigh"
+  | "remainder_withdraw";
 
 function explorerTxUrl(chainId: number, txHash: string): string {
   if (chainId === 421614) return `https://sepolia.arbiscan.io/tx/${txHash}`;
@@ -117,6 +119,58 @@ export async function registerAdminRoutes(
         lotId: null,
         detail: "Intent de fondeo Stripe → on-chain",
         amountUsdcUnits: row.usdcUnits.toString(),
+      });
+    }
+
+    const remainderRows = await db
+      .select()
+      .from(orders)
+      .where(isNotNull(orders.remainderWithdrawTxHash))
+      .orderBy(desc(orders.updatedAt));
+
+    for (const row of remainderRows) {
+      if (!row.remainderWithdrawTxHash) continue;
+      const amount =
+        row.remainderWithdrawnUsdcUnits != null && row.remainderWithdrawnUsdcUnits > 0n
+          ? row.remainderWithdrawnUsdcUnits.toString()
+          : null;
+      pushActivity(activities, seen, {
+        id: `remainder-${row.id}`,
+        type: "remainder_withdraw",
+        txHash: row.remainderWithdrawTxHash,
+        at: row.updatedAt.toISOString(),
+        orderRef: row.externalRef,
+        orderId: row.id,
+        lotId: null,
+        detail: "Retiro de remanente de la cuenta de garantía → comprador",
+        amountUsdcUnits: amount,
+      });
+    }
+
+    const lotRegisterRows = await db
+      .select({
+        lot: lots,
+        order: orders,
+      })
+      .from(lots)
+      .innerJoin(orders, eq(lots.orderId, orders.id))
+      .where(isNotNull(lots.registerTxHash))
+      .orderBy(desc(lots.createdAt));
+
+    for (const { lot, order } of lotRegisterRows) {
+      if (!lot.registerTxHash) continue;
+      pushActivity(activities, seen, {
+        id: `lot-register-${lot.id}`,
+        type: "lot_registered",
+        txHash: lot.registerTxHash,
+        at: lot.createdAt.toISOString(),
+        orderRef: order.externalRef,
+        orderId: order.id,
+        lotId: lot.id,
+        detail: lot.onchainLotId
+          ? `Registro de lote on-chain · id ${lot.onchainLotId.toString()}`
+          : "Registro de lote on-chain",
+        amountUsdcUnits: null,
       });
     }
 

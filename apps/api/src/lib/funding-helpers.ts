@@ -19,6 +19,24 @@ function treasuryFallbackAddress(): string {
   return privateKeyToAccount(normalized).address;
 }
 
+/** Org may also list producers — pick the association (or admin) account, not .limit(1). */
+export async function resolveAssociationUser(
+  db: Database,
+  organizationId: string,
+): Promise<typeof users.$inferSelect | undefined> {
+  const rows = await db
+    .select({ user: users })
+    .from(organizationMembers)
+    .innerJoin(users, eq(users.id, organizationMembers.userId))
+    .where(eq(organizationMembers.organizationId, organizationId));
+
+  return (
+    rows.find((r) => r.user.role === "association")?.user ??
+    rows.find((r) => r.user.role === "admin")?.user ??
+    rows[0]?.user
+  );
+}
+
 export async function resolveOrderAddresses(
   db: Database,
   order: typeof orders.$inferSelect,
@@ -29,19 +47,7 @@ export async function resolveOrderAddresses(
     .where(eq(users.id, order.buyerId))
     .limit(1);
 
-  const [member] = await db
-    .select()
-    .from(organizationMembers)
-    .where(eq(organizationMembers.organizationId, order.associationId))
-    .limit(1);
-
-  const [associationUser] = member
-    ? await db
-        .select()
-        .from(users)
-        .where(eq(users.id, member.userId))
-        .limit(1)
-    : [undefined];
+  const associationUser = await resolveAssociationUser(db, order.associationId);
 
   const fallback = treasuryFallbackAddress();
   const buyerAddress =

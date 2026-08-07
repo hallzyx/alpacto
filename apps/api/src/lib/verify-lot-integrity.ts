@@ -72,7 +72,7 @@ export async function verifyLotIntegrity(
       match: true,
       severity: "info",
       mode: "not_settled_yet",
-      message: "Este lote aún no tiene liquidación registrada en Alpacto. No hay nada que cruzar con la cadena.",
+      message: "Este lote aún no tiene liquidación registrada en Alpacto. No hay nada que cruzar con el registro seguro.",
       diffs: [],
       postgres,
       onchain: null,
@@ -90,8 +90,8 @@ export async function verifyLotIntegrity(
       severity: "info",
       mode: isLocalDemo ? "demo_local_payout" : "chain_unavailable",
       message: isLocalDemo
-        ? "Esta liquidación es un pago local de demo (sin cadena). No se puede verificar on-chain."
-        : "La cadena no está configurada en este entorno. Solo se muestra la data de Alpacto (Postgres).",
+        ? "Esta liquidación es un pago local de demo (sin registro seguro externo). No se puede verificar el comprobante."
+        : "El registro seguro no está configurado en este entorno. Solo se muestra la data del panel de Alpacto.",
       diffs: [],
       postgres,
       onchain: null,
@@ -105,7 +105,7 @@ export async function verifyLotIntegrity(
       severity: "critical",
       mode: "mismatch",
       message:
-        "URGENTE: el lote figura liquidado/aceptado en Alpacto pero no tiene ID on-chain. Puede haber inconsistencia.",
+        "URGENTE: el lote figura liquidado/aceptado en Alpacto pero no tiene identificador en el registro seguro. Puede haber inconsistencia.",
       diffs: [
         {
           field: "onchainLotId",
@@ -127,7 +127,7 @@ export async function verifyLotIntegrity(
       match: false,
       severity: "warning",
       mode: "chain_unavailable",
-      message: "No se pudo leer el lote en la cadena ahora. Intenta de nuevo en un momento.",
+      message: "No se pudo leer el lote en el registro seguro ahora. Intenta de nuevo en un momento.",
       diffs: [],
       postgres,
       onchain: null,
@@ -152,7 +152,7 @@ export async function verifyLotIntegrity(
       match: false,
       severity: "critical",
       mode: "mismatch",
-      message: "URGENTE: Alpacto tiene liquidación, pero el lote no existe en la blockchain.",
+      message: "URGENTE: Alpacto tiene liquidación, pero el lote no existe en el registro seguro.",
       diffs: [{ field: "exists", postgres: "true", onchain: "false" }],
       postgres,
       onchain,
@@ -228,7 +228,7 @@ export async function verifyLotIntegrity(
       severity: "critical",
       mode: "mismatch",
       message:
-        "URGENTE: la data de Alpacto y la blockchain no coinciden en este lote. Te recomiendo abrir una disputa de integridad ahora.",
+        "URGENTE: los números del panel y el registro seguro no coinciden en este lote. Te recomiendo abrir una disputa de integridad ahora.",
       diffs,
       postgres,
       onchain,
@@ -240,7 +240,7 @@ export async function verifyLotIntegrity(
     match: true,
     severity: "ok",
     mode: "matched",
-    message: "Postgres y blockchain coinciden en estado, versión, quote y montos de este lote.",
+    message: "El panel y el registro seguro coinciden en estado, versión, código del informe y montos de este lote.",
     diffs: [],
     postgres,
     onchain,

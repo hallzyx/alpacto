@@ -57,6 +57,12 @@ export async function processFundOrderJob(
     throw new Error("payment_reference_hash missing on funding intent");
   }
 
+  if (order.targetWeightGrams == null || order.targetWeightGrams <= 0n) {
+    throw new Error(
+      `Order ${order.id} missing targetWeightGrams — required for on-chain createOrder`,
+    );
+  }
+
   onLog(
     `buyer-fund start order=${onchainOrderId.toString()} buyer=${buyerAddress} email=${buyer.email}`,
   );
@@ -68,6 +74,7 @@ export async function processFundOrderJob(
     associationAddress: associationAddress as Address,
     pricingPolicyHash: policyHash as Hex,
     budgetUsdcUnits: intent.usdcUnits,
+    targetWeightGrams: order.targetWeightGrams,
     amount: intent.usdcUnits,
     paymentReferenceHash: intent.paymentReferenceHash as Hex,
     onLog,

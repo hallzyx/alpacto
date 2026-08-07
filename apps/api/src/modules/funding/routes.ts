@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { and, desc, eq } from "drizzle-orm";
-import { fundingIntents, orders, type Database } from "@alpacto/database";
+import { fundingIntents, orders, users, type Database } from "@alpacto/database";
 import {
   assertWithinDemoMaxUsdc,
   usdCentsToUsdcUnits,
@@ -10,7 +10,11 @@ import { ApiError } from "../../lib/errors.js";
 import { getStripe } from "../../lib/stripe.js";
 import { config } from "../../config.js";
 import type { Queues } from "../../jobs/queues.js";
-import { paymentReferenceHashFromStripeId } from "../../lib/treasury.js";
+import { paymentReferenceHashFromStripeId, readOrderEscrow } from "../../lib/treasury.js";
+import { isChainConfigured } from "../../lib/onchain-ids.js";
+import { resolveOrderAddresses } from "../../lib/funding-helpers.js";
+import { withdrawRemainderAsBuyer } from "../../lib/buyer-funding.js";
+import type { Address } from "viem";
 
 function serializeFundingIntent(row: typeof fundingIntents.$inferSelect) {
   return {
@@ -155,6 +159,36 @@ export async function registerFundingRoutes(
         .orderBy(desc(fundingIntents.createdAt))
         .limit(1);
 
+      let targetWeightGrams = order.targetWeightGrams?.toString() ?? null;
+      let reservedWeightGrams: string | null = null;
+      let fulfilledWeightGrams: string | null = null;
+      let onchainRemainingUsdcUnits: string | null = null;
+      let onchainStatus: number | null = null;
+      let canWithdrawRemainder = false;
+
+      if (order.onchainOrderId != null && isChainConfigured()) {
+        try {
+          const chain = await readOrderEscrow(order.onchainOrderId);
+          if (chain.exists) {
+            targetWeightGrams = chain.targetWeightGrams.toString();
+            reservedWeightGrams = chain.reservedWeightGrams.toString();
+            fulfilledWeightGrams = chain.fulfilledWeightGrams.toString();
+            onchainRemainingUsdcUnits = chain.remainingUsdc.toString();
+            onchainStatus = Number(chain.status);
+            canWithdrawRemainder =
+              chain.fulfilledWeightGrams >= chain.targetWeightGrams &&
+              chain.reservedWeightGrams === 0n &&
+              chain.remainingUsdc > 0n &&
+              order.status !== "completed";
+          }
+        } catch (err) {
+          request.log.warn(
+            { err, orderId, onchainOrderId: order.onchainOrderId?.toString() },
+            "funding-status: getOrder failed (redeploy needed?)",
+          );
+        }
+      }
+
       return {
         orderId: order.id,
         orderStatus: order.status,
@@ -162,7 +196,106 @@ export async function registerFundingRoutes(
         fundedUsdcUnits: order.fundedUsdcUnits.toString(),
         remainingUsdcUnits: order.remainingUsdcUnits.toString(),
         fundingTxHash: order.txHash,
+        targetWeightGrams,
+        reservedWeightGrams,
+        fulfilledWeightGrams,
+        onchainRemainingUsdcUnits,
+        onchainStatus,
+        canWithdrawRemainder,
         intent: intent ? serializeFundingIntent(intent) : null,
+      };
+    },
+  );
+
+  app.post(
+    "/orders/:id/withdraw-remainder",
+    { preHandler: authenticate },
+    async (request) => {
+      const user = request.user as AuthUser;
+      const { id: orderId } = request.params as { id: string };
+      const order = await loadOrderForFunding(db, orderId);
+      assertBuyerAccess(user, order);
+
+      if (order.status === "completed") {
+        throw new ApiError(400, "Order already completed");
+      }
+      if (order.onchainOrderId == null) {
+        throw new ApiError(400, "La orden aún no está registrada en la cuenta de garantía");
+      }
+      if (!isChainConfigured()) {
+        throw new ApiError(400, "El retiro de remanente no está configurado en este entorno");
+      }
+
+      const [buyer] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, order.buyerId))
+        .limit(1);
+      if (!buyer?.email) {
+        throw new ApiError(400, "Falta el correo del comprador para autorizar el retiro");
+      }
+
+      const { buyerAddress } = await resolveOrderAddresses(db, order);
+
+      let withdrawnUsdc = order.remainingUsdcUnits;
+      try {
+        const chain = await readOrderEscrow(order.onchainOrderId);
+        if (!chain.exists) {
+          throw new ApiError(400, "Orden no encontrada en la cuenta de garantía");
+        }
+        if (chain.reservedWeightGrams > 0n) {
+          throw new ApiError(409, "Aún hay peso reservado — liquida o pide nuevo pesaje en los lotes abiertos");
+        }
+        if (chain.fulfilledWeightGrams < chain.targetWeightGrams) {
+          throw new ApiError(409, "Todavía no se cumple la meta de kilos de la orden");
+        }
+        if (chain.remainingUsdc === 0n) {
+          throw new ApiError(400, "No queda saldo en la cuenta de garantía");
+        }
+        withdrawnUsdc = chain.remainingUsdc;
+      } catch (err) {
+        if (err instanceof ApiError) throw err;
+        throw new ApiError(
+          503,
+          err instanceof Error
+            ? err.message
+            : "Could not read on-chain order (redeploy AlpactoCore?)",
+        );
+      }
+
+      let txHash: string;
+      try {
+        txHash = await withdrawRemainderAsBuyer({
+          onchainOrderId: order.onchainOrderId,
+          buyerAddress: buyerAddress as Address,
+          buyerEmail: buyer.email,
+          onLog: (msg) => request.log.info({ orderId, msg }, "withdraw-remainder"),
+        });
+      } catch (err) {
+        throw new ApiError(
+          502,
+          err instanceof Error ? err.message : "withdrawRemainder failed",
+        );
+      }
+
+      const [updated] = await db
+        .update(orders)
+        .set({
+          remainingUsdcUnits: 0n,
+          remainderWithdrawnUsdcUnits: withdrawnUsdc,
+          status: "completed",
+          remainderWithdrawTxHash: txHash,
+          updatedAt: new Date(),
+        })
+        .where(eq(orders.id, order.id))
+        .returning();
+
+      return {
+        orderId: order.id,
+        status: updated!.status,
+        remainingUsdcUnits: "0",
+        withdrawnUsdcUnits: withdrawnUsdc.toString(),
+        txHash,
       };
     },
   );

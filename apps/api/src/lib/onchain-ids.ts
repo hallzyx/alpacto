@@ -14,7 +14,7 @@ export function deriveOnchainLotId(lotUuid: string): bigint {
 }
 
 const lotAbi = parseAbi([
-  "function getLot(uint256 lotId) view returns (uint256, address, uint8, uint32, uint32, bytes32, uint256, uint256, uint256, uint256, bool)",
+  "function getLot(uint256 lotId) view returns (uint256, address, uint8, uint32, uint32, bytes32, uint256, uint256, uint256, uint256, bool, uint64)",
   "function getAuditAttestation(uint256 lotId, uint32 version) view returns (bytes32, uint8, bool)",
 ]);
 
@@ -49,6 +49,7 @@ export async function readLotOnchain(onchainLotId: bigint) {
     associationUsdc: result[8],
     platformUsdc: result[9],
     exists: result[10],
+    reservedWeightGrams: result[11],
   };
 }
 

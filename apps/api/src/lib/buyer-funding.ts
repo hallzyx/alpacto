@@ -20,8 +20,9 @@ import { config } from "../config.js";
 import { alpactoAbi, erc20Abi, getTreasuryClients, orderExistsOnchain } from "./treasury.js";
 
 const BUYER_FUND_ABI = parseAbi([
-  "function createOrder(uint256 orderId, address buyer, address association, bytes32 pricingPolicyHash, uint256 budgetUsdcUnits)",
+  "function createOrder(uint256 orderId, address buyer, address association, bytes32 pricingPolicyHash, uint256 budgetUsdcUnits, uint64 targetWeightGrams)",
   "function buyerFundOrder(uint256 orderId, uint256 amount, bytes32 paymentReferenceHash)",
+  "function withdrawRemainder(uint256 orderId)",
   "function approve(address spender, uint256 amount) returns (bool)",
 ]);
 
@@ -68,6 +69,7 @@ export async function ensureAndFundOrderAsBuyer(opts: {
   associationAddress: Address;
   pricingPolicyHash: Hex;
   budgetUsdcUnits: bigint;
+  targetWeightGrams: bigint;
   amount: bigint;
   paymentReferenceHash: Hex;
   onLog: (msg: string) => void;
@@ -75,6 +77,9 @@ export async function ensureAndFundOrderAsBuyer(opts: {
   const core = config.chain.alpactoContract as Address;
   const usdc = config.chain.usdcToken as Address;
   if (!core) throw new Error("ALPACTO_CONTRACT_ADDRESS is not configured");
+  if (opts.targetWeightGrams <= 0n) {
+    throw new Error("targetWeightGrams must be > 0 for on-chain createOrder");
+  }
 
   const zd = loadZeroDevConfigFromEnv();
   const publicClient = createAlpactoPublicClient({
@@ -108,6 +113,7 @@ export async function ensureAndFundOrderAsBuyer(opts: {
         opts.associationAddress,
         opts.pricingPolicyHash,
         opts.budgetUsdcUnits,
+        opts.targetWeightGrams,
       ],
     });
   }
@@ -155,4 +161,47 @@ export async function ensureAndFundOrderAsBuyer(opts: {
 
   const txHash = receipt.receipt.transactionHash as Hex;
   return txHash;
+}
+
+/**
+ * Buyer Kernel calls withdrawRemainder — returns leftover escrow USDC to the buyer.
+ * Requires fulfilled >= target, reserved == 0, remaining > 0 on-chain.
+ */
+export async function withdrawRemainderAsBuyer(opts: {
+  onchainOrderId: bigint;
+  buyerAddress: Address;
+  buyerEmail: string;
+  onLog: (msg: string) => void;
+}): Promise<Hex> {
+  const core = config.chain.alpactoContract as Address;
+  if (!core) throw new Error("ALPACTO_CONTRACT_ADDRESS is not configured");
+
+  const zd = loadZeroDevConfigFromEnv();
+  const publicClient = createAlpactoPublicClient({
+    ...zd,
+    publicRpc: config.chain.rpcUrl,
+  });
+  const ownerKey = resolveBuyerOwnerKey(opts.buyerEmail);
+  const buyerAccount = await createEcdsaKernelAccount(publicClient, ownerKey);
+
+  if (buyerAccount.address.toLowerCase() !== opts.buyerAddress.toLowerCase()) {
+    throw new Error(
+      `Buyer Kernel mismatch: derived ${buyerAccount.address} vs order ${opts.buyerAddress}. ` +
+        `Re-run yarn seed:wallets with the same DEMO_WALLET_SEED.`,
+    );
+  }
+
+  opts.onLog(`buyer withdrawRemainder orderId=${opts.onchainOrderId.toString()}`);
+  const { receipt } = await trySponsoredThenSelfFunded({
+    publicClient,
+    account: buyerAccount,
+    config: zd,
+    fundEth: fundEthFromTreasury,
+    to: core,
+    abi: BUYER_FUND_ABI,
+    functionName: "withdrawRemainder",
+    args: [opts.onchainOrderId],
+  });
+
+  return receipt.receipt.transactionHash as Hex;
 }

@@ -11,6 +11,7 @@ import {
 import { createCampaignSchema } from "@alpacto/shared-schemas";
 import type { AuthUser } from "../../plugins/auth.js";
 import { ApiError } from "../../lib/errors.js";
+import { resolveAssociationOrgIds } from "../../lib/ayni-role-scope.js";
 
 function parseCalendarDate(value: string | undefined): Date | null {
   if (!value) return null;
@@ -57,7 +58,7 @@ async function loadPricingBundle(db: Database, pricingPolicyId: string) {
     createdBy: policy.createdBy,
     lockedAt: policy.lockedAt?.toISOString() ?? null,
     createdAt: policy.createdAt.toISOString(),
-    categories: categories.map((c) => ({
+    categories: categories.map(c => ({
       code: c.code,
       label: c.label,
       pricePenMinorPerKg: c.pricePenMinorPerKg.toString(),
@@ -82,18 +83,50 @@ async function enrichCampaign(db: Database, row: typeof campaigns.$inferSelect) 
   };
 }
 
+async function assertCanViewCampaign(db: Database, user: AuthUser, row: typeof campaigns.$inferSelect) {
+  if (user.role === "admin" || user.role === "inspector") return;
+  if (user.role === "buyer") {
+    if (row.buyerId !== user.id) throw new ApiError(403, "Forbidden");
+    return;
+  }
+  if (user.role === "association") {
+    const orgIds = await resolveAssociationOrgIds(db, user.id, false);
+    if (!orgIds.includes(row.organizationId)) throw new ApiError(403, "Forbidden");
+    return;
+  }
+  // producers and others: deny direct campaign fetch unless needed later
+  throw new ApiError(403, "Forbidden");
+}
+
+async function listVisibleCampaigns(db: Database, user: AuthUser) {
+  if (user.role === "buyer") {
+    return db.select().from(campaigns).where(eq(campaigns.buyerId, user.id));
+  }
+  if (user.role === "association") {
+    const orgIds = await resolveAssociationOrgIds(db, user.id, false);
+    if (orgIds.length === 0) return [];
+    return db.select().from(campaigns).where(inArray(campaigns.organizationId, orgIds));
+  }
+  // admin, inspector, and other privileged roles see all
+  if (user.role === "admin" || user.role === "inspector") {
+    return db.select().from(campaigns);
+  }
+  return [];
+}
+
 export async function registerCampaignRoutes(
   app: FastifyInstance,
   db: Database,
   authenticate: (req: unknown, reply: unknown) => Promise<void>,
 ) {
-  app.get("/campaigns", { preHandler: authenticate }, async () => {
-    const rows = await db.select().from(campaigns);
+  app.get("/campaigns", { preHandler: authenticate }, async request => {
+    const user = request.user as AuthUser;
+    const rows = await listVisibleCampaigns(db, user);
     if (!rows.length) return { campaigns: [] };
 
-    const orgIds = [...new Set(rows.map((r) => r.organizationId))];
-    const buyerIds = [...new Set(rows.map((r) => r.buyerId))];
-    const policyIds = [...new Set(rows.map((r) => r.pricingPolicyId))];
+    const orgIds = [...new Set(rows.map(r => r.organizationId))];
+    const buyerIds = [...new Set(rows.map(r => r.buyerId))];
+    const policyIds = [...new Set(rows.map(r => r.pricingPolicyId))];
 
     const [orgRows, buyerRows, policyRows, categoryRows] = await Promise.all([
       db.select().from(organizations).where(inArray(organizations.id, orgIds)),
@@ -102,9 +135,9 @@ export async function registerCampaignRoutes(
       db.select().from(pricingCategories).where(inArray(pricingCategories.pricingPolicyId, policyIds)),
     ]);
 
-    const orgById = new Map(orgRows.map((o) => [o.id, o]));
-    const buyerById = new Map(buyerRows.map((b) => [b.id, b]));
-    const policyById = new Map(policyRows.map((p) => [p.id, p]));
+    const orgById = new Map(orgRows.map(o => [o.id, o]));
+    const buyerById = new Map(buyerRows.map(b => [b.id, b]));
+    const policyById = new Map(policyRows.map(p => [p.id, p]));
     const catsByPolicy = new Map<string, typeof categoryRows>();
     for (const cat of categoryRows) {
       const list = catsByPolicy.get(cat.pricingPolicyId) ?? [];
@@ -113,7 +146,7 @@ export async function registerCampaignRoutes(
     }
 
     return {
-      campaigns: rows.map((row) => {
+      campaigns: rows.map(row => {
         const org = orgById.get(row.organizationId);
         const buyer = buyerById.get(row.buyerId);
         const policy = policyById.get(row.pricingPolicyId);
@@ -134,7 +167,7 @@ export async function registerCampaignRoutes(
                 weightToleranceBps: policy.weightToleranceBps,
                 penPerUsdcMicros: policy.penPerUsdcMicros.toString(),
                 policyHash: policy.policyHash,
-                categories: categories.map((c) => ({
+                categories: categories.map(c => ({
                   code: c.code,
                   label: c.label,
                   pricePenMinorPerKg: c.pricePenMinorPerKg.toString(),
@@ -147,17 +180,20 @@ export async function registerCampaignRoutes(
     };
   });
 
-  app.get("/campaigns/:id", { preHandler: authenticate }, async (request) => {
+  app.get("/campaigns/:id", { preHandler: authenticate }, async request => {
+    const user = request.user as AuthUser;
     const { id } = request.params as { id: string };
     const [row] = await db.select().from(campaigns).where(eq(campaigns.id, id)).limit(1);
     if (!row) throw new ApiError(404, "Campaign not found");
+    await assertCanViewCampaign(db, user, row);
     return enrichCampaign(db, row);
   });
 
-  app.post("/campaigns", { preHandler: authenticate }, async (request) => {
+  app.post("/campaigns", { preHandler: authenticate }, async request => {
     const user = request.user as AuthUser;
-    if (!["buyer", "association", "admin"].includes(user.role)) {
-      throw new ApiError(403, "Forbidden");
+    // Only buyers (and admin) create campaigns. Associations list only.
+    if (!["buyer", "admin"].includes(user.role)) {
+      throw new ApiError(403, "Only buyers can create campaigns");
     }
     const body = createCampaignSchema.parse(request.body);
 
@@ -176,6 +212,9 @@ export async function registerCampaignRoutes(
       .where(eq(organizations.id, body.organizationId))
       .limit(1);
     if (!org) throw new ApiError(404, "Organization not found");
+    if (org.type !== "association") {
+      throw new ApiError(400, "organizationId must be an association");
+    }
     const [buyer] = await db.select().from(users).where(eq(users.id, buyerId)).limit(1);
     if (!buyer) throw new ApiError(404, "Buyer not found");
     const [policy] = await db

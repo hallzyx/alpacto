@@ -18,6 +18,7 @@ import { ApiError } from "../../lib/errors.js";
 import { createHash } from "node:crypto";
 import { executeSettlementOnchain } from "../../lib/settlement-onchain.js";
 import { isChainConfigured } from "../../lib/onchain-ids.js";
+import { ProducerSessionRequiredError } from "../../lib/producer-signer.js";
 
 async function loadSettlementContext(db: Database, lotId: string) {
   const [lot] = await db.select().from(lots).where(eq(lots.id, lotId)).limit(1);
@@ -215,6 +216,9 @@ export async function registerSettlementRoutes(
         });
       } catch (err) {
         request.log.error({ err, lotId }, "on-chain settlement failed after accept");
+        if (err instanceof ProducerSessionRequiredError) {
+          throw new ApiError(409, err.message, err.code);
+        }
         throw new ApiError(
           502,
           err instanceof Error ? err.message : "On-chain settlement failed",
@@ -262,6 +266,9 @@ export async function registerSettlementRoutes(
       if (!row) throw new ApiError(404, "Settlement not found");
       return { ...serializeSettlement(row), settlementTxHash: txHash };
     } catch (err) {
+      if (err instanceof ProducerSessionRequiredError) {
+        throw new ApiError(409, err.message, err.code);
+      }
       throw new ApiError(
         502,
         err instanceof Error ? err.message : "On-chain settlement failed",

@@ -85,7 +85,7 @@ export const AYNI_PRODUCER_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] =
     type: "function",
     function: {
       name: "get_my_lot_settlement",
-      description: "Desglose de liquidación (PEN/USDC) y tx hash de un lote propio.",
+      description: "Desglose de liquidación (soles / dólares) y comprobante de un lote propio.",
       parameters: {
         type: "object",
         properties: {
@@ -101,7 +101,7 @@ export const AYNI_PRODUCER_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] =
     function: {
       name: "get_my_order_capacity",
       description:
-        "Capacidad restante de una orden donde el productor ya participa: USDC restante y estimación de kg. No lista lotes de otros productores.",
+        "Capacidad restante de una orden donde el productor ya participa: saldo restante y estimación de kg. No lista lotes de otros productores.",
       parameters: {
         type: "object",
         properties: {
@@ -133,7 +133,7 @@ export const AYNI_PRODUCER_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] =
     function: {
       name: "verify_lot_integrity",
       description:
-        "Compara Postgres y blockchain para un lote propio liquidado/aceptado. Si no coinciden, marca anomalía crítica.",
+        "Compara el panel de Alpacto con el registro seguro para un lote propio liquidado/aceptado. Si no coinciden, marca anomalía crítica.",
       parameters: {
         type: "object",
         properties: {
