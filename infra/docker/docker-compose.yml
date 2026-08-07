@@ -81,6 +81,7 @@ services:
     env_file: *default-env-file
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql://alpacto:alpacto@postgres:5432/alpacto}
+      POSTGRES_DB: ${POSTGRES_DB:-alpacto}
     depends_on:
       postgres:
         condition: service_healthy

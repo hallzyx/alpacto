@@ -39,6 +39,12 @@ if [ "$i" -ge 60 ]; then
   echo "WARN: ${DB_HOST} not confirmed after 60s — attempting migrate anyway"
 fi
 
+echo "Ensuring target database exists..."
+if ! yarn --cwd /app workspace @alpacto/database exec node /usr/local/bin/ensure-database.mjs; then
+  echo "❌ ensure-database failed"
+  exit 1
+fi
+
 attempt=1
 while [ "$attempt" -le "$MAX_ATTEMPTS" ]; do
   echo "▶ migrate attempt ${attempt}/${MAX_ATTEMPTS}"

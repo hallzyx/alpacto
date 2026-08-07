@@ -25,5 +25,6 @@ ENV NODE_ENV=production
 COPY --from=deps /app /app
 COPY packages/database ./packages/database
 COPY infra/docker/migrate-entrypoint.sh /usr/local/bin/migrate-entrypoint.sh
+COPY infra/docker/ensure-database.mjs /usr/local/bin/ensure-database.mjs
 RUN chmod +x /usr/local/bin/migrate-entrypoint.sh
 ENTRYPOINT ["/usr/local/bin/migrate-entrypoint.sh"]
