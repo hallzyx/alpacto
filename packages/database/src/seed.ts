@@ -1,261 +1,58 @@
 import * as dotenv from "dotenv";
 import * as path from "path";
 import { fileURLToPath } from "url";
-import { eq } from "drizzle-orm";
+import { count } from "drizzle-orm";
 import { createDb } from "./index.js";
-import {
-  campaigns,
-  organizationMembers,
-  orders,
-  organizations,
-  pricingCategories,
-  pricingPolicies,
-  users,
-} from "./schema/index.js";
+import { campaigns } from "./schema/index.js";
+import { clearTransactions } from "./seed/clear-transactions.js";
+import { SEED_USERS, seedFoundation } from "./seed/foundation.js";
+import { seedMockTransactions } from "./seed/mock-transactions.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
 
-const DEMO_POLICY_HASH =
-  "0x1111111111111111111111111111111111111111111111111111111111111111";
-
-/** Demo v1 — three alpaca fiber grades; settlement uses the inspector's category row. */
-const DEMO_POLICY_CATEGORIES = [
-  { code: "FINE", label: "Fino", pricePenMinorPerKg: 2750n, qualityBonusPenMinorPerKg: 0n },
-  { code: "MEDIUM", label: "Medio", pricePenMinorPerKg: 2300n, qualityBonusPenMinorPerKg: 0n },
-  { code: "COARSE", label: "Grueso", pricePenMinorPerKg: 1850n, qualityBonusPenMinorPerKg: 0n },
-] as const;
-
-async function ensureDemoPolicyCategories(
-  db: ReturnType<typeof createDb>,
-  policyId: string,
-) {
-  for (const cat of DEMO_POLICY_CATEGORIES) {
-    await db
-      .insert(pricingCategories)
-      .values({
-        pricingPolicyId: policyId,
-        code: cat.code,
-        label: cat.label,
-        pricePenMinorPerKg: cat.pricePenMinorPerKg,
-        qualityBonusPenMinorPerKg: cat.qualityBonusPenMinorPerKg,
-      })
-      .onConflictDoUpdate({
-        target: [pricingCategories.pricingPolicyId, pricingCategories.code],
-        set: {
-          label: cat.label,
-          pricePenMinorPerKg: cat.pricePenMinorPerKg,
-          qualityBonusPenMinorPerKg: cat.qualityBonusPenMinorPerKg,
-        },
-      });
-  }
-}
-
-const SEED_USERS = [
-  {
-    email: "martina@demo.alpacto",
-    role: "producer",
-    name: "Martina Quispe",
-    phone: "+51999000001",
-  },
-  {
-    email: "carlos@demo.alpacto",
-    role: "inspector",
-    name: "Carlos Huamán",
-    phone: "+51999000002",
-  },
-  {
-    email: "alpasur@demo.alpacto",
-    role: "association",
-    name: "Asociación AlpaSur",
-    phone: "+51999000003",
-  },
-  {
-    email: "andes@demo.alpacto",
-    role: "buyer",
-    name: "Andes Textile Import LLC",
-    phone: "+12025550001",
-  },
-  {
-    email: "admin@demo.alpacto",
-    role: "admin",
-    name: "Alpacto Demo Admin",
-    phone: "+51999000099",
-  },
-] as const;
-
-async function findUserByEmail(
-  db: ReturnType<typeof createDb>["db"],
-  email: string,
-) {
-  const [row] = await db.select().from(users).where(eq(users.email, email)).limit(1);
-  return row;
-}
-
-async function upsertUser(
-  db: ReturnType<typeof createDb>["db"],
-  user: (typeof SEED_USERS)[number],
-) {
-  const existing = await findUserByEmail(db, user.email);
-  if (existing) return existing;
-  const [row] = await db
-    .insert(users)
-    .values({
-      email: user.email,
-      role: user.role,
-      name: user.name,
-      phone: user.phone,
-      status: "active",
-    })
-    .returning();
-  if (!row) throw new Error(`Failed to seed user ${user.email}`);
-  return row;
+async function campaignCount(db: ReturnType<typeof createDb>["db"]): Promise<number> {
+  const [row] = await db.select({ n: count() }).from(campaigns);
+  return Number(row?.n ?? 0);
 }
 
 async function main() {
   const url =
     process.env["DATABASE_URL"] ??
     "postgresql://alpacto:alpacto@localhost:5432/alpacto";
+  const resetTx =
+    process.env["SEED_RESET_TRANSACTIONS"] === "1" ||
+    process.env["SEED_RESET_TRANSACTIONS"] === "true";
+
   const { db, pool } = createDb(url);
 
-  console.log("🌱 Seeding Alpacto demo data…");
+  console.log("🌱 Alpacto seed");
+  console.log(`  DATABASE_URL host ok`);
+  console.log(`  SEED_RESET_TRANSACTIONS=${resetTx ? "1" : "0"}`);
 
-  const seededUsers = [];
-  for (const u of SEED_USERS) {
-    seededUsers.push(await upsertUser(db, u));
-  }
-  const byEmail = Object.fromEntries(seededUsers.map((u) => [u.email, u]));
+  const foundation = await seedFoundation(db);
 
-  let [associationOrg] = await db
-    .select()
-    .from(organizations)
-    .where(eq(organizations.name, "Asociación AlpaSur"))
-    .limit(1);
-  if (!associationOrg) {
-    const [row] = await db
-      .insert(organizations)
-      .values({ name: "Asociación AlpaSur", type: "association", status: "active" })
-      .returning();
-    associationOrg = row!;
+  const existingCampaigns = await campaignCount(db);
+  const shouldSeedTx = resetTx || existingCampaigns === 0;
+
+  if (resetTx) {
+    await clearTransactions(db);
   }
 
-  let [buyerOrg] = await db
-    .select()
-    .from(organizations)
-    .where(eq(organizations.name, "Andes Textile Import LLC"))
-    .limit(1);
-  if (!buyerOrg) {
-    const [row] = await db
-      .insert(organizations)
-      .values({
-        name: "Andes Textile Import LLC",
-        type: "buyer",
-        status: "active",
-      })
-      .returning();
-    buyerOrg = row!;
+  if (shouldSeedTx) {
+    const mock = await seedMockTransactions(db, foundation);
+    console.log("✅ Seed complete (foundation + mock transactions)");
+    console.log("  campaigns:", mock.campaignIds.length);
+    console.log("  orders:", mock.orderRefs.join(", "));
+    console.log("  lots:", mock.lotCount);
+  } else {
+    console.log("✅ Seed complete (foundation only — transactions preserved)");
+    console.log(
+      `  skipped mock: ${existingCampaigns} campaign(s) already present (set SEED_RESET_TRANSACTIONS=1 to wipe+reseed)`,
+    );
   }
 
-  const memberPairs = [
-    { organizationId: associationOrg.id, userId: byEmail["alpasur@demo.alpacto"]!.id, memberRole: "admin" },
-    {
-      organizationId: associationOrg.id,
-      userId: byEmail["martina@demo.alpacto"]!.id,
-      memberRole: "producer",
-    },
-    { organizationId: buyerOrg.id, userId: byEmail["andes@demo.alpacto"]!.id, memberRole: "admin" },
-  ];
-  for (const m of memberPairs) {
-    await db.insert(organizationMembers).values(m).onConflictDoNothing();
-  }
-
-  const penPerUsdcMicros = BigInt(
-    process.env["DEMO_PEN_PER_USDC_MICROS"] ?? "3750000",
-  );
-
-  let [policy] = await db
-    .select()
-    .from(pricingPolicies)
-    .where(eq(pricingPolicies.policyHash, DEMO_POLICY_HASH))
-    .limit(1);
-  if (!policy) {
-    const [row] = await db
-      .insert(pricingPolicies)
-      .values({
-        version: 1,
-        currency: "PEN",
-        associationFeeBps: 300,
-        platformFeeBps: 50,
-        weightToleranceBps: 100,
-        penPerUsdcMicros,
-        policyHash: DEMO_POLICY_HASH,
-      })
-      .returning();
-    policy = row!;
-    await ensureDemoPolicyCategories(db, policy.id);
-  } else if (policy.penPerUsdcMicros <= 0n || policy.platformFeeBps !== 50) {
-    const [row] = await db
-      .update(pricingPolicies)
-      .set({
-        ...(policy.penPerUsdcMicros <= 0n ? { penPerUsdcMicros } : {}),
-        platformFeeBps: 50,
-      })
-      .where(eq(pricingPolicies.id, policy.id))
-      .returning();
-    policy = row!;
-  }
-
-  await ensureDemoPolicyCategories(db, policy.id);
-
-  let [campaign] = await db
-    .select()
-    .from(campaigns)
-    .where(eq(campaigns.name, "Campaña Demo 2026"))
-    .limit(1);
-  if (!campaign) {
-    const [row] = await db
-      .insert(campaigns)
-      .values({
-        organizationId: associationOrg.id,
-        buyerId: byEmail["andes@demo.alpacto"]!.id,
-        name: "Campaña Demo 2026",
-        status: "active",
-        pricingPolicyId: policy.id,
-        startDate: new Date("2026-01-01"),
-        endDate: new Date("2026-12-31"),
-      })
-      .returning();
-    campaign = row!;
-  }
-
-  let [order] = await db
-    .select()
-    .from(orders)
-    .where(eq(orders.externalRef, "ALP-2026-001"))
-    .limit(1);
-  if (!order) {
-    const budgetUsdCents = 100_000n;
-    const fundedUsdc = 1_000_000_000n;
-    const [row] = await db
-      .insert(orders)
-      .values({
-        externalRef: "ALP-2026-001",
-        campaignId: campaign.id,
-        buyerId: byEmail["andes@demo.alpacto"]!.id,
-        associationId: associationOrg.id,
-        budgetUsdCents,
-        fundedUsdcUnits: fundedUsdc,
-        remainingUsdcUnits: fundedUsdc,
-        status: "funded",
-      })
-      .returning();
-    order = row!;
-  }
-
-  console.log("✅ Seed complete");
-  console.log("  campaign:", campaign.id);
-  console.log("  order ALP-2026-001:", order.id);
-  console.log("  demo logins:", SEED_USERS.map((u) => u.email).join(", "));
+  console.log("  demo logins:", SEED_USERS.map(u => u.email).join(", "));
   console.log(
     "  → Next: yarn seed:wallets  # real Kernel SAs on Arbitrum Sepolia for each seed user",
   );
@@ -263,7 +60,7 @@ async function main() {
   await pool.end();
 }
 
-main().catch((err) => {
+main().catch(err => {
   console.error(err);
   process.exit(1);
 });

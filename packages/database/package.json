@@ -12,7 +12,8 @@
   "scripts": {
     "generate": "drizzle-kit generate",
     "migrate": "drizzle-kit migrate",
-    "seed": "tsx src/seed.ts"
+    "seed": "tsx src/seed.ts",
+    "seed:reset-tx": "SEED_RESET_TRANSACTIONS=1 tsx src/seed.ts"
   },
   "dependencies": {
     "dotenv": "^16.4.7",

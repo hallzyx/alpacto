@@ -46,6 +46,7 @@
     "db:generate": "yarn workspace @alpacto/database generate",
     "db:migrate": "yarn workspace @alpacto/database migrate",
     "db:seed": "yarn workspace @alpacto/database seed",
+    "db:seed:reset-tx": "yarn workspace @alpacto/database seed:reset-tx",
     "seed:wallets": "yarn workspace @alpacto/zero-dev seed:wallets",
     "fund-demo-buyer": "yarn workspace @alpacto/zero-dev fund-demo-buyer",
     "settle-demo-lot": "yarn workspace @alpacto/api settle-demo-lot",
