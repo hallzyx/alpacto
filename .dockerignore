@@ -20,7 +20,6 @@ apps/api/dist
 apps/ayni-worker/dist
 apps/web/.next
 packages/contracts/contracts/**/target
-packages/nextjs
 .yarn/cache
 .yarn/unplugged
 .yarn/install-state.gz

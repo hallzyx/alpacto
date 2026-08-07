@@ -18,10 +18,6 @@ COPY packages/domain/package.json ./packages/domain/
 COPY packages/shared-schemas/package.json ./packages/shared-schemas/
 COPY packages/zero-dev/package.json ./packages/zero-dev/
 COPY packages/contracts/package.json ./packages/contracts/
-COPY packages/config/package.json ./packages/config/
-COPY packages/contract-abi/package.json ./packages/contract-abi/
-COPY packages/contract-client/package.json ./packages/contract-client/
-COPY packages/ui/package.json ./packages/ui/
 RUN yarn install --immutable
 
 FROM base AS runner

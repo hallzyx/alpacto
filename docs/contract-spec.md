@@ -86,4 +86,4 @@ yarn phase1 -- --flow=reweigh
 yarn stylus:test    # cargo tests in all crates
 ```
 
-Inspect ABIs at `http://localhost:3000/debug` after `yarn start`.
+After deploy, ABIs and addresses land in `apps/web/contracts/deployedContracts.ts` (`yarn export-abi`). Admin reads Sepolia `alpacto-core` from there.

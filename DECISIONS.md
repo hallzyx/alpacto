@@ -6,9 +6,8 @@
 - **Evidence commit:** `chore: bootstrap from Scaffold-Stylus template` pushed to `github.com/hallzyx/alpacto` before monorepo layout changes.
 - **Workspace path:** `~/dev_projects/alpacto` (WSL2, Docker Desktop).
 - **Toolchain:** Rust `1.91.0`, `cargo-stylus` `0.10.8`, Yarn `3.2.3`.
-- **Monorepo layout:** PRD section 12 — `apps/web` from scaffold frontend, `packages/contracts` from scaffold Stylus workspace, stubs for API/worker/shared packages.
-- **Debug surface:** `/debug` preserved under `apps/web`, not linked from primary navigation.
-- **Contracts:** Example `your-contract` kept for pipeline verification; `AlpactoCore` deferred to Phase 1.
+- **Monorepo layout:** `apps/web` product UX, `packages/contracts` Stylus workspace (`alpacto-core` + local `mock-usdc`), API/worker/shared packages.
+- **Contracts:** Production Stylus contract is `alpacto-core`; `mock-usdc` for local Nitro deploy. Scaffold sample `your-contract` and `/debug` / `/blockexplorer` UI removed (2026-08-07 cleanup). Empty stub packages `config` / `contract-abi` / `contract-client` / `ui` removed. Deploy tooling + `supportedChains` + `deployedContracts.ts` kept.
 
 ## 2026-08-03 — Phase 1 domain contract
 
@@ -89,7 +88,7 @@
 - **Roles seed:** buyer/inspector/association/admin via `demo-login` from `/login`.
 - **Seed wallets:** `yarn seed:wallets` creates deterministic ZeroDev Kernel ECDSA accounts on Arbitrum Sepolia for every seed user, persists `users.smart_account_address`, writes owner keys to `.secrets/demo-wallets.json`, updates `DEMO_*_SMART_ACCOUNT`, and (when contract+treasury set) grants on-chain roles + dust ETH. Blockchain demo paths must be Sepolia-verifiable.
 - **Producer auth:** three ZeroDev-oriented paths in UI — Google, Email OTP, Passkey — then `POST /auth/producer/session` → JWT. Video prefers Martina seed (real SA) for on-chain; live Google/OTP remain for Web 2.5 UX.
-- **Screens:** `/`, `/login`, `/producer`, `/inspector`, `/association`, `/buyer/orders`, `/admin`; `/debug` out of primary nav.
+- **Screens:** `/`, `/login`, `/producer`, `/inspector`, `/association`, `/buyer/orders`, `/admin`.
 - **API gaps:** `GET /orders`, `GET /lots`, `GET /pricing-policies/:id`, producer may `settlement/accept`, local payout simulate, enriched lot timeline, producer session.
 - **Docs:** `docs/demo-script.md`; smoke `yarn phase6`.
 - **Checkpoint:** UI demo end-to-end per demo script (API smoke verifies list/session surfaces).

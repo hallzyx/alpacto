@@ -1,6 +1,7 @@
 {
   "rust-analyzer.linkedProjects": [
-    "./packages/contracts/contracts/your-contract/Cargo.toml"
+    "./packages/contracts/contracts/alpacto-core/Cargo.toml",
+    "./packages/contracts/contracts/mock-usdc/Cargo.toml"
   ],
   "rust-analyzer.cargo.buildScripts.enable": true,
   "rust-analyzer.cargo.features": "all"

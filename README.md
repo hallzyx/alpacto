@@ -8,11 +8,11 @@ Web 2.5 platform for transparent alpaca fiber settlement. Phase 6 adds role-base
 
 ```text
 apps/
-  web/           Next.js product UX + Scaffold /debug
+  web/           Next.js product UX
   api/           Fastify API (auth, Stripe, audits, settlements)
   ayni-worker/   BullMQ Ayni agent worker
 packages/
-  contracts/     Stylus contracts and deploy tooling
+  contracts/     Stylus contracts and deploy tooling (alpacto-core, mock-usdc)
   database/      Drizzle ORM + migrations + seed
   domain/        Integer money helpers
   shared-schemas/ Zod API schemas
@@ -83,7 +83,7 @@ yarn phase6       # API smoke for UX surfaces
 ```
 
 Landing: role seed login (each seed has a real Kernel address after `seed:wallets`) + producer registration (Google · Email OTP · Passkey).  
-Full narrative + **addresses de este demo local**: [`docs/demo-script.md`](docs/demo-script.md). `/debug` remains for engineering only.
+Full narrative + **addresses de este demo local**: [`docs/demo-script.md`](docs/demo-script.md).
 
 ## Quick start — Phase 3 (ZeroDev / Sepolia)
 

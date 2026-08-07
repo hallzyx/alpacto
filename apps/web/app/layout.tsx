@@ -1,5 +1,4 @@
-import { Fraunces, Source_Sans_3, Inter, Orbitron, Geist } from "next/font/google";
-import "@rainbow-me/rainbowkit/styles.css";
+import { Fraunces, Source_Sans_3, Orbitron, Geist } from "next/font/google";
 import { ThemeProvider } from "~~/components/ThemeProvider";
 import { AuthProvider } from "~~/components/alpacto/AuthProvider";
 import { TooltipProvider } from "~~/components/ui/tooltip";
@@ -21,12 +20,6 @@ const sourceSans = Source_Sans_3({
   weight: ["400", "500", "600", "700"],
 });
 
-/** Kept for Scaffold debug / blockexplorer surfaces. */
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-});
-
 const orbitron = Orbitron({
   subsets: ["latin"],
   variable: "--font-orbitron",
@@ -39,7 +32,7 @@ const RootLayout = ({ children }: { children: React.ReactNode }) => {
   return (
     <html lang="es" suppressHydrationWarning className={cn("font-sans", geist.variable)}>
       <body
-        className={`${fraunces.variable} ${sourceSans.variable} ${inter.variable} ${orbitron.variable} font-body`}
+        className={`${fraunces.variable} ${sourceSans.variable} ${orbitron.variable} font-body`}
         suppressHydrationWarning
       >
         <ThemeProvider enableSystem={false} defaultTheme="light">

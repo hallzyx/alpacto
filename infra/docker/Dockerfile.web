@@ -19,10 +19,6 @@ COPY packages/domain/package.json ./packages/domain/
 COPY packages/shared-schemas/package.json ./packages/shared-schemas/
 COPY packages/zero-dev/package.json ./packages/zero-dev/
 COPY packages/contracts/package.json ./packages/contracts/
-COPY packages/config/package.json ./packages/config/
-COPY packages/contract-abi/package.json ./packages/contract-abi/
-COPY packages/contract-client/package.json ./packages/contract-client/
-COPY packages/ui/package.json ./packages/ui/
 RUN yarn install --immutable
 
 FROM base AS builder
@@ -31,12 +27,8 @@ COPY apps/web ./apps/web
 # Public env must be present at build time for Next.js inlining.
 ARG NEXT_PUBLIC_API_URL=http://localhost:4000
 ARG NEXT_PUBLIC_ZERODEV_PROJECT_ID=
-ARG NEXT_PUBLIC_ALCHEMY_API_KEY=
-ARG NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID=
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_PUBLIC_ZERODEV_PROJECT_ID=$NEXT_PUBLIC_ZERODEV_PROJECT_ID \
-    NEXT_PUBLIC_ALCHEMY_API_KEY=$NEXT_PUBLIC_ALCHEMY_API_KEY \
-    NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID=$NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID \
     NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1
 WORKDIR /app

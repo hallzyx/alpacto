@@ -2,7 +2,6 @@ export { AppShell } from "./AppShell";
 export { AppSidebar } from "./AppSidebar";
 export { AuthProvider, useAuth } from "./AuthProvider";
 export { StatusPill } from "./StatusPill";
-export { AmountPen } from "./AmountPen";
 export { Timeline } from "./Timeline";
 export { EmptyState } from "./EmptyState";
 export { ErrorBanner } from "./ErrorBanner";

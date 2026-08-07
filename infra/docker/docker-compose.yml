@@ -78,6 +78,25 @@ services:
         condition: service_healthy
     restart: "no"
 
+  # First empty volume only: db:seed + seed:wallets. Skips when demo users/wallets exist.
+  bootstrap:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.api
+    container_name: alpacto-bootstrap
+    entrypoint: ["/usr/local/bin/bootstrap.sh"]
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL:-postgresql://alpacto:alpacto@postgres:5432/alpacto}
+      DEMO_WALLET_SEED: ${DEMO_WALLET_SEED:-alpacto-local-demo-wallet-seed-v1}
+      SKIP_BOOTSTRAP: ${SKIP_BOOTSTRAP:-0}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+
   # MVP: fetch CLI whsec once so API can verify without Dashboard endpoint.
   # Uses Docker DNS name `api` (not host localhost). Dokploy public URL is only for browsers.
   stripe-whsec:
@@ -128,6 +147,8 @@ services:
       minio-init:
         condition: service_completed_successfully
       migrate:
+        condition: service_completed_successfully
+      bootstrap:
         condition: service_completed_successfully
       stripe-whsec:
         condition: service_completed_successfully
@@ -189,6 +210,8 @@ services:
         condition: service_completed_successfully
       migrate:
         condition: service_completed_successfully
+      bootstrap:
+        condition: service_completed_successfully
       api:
         condition: service_started
     restart: unless-stopped
@@ -200,8 +223,6 @@ services:
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000}
         NEXT_PUBLIC_ZERODEV_PROJECT_ID: ${NEXT_PUBLIC_ZERODEV_PROJECT_ID:-}
-        NEXT_PUBLIC_ALCHEMY_API_KEY: ${NEXT_PUBLIC_ALCHEMY_API_KEY:-}
-        NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID: ${NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID:-}
     container_name: alpacto-web
     environment:
       NODE_ENV: production

@@ -33,6 +33,18 @@ Open:
 - API health: `http://YOUR_VPS_IP:4000/health`
 - MinIO console: `http://YOUR_VPS_IP:9001`
 
+## First boot vs later restarts
+
+On an **empty Postgres volume**, `bootstrap` runs automatically after migrate:
+
+1. `db:seed` — demo users, campaigns, orders, lots  
+2. `seed:wallets` — Kernel SAs (needs `ZERODEV_PROJECT_ID` + `ZERODEV_BUNDLER_RPC`)
+
+On later `up` / redeploys (volume already has demo data + wallets), bootstrap **no-ops** and exits 0.
+
+Force skip anytime: `SKIP_BOOTSTRAP=1` in `infra/docker/.env`.  
+Manual re-seed (destructive to mock txs): `yarn docker:seed` / `SEED_RESET_TRANSACTIONS=1`.
+
 ## Important URL rules
 
 | Variable | Used by | Must be reachable from |

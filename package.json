@@ -9,16 +9,11 @@
     ]
   },
   "scripts": {
-    "account": "yarn workspace @alpacto/contracts account",
     "chain": "./nitro-devnode/start-chain-with-cors.sh",
     "clean-contracts": "yarn workspace @alpacto/contracts clean-contracts",
-    "compile": "yarn workspace @alpacto/contracts compile",
     "deploy": "yarn workspace @alpacto/contracts deploy",
     "export-abi": "yarn workspace @alpacto/contracts export-abi",
-    "flatten": "yarn workspace @alpacto/contracts flatten",
-    "fork": "yarn workspace @alpacto/contracts fork",
     "format": "yarn web:format",
-    "generate": "yarn workspace @alpacto/contracts generate",
     "info:networks": "yarn workspace @alpacto/contracts info:networks",
     "postinstall": "husky install",
     "new-module": "yarn workspace @alpacto/contracts new-module",
@@ -28,8 +23,6 @@
     "web:lint": "yarn workspace @alpacto/web lint",
     "precommit": "lint-staged",
     "start": "yarn workspace @alpacto/web dev",
-    "stylus-verify": "yarn workspace @alpacto/contracts stylus-verify",
-    "stylus:format": "yarn workspace @alpacto/contracts format",
     "stylus:lint": "yarn workspace @alpacto/contracts lint",
     "stylus:test": "yarn workspace @alpacto/contracts test",
     "phase1": "yarn workspace @alpacto/contracts phase1",
@@ -61,8 +54,7 @@
     "domain:test": "yarn workspace @alpacto/domain test",
     "test": "yarn domain:test && yarn api:test && yarn stylus:test",
     "vercel": "yarn workspace @alpacto/web vercel",
-    "vercel:yolo": "yarn workspace @alpacto/web vercel:yolo",
-    "verify": "yarn workspace @alpacto/contracts verify"
+    "vercel:yolo": "yarn workspace @alpacto/web vercel:yolo"
   },
   "devDependencies": {
     "husky": "^8.0.1",
