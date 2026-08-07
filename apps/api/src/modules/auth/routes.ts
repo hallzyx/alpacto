@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { timingSafeEqual } from "node:crypto";
 import { and, desc, eq, sql } from "drizzle-orm";
 import {
   generateRegistrationOptions,
@@ -325,6 +326,18 @@ export async function registerAuthRoutes(
     };
   });
 
+  app.get("/admin/ayni/session-key/revoke-policy", async (request) => {
+    const header = request.headers.authorization;
+    if (!header?.startsWith("Bearer ")) {
+      throw new ApiError(401, "Unauthorized");
+    }
+    const { verifyToken } = await import("../../plugins/auth.js");
+    const authUser: AuthUser = await verifyToken(header.slice(7));
+    if (authUser.role !== "admin") throw new ApiError(403, "Admin only");
+
+    return { passwordRequired: Boolean(config.admin.ayniRevokePassword) };
+  });
+
   app.post(
     "/admin/ayni/session-key/revoke",
     async (request) => {
@@ -339,10 +352,24 @@ export async function registerAuthRoutes(
 
       const body = z
         .object({
+          confirmPassword: z.string().optional(),
           sessionPublicAddress: z.string().optional(),
           smartAccountAddress: z.string().optional(),
         })
         .parse(request.body ?? {});
+
+      const expected = config.admin.ayniRevokePassword;
+      if (expected) {
+        const provided = body.confirmPassword?.trim() ?? "";
+        if (!provided) {
+          throw new ApiError(403, "Confirmation password required");
+        }
+        const a = Buffer.from(provided, "utf8");
+        const b = Buffer.from(expected, "utf8");
+        if (a.length !== b.length || !timingSafeEqual(a, b)) {
+          throw new ApiError(403, "Invalid confirmation password");
+        }
+      }
 
       const rows = await db.select().from(ayniSessionKeys);
       const targets = rows.filter((r) => {

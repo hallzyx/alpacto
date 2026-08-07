@@ -6,6 +6,8 @@ import { EmptyState, ErrorBanner, RequireAuth, Skeleton } from "~~/components/al
 import { Badge } from "~~/components/ui/badge";
 import { Button } from "~~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~~/components/ui/card";
+import { Input } from "~~/components/ui/input";
+import { Label } from "~~/components/ui/label";
 import { apiFetch, API_URL } from "~~/lib/api";
 import { formatEscrowUsd, ONCHAIN_ACTIVITY_LABELS, shortTxHash } from "~~/lib/format";
 import type { OnchainActivity, OnchainActivityResponse, OnchainActivityType } from "~~/lib/types";
@@ -56,16 +58,22 @@ function AdminInner() {
   const [loading, setLoading] = useState(true);
   const [onchain, setOnchain] = useState<OnchainActivityResponse | null>(null);
   const [filter, setFilter] = useState<"all" | OnchainActivityType>("all");
+  const [revokePasswordRequired, setRevokePasswordRequired] = useState(false);
+  const [revokePassword, setRevokePassword] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const [activity, h] = await Promise.all([
+      const [activity, policy, h] = await Promise.all([
         apiFetch<OnchainActivityResponse>("/admin/onchain-activity"),
+        apiFetch<{ passwordRequired: boolean }>("/admin/ayni/session-key/revoke-policy").catch(() => ({
+          passwordRequired: false,
+        })),
         apiFetch<{ status: string; service: string }>("/health", { auth: false }).catch(() => null),
       ]);
       setOnchain(activity);
+      setRevokePasswordRequired(policy.passwordRequired);
       setHealth(h ? `${h.service}: ${h.status}` : "API no disponible");
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo cargar el panel admin");
@@ -112,15 +120,22 @@ function AdminInner() {
   }, [activities, filter]);
 
   const revoke = async () => {
+    if (revokePasswordRequired && !revokePassword.trim()) {
+      setError("Ingresa la clave de confirmación para revocar.");
+      return;
+    }
     setBusy(true);
     setError("");
     setRevokeResult("");
     try {
       const res = await apiFetch<{ revoked: number }>("/admin/ayni/session-key/revoke", {
         method: "POST",
-        body: {},
+        body: {
+          ...(revokePasswordRequired ? { confirmPassword: revokePassword } : {}),
+        },
       });
       setRevokeResult(`Claves revocadas: ${res.revoked}`);
+      setRevokePassword("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo revocar");
     } finally {
@@ -334,7 +349,30 @@ function AdminInner() {
               Smart wallet propia de Ayni (ZeroDev): solo attestations on-chain, sin mover fondos. Revocar desactiva la
               llave si rotaste credenciales o hay incidente.
             </p>
-            <Button type="button" variant="destructive" disabled={busy} onClick={() => void revoke()}>
+            {revokePasswordRequired ? (
+              <div className="space-y-2">
+                <Label htmlFor="ayni-revoke-password">Clave de confirmación</Label>
+                <Input
+                  id="ayni-revoke-password"
+                  type="password"
+                  autoComplete="off"
+                  placeholder="Clave de administrador"
+                  value={revokePassword}
+                  onChange={e => setRevokePassword(e.target.value)}
+                  disabled={busy}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Acción protegida en este entorno. Configúrala con{" "}
+                  <code className="text-[11px]">ADMIN_AYNI_REVOKE_PASSWORD</code> en el API.
+                </p>
+              </div>
+            ) : null}
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={busy || (revokePasswordRequired && !revokePassword.trim())}
+              onClick={() => void revoke()}
+            >
               {busy ? "Revocando…" : "Revocar llaves activas"}
             </Button>
             {revokeResult ? <p className="text-sm text-muted-foreground">{revokeResult}</p> : null}

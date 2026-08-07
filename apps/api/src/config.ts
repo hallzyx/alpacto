@@ -54,6 +54,10 @@ export const config = {
   demo: {
     maxFundingUsdc: parseBigIntEnv("DEMO_MAX_FUNDING_USDC", 10_000n),
   },
+  admin: {
+    /** When set, POST /admin/ayni/session-key/revoke requires matching `confirmPassword`. */
+    ayniRevokePassword: process.env["ADMIN_AYNI_REVOKE_PASSWORD"]?.trim() ?? "",
+  },
   deepseek: {
     apiKey: process.env["DEEPSEEK_API_KEY"] ?? "",
     model: process.env["DEEPSEEK_MODEL"] ?? "deepseek-v4-flash",
