@@ -49,7 +49,7 @@ const alpactoAbi = parseAbi([
   "function inspectorRole() view returns (bytes32)",
   "function auditorAgentRole() view returns (bytes32)",
   "function grantRole(bytes32 role, address account)",
-  "function createOrder(uint256 orderId, address buyer, address association, bytes32 pricingPolicyHash, uint256 budgetUsdcUnits)",
+  "function createOrder(uint256 orderId, address buyer, address association, bytes32 pricingPolicyHash, uint256 budgetUsdcUnits, uint64 targetWeightGrams)",
   "function fundOrder(uint256 orderId, uint256 amount, bytes32 paymentReferenceHash)",
   "function registerLot(uint256 orderId, uint256 lotId, address producerAccount)",
   "function submitInspectionReference(uint256 lotId, uint32 version, uint64 weightGrams, uint32 categoryCode, bytes32 evidenceHash)",
@@ -57,8 +57,9 @@ const alpactoAbi = parseAbi([
   "function requestReweighing(uint256 lotId, bytes32 reasonHash)",
   "function acceptSettlement(uint256 lotId, uint32 version, bytes32 quoteHash, uint256 netPenMinor, uint256 producerUsdcUnits, uint256 associationUsdcUnits, uint256 platformUsdcUnits)",
   "function settleLot(uint256 lotId)",
-  "function getOrder(uint256 orderId) view returns (address, address, bytes32, uint256, uint256, uint256, uint8, bool)",
-  "function getLot(uint256 lotId) view returns (uint256, address, uint8, uint32, uint32, bytes32, uint256, uint256, uint256, uint256, bool)",
+  "function withdrawRemainder(uint256 orderId)",
+  "function getOrder(uint256 orderId) view returns (address, address, bytes32, uint256, uint256, uint256, uint8, bool, uint64, uint64, uint64)",
+  "function getLot(uint256 lotId) view returns (uint256, address, uint8, uint32, uint32, bytes32, uint256, uint256, uint256, uint256, bool, uint64)",
 ]);
 
 function loadDeployed(chainId: string) {
@@ -157,6 +158,7 @@ async function main() {
   }
 
   const budget = 1_000_000_000n; // 1000 mUSDC
+  const targetWeightGrams = 50_000n; // 50 kg capacity
   console.log("💵 Mint + approve USDC…");
   await write(adminWallet, {
     address: usdc,
@@ -180,7 +182,14 @@ async function main() {
     address: core,
     abi: alpactoAbi,
     functionName: "createOrder",
-    args: [orderId, demo.buyer.address, demo.association.address, policyHash, budget],
+    args: [
+      orderId,
+      demo.buyer.address,
+      demo.association.address,
+      policyHash,
+      budget,
+      targetWeightGrams,
+    ],
   });
 
   console.log("💰 fundOrder");
@@ -290,7 +299,15 @@ async function main() {
   console.log("  mock-usdc:", usdc);
   console.log("  alpacto-core:", core);
   console.log("  order remaining:", order[5].toString(), "status:", order[6]);
-  console.log("  lot status:", lot[2], "version:", lot[3]);
+  console.log(
+    "  weight target/reserved/fulfilled:",
+    order[8].toString(),
+    "/",
+    order[9].toString(),
+    "/",
+    order[10].toString(),
+  );
+  console.log("  lot status:", lot[2], "version:", lot[3], "reserved g:", lot[11].toString());
   console.log(`\n🎉 Phase 1 ${flow} flow complete`);
 }
 

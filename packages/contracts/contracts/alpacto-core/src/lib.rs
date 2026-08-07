@@ -63,7 +63,7 @@ pub mod audit_result {
 
 sol! {
     #[derive(Debug)]
-    event OrderCreated(uint256 indexed orderId, address indexed buyer, address indexed association, bytes32 pricingPolicyHash, uint256 budgetUsdcUnits);
+    event OrderCreated(uint256 indexed orderId, address indexed buyer, address indexed association, bytes32 pricingPolicyHash, uint256 budgetUsdcUnits, uint64 targetWeightGrams);
     #[derive(Debug)]
     event OrderFunded(uint256 indexed orderId, uint256 amount, bytes32 paymentReferenceHash, uint256 remainingUsdcUnits);
     #[derive(Debug)]
@@ -73,11 +73,19 @@ sol! {
     #[derive(Debug)]
     event AuditAttestationSubmitted(uint256 indexed lotId, uint32 version, bytes32 reportHash, uint8 result);
     #[derive(Debug)]
+    event WeightReserved(uint256 indexed orderId, uint256 indexed lotId, uint64 weightGrams, uint64 reservedWeightGrams, uint64 fulfilledWeightGrams);
+    #[derive(Debug)]
+    event WeightReleased(uint256 indexed orderId, uint256 indexed lotId, uint64 weightGrams, uint64 reservedWeightGrams, uint64 fulfilledWeightGrams);
+    #[derive(Debug)]
+    event WeightFulfilled(uint256 indexed orderId, uint256 indexed lotId, uint64 weightGrams, uint64 reservedWeightGrams, uint64 fulfilledWeightGrams);
+    #[derive(Debug)]
     event ReweighingRequested(uint256 indexed lotId, bytes32 reasonHash);
     #[derive(Debug)]
     event SettlementAccepted(uint256 indexed lotId, uint32 version, bytes32 quoteHash, uint256 producerUsdcUnits, uint256 associationUsdcUnits, uint256 platformUsdcUnits);
     #[derive(Debug)]
     event LotSettled(uint256 indexed lotId, uint256 producerUsdcUnits, uint256 associationUsdcUnits, uint256 platformUsdcUnits);
+    #[derive(Debug)]
+    event RemainderWithdrawn(uint256 indexed orderId, address indexed buyer, uint256 amountUsdcUnits);
     #[derive(Debug)]
     event OrderCompleted(uint256 indexed orderId);
     #[derive(Debug)]
@@ -122,6 +130,12 @@ sol! {
     #[derive(Debug)]
     error InsufficientOrderBalance(uint256 remaining, uint256 needed);
     #[derive(Debug)]
+    error InsufficientWeightCapacity(uint256 orderId, uint64 available, uint64 needed);
+    #[derive(Debug)]
+    error TargetWeightNotMet(uint256 orderId, uint64 fulfilled, uint64 target);
+    #[derive(Debug)]
+    error WeightStillReserved(uint256 orderId, uint64 reserved);
+    #[derive(Debug)]
     error AlreadySettled(uint256 lotId);
     #[derive(Debug)]
     error ZeroAddress();
@@ -131,6 +145,8 @@ sol! {
     error AccessControlError(address account, bytes32 neededRole);
     #[derive(Debug)]
     error AccessControlBadConfirm();
+    #[derive(Debug)]
+    error NotBuyer(address caller, address buyer);
 }
 
 #[derive(SolidityError, Debug)]
@@ -154,11 +170,15 @@ pub enum Error {
     AttestationNotAcceptable(AttestationNotAcceptable),
     SplitMismatch(SplitMismatch),
     InsufficientOrderBalance(InsufficientOrderBalance),
+    InsufficientWeightCapacity(InsufficientWeightCapacity),
+    TargetWeightNotMet(TargetWeightNotMet),
+    WeightStillReserved(WeightStillReserved),
     AlreadySettled(AlreadySettled),
     ZeroAddress(ZeroAddress),
     TokenTransferFailed(TokenTransferFailed),
     AccessControlUnauthorized(AccessControlError),
     AccessControlBadConfirmation(AccessControlBadConfirm),
+    NotBuyer(NotBuyer),
 }
 
 impl From<control::Error> for Error {
@@ -187,6 +207,12 @@ sol_storage! {
         uint256 remaining_usdc;
         uint8 status;
         bool exists;
+        /// Acopio target in grams (set at createOrder).
+        uint64 target_weight_grams;
+        /// Grams reserved by Ayni PASS/WARNING awaiting settle or reweigh.
+        uint64 reserved_weight_grams;
+        /// Grams confirmed on settleLot.
+        uint64 fulfilled_weight_grams;
     }
 
     pub struct LotData {
@@ -201,6 +227,8 @@ sol_storage! {
         uint256 association_usdc;
         uint256 platform_usdc;
         bool exists;
+        /// Active kg reservation for this lot (set on Ayni pass, cleared on settle/reweigh).
+        uint64 reserved_weight_grams;
     }
 
     pub struct InspectionData {
@@ -301,6 +329,7 @@ impl AlpactoCore {
         association: Address,
         pricing_policy_hash: B256,
         budget_usdc_units: U256,
+        target_weight_grams: u64,
     ) -> Result<(), Error> {
         self.require_role(BUYER_ROLE)?;
         let sender = self.vm().msg_sender();
@@ -313,7 +342,7 @@ impl AlpactoCore {
         if buyer.is_zero() || association.is_zero() {
             return Err(Error::ZeroAddress(ZeroAddress {}));
         }
-        if budget_usdc_units.is_zero() {
+        if budget_usdc_units.is_zero() || target_weight_grams == 0 {
             return Err(Error::InvalidAmount(InvalidAmount {}));
         }
         if self.orders.get(order_id).exists.get() {
@@ -327,6 +356,9 @@ impl AlpactoCore {
         order.budget_usdc.set(budget_usdc_units);
         order.funded_usdc.set(U256::ZERO);
         order.remaining_usdc.set(U256::ZERO);
+        order.target_weight_grams.set(U64::from(target_weight_grams));
+        order.reserved_weight_grams.set(U64::from(0u64));
+        order.fulfilled_weight_grams.set(U64::from(0u64));
         order.status.set(U8::from(order_status::DRAFT));
         order.exists.set(true);
 
@@ -338,6 +370,7 @@ impl AlpactoCore {
                 association,
                 pricingPolicyHash: pricing_policy_hash,
                 budgetUsdcUnits: budget_usdc_units,
+                targetWeightGrams: target_weight_grams,
             },
         );
         Ok(())
@@ -407,6 +440,17 @@ impl AlpactoCore {
                 status,
             }));
         }
+        // Soft gate: no free kg capacity left (reservations + fulfilled fill the target).
+        let target = u64_of(order.target_weight_grams.get());
+        let reserved = u64_of(order.reserved_weight_grams.get());
+        let fulfilled = u64_of(order.fulfilled_weight_grams.get());
+        if reserved.saturating_add(fulfilled) >= target {
+            return Err(Error::InsufficientWeightCapacity(InsufficientWeightCapacity {
+                orderId: order_id,
+                available: 0,
+                needed: 1,
+            }));
+        }
         if self.lots.get(lot_id).exists.get() {
             return Err(Error::LotExists(LotExists { lotId: lot_id }));
         }
@@ -417,6 +461,7 @@ impl AlpactoCore {
         lot.status.set(U8::from(lot_status::REGISTERED));
         lot.current_version.set(U32::ZERO);
         lot.accepted_version.set(U32::ZERO);
+        lot.reserved_weight_grams.set(U64::from(0u64));
         lot.exists.set(true);
 
         log(
@@ -439,6 +484,10 @@ impl AlpactoCore {
         evidence_hash: B256,
     ) -> Result<(), Error> {
         self.require_role(INSPECTOR_ROLE)?;
+
+        if weight_grams == 0 {
+            return Err(Error::InvalidAmount(InvalidAmount {}));
+        }
 
         let lot = self.lots.get(lot_id);
         if !lot.exists.get() {
@@ -547,11 +596,19 @@ impl AlpactoCore {
         attestation.result.set(U8::from(result));
         attestation.exists.set(true);
 
-        let new_status = match result {
-            x if x == audit_result::PASS || x == audit_result::WARNING => {
-                lot_status::READY_FOR_REVIEW
-            }
-            _ => lot_status::REVIEW_REQUIRED,
+        let order_id = lot.order_id.get();
+        let new_status = if result == audit_result::PASS || result == audit_result::WARNING {
+            let weight = u64_of(
+                self.inspections
+                    .get(lot_id)
+                    .get(version_key)
+                    .weight_grams
+                    .get(),
+            );
+            self.reserve_weight(order_id, lot_id, weight)?;
+            lot_status::READY_FOR_REVIEW
+        } else {
+            lot_status::REVIEW_REQUIRED
         };
         self.lots.setter(lot_id).status.set(U8::from(new_status));
 
@@ -586,6 +643,13 @@ impl AlpactoCore {
                 lotId: lot_id,
                 status,
             }));
+        }
+
+        // Release Ayni reservation if this lot was holding kg capacity.
+        let reserved = u64_of(lot.reserved_weight_grams.get());
+        if reserved > 0 {
+            let order_id = lot.order_id.get();
+            self.release_weight(order_id, lot_id, reserved)?;
         }
 
         self.lots
@@ -714,10 +778,8 @@ impl AlpactoCore {
 
         let sender = self.vm().msg_sender();
         let producer = lot.producer.get();
-        if self.access.has_role(AUDITOR_AGENT_ROLE, sender)
-            && !self.access.has_role(PLATFORM_ADMIN_ROLE, sender)
-            && sender != producer
-        {
+        // Only producer or platform admin may push settlement (prevents arbitrary callers).
+        if sender != producer && !self.access.has_role(PLATFORM_ADMIN_ROLE, sender) {
             return Err(Error::Unauthorized(Unauthorized {
                 account: sender,
                 neededRole: PLATFORM_ADMIN_ROLE,
@@ -731,12 +793,61 @@ impl AlpactoCore {
         let total = producer_usdc + association_usdc + platform_usdc;
         let association = self.orders.get(order_id).association.get();
         let remaining = self.orders.get(order_id).remaining_usdc.get();
+        let lot_reserved = u64_of(lot.reserved_weight_grams.get());
 
         if remaining < total {
             return Err(Error::InsufficientOrderBalance(InsufficientOrderBalance {
                 remaining,
                 needed: total,
             }));
+        }
+        if lot_reserved == 0 {
+            return Err(Error::InvalidAmount(InvalidAmount {}));
+        }
+        let order_reserved = u64_of(self.orders.get(order_id).reserved_weight_grams.get());
+        if order_reserved < lot_reserved {
+            return Err(Error::InsufficientWeightCapacity(InsufficientWeightCapacity {
+                orderId: order_id,
+                available: order_reserved,
+                needed: lot_reserved,
+            }));
+        }
+        if !platform_usdc.is_zero() && self.platform_treasury.get().is_zero() {
+            return Err(Error::ZeroAddress(ZeroAddress {}));
+        }
+
+        // Checks-Effects-Interactions: update accounting before external USDC transfers.
+        let new_remaining = remaining - total;
+        let new_order_reserved = order_reserved - lot_reserved;
+        let new_fulfilled =
+            u64_of(self.orders.get(order_id).fulfilled_weight_grams.get()) + lot_reserved;
+        {
+            let mut order = self.orders.setter(order_id);
+            order.reserved_weight_grams.set(U64::from(new_order_reserved));
+            order.fulfilled_weight_grams.set(U64::from(new_fulfilled));
+            order.remaining_usdc.set(new_remaining);
+            if new_remaining.is_zero() {
+                order.status.set(U8::from(order_status::COMPLETED));
+            } else {
+                order.status.set(U8::from(order_status::PARTIALLY_SETTLED));
+            }
+        }
+
+        log(
+            self.vm(),
+            WeightFulfilled {
+                orderId: order_id,
+                lotId: lot_id,
+                weightGrams: lot_reserved,
+                reservedWeightGrams: new_order_reserved,
+                fulfilledWeightGrams: new_fulfilled,
+            },
+        );
+
+        {
+            let mut lot = self.lots.setter(lot_id);
+            lot.reserved_weight_grams.set(U64::from(0u64));
+            lot.status.set(U8::from(lot_status::SETTLED));
         }
 
         if !producer_usdc.is_zero() {
@@ -746,28 +857,8 @@ impl AlpactoCore {
             self.push_usdc(association, association_usdc)?;
         }
         if !platform_usdc.is_zero() {
-            let treasury = self.platform_treasury.get();
-            if treasury.is_zero() {
-                return Err(Error::ZeroAddress(ZeroAddress {}));
-            }
-            self.push_usdc(treasury, platform_usdc)?;
+            self.push_usdc(self.platform_treasury.get(), platform_usdc)?;
         }
-
-        let new_remaining = remaining - total;
-        {
-            let mut order = self.orders.setter(order_id);
-            order.remaining_usdc.set(new_remaining);
-            if new_remaining.is_zero() {
-                order.status.set(U8::from(order_status::COMPLETED));
-            } else {
-                order.status.set(U8::from(order_status::PARTIALLY_SETTLED));
-            }
-        }
-
-        self.lots
-            .setter(lot_id)
-            .status
-            .set(U8::from(lot_status::SETTLED));
 
         log(
             self.vm(),
@@ -785,10 +876,75 @@ impl AlpactoCore {
         Ok(())
     }
 
+    /// Buyer withdraws leftover escrow once the kg target is fulfilled and no
+    /// Ayni reservations are outstanding.
+    pub fn withdraw_remainder(&mut self, order_id: U256) -> Result<(), Error> {
+        let order = self.orders.get(order_id);
+        if !order.exists.get() {
+            return Err(Error::OrderNotFound(OrderNotFound { orderId: order_id }));
+        }
+        let buyer = order.buyer.get();
+        let sender = self.vm().msg_sender();
+        if sender != buyer {
+            return Err(Error::NotBuyer(NotBuyer {
+                caller: sender,
+                buyer,
+            }));
+        }
+        let status = u8_of(order.status.get());
+        if status != order_status::ACCEPTING_LOTS && status != order_status::PARTIALLY_SETTLED {
+            return Err(Error::InvalidOrderStatus(InvalidOrderStatus {
+                orderId: order_id,
+                status,
+            }));
+        }
+
+        let target = u64_of(order.target_weight_grams.get());
+        let reserved = u64_of(order.reserved_weight_grams.get());
+        let fulfilled = u64_of(order.fulfilled_weight_grams.get());
+        let amount = order.remaining_usdc.get();
+
+        if reserved > 0 {
+            return Err(Error::WeightStillReserved(WeightStillReserved {
+                orderId: order_id,
+                reserved,
+            }));
+        }
+        if fulfilled < target {
+            return Err(Error::TargetWeightNotMet(TargetWeightNotMet {
+                orderId: order_id,
+                fulfilled,
+                target,
+            }));
+        }
+        if amount.is_zero() {
+            return Err(Error::InvalidAmount(InvalidAmount {}));
+        }
+
+        {
+            let mut order = self.orders.setter(order_id);
+            order.remaining_usdc.set(U256::ZERO);
+            order.status.set(U8::from(order_status::COMPLETED));
+        }
+
+        self.push_usdc(buyer, amount)?;
+
+        log(
+            self.vm(),
+            RemainderWithdrawn {
+                orderId: order_id,
+                buyer,
+                amountUsdcUnits: amount,
+            },
+        );
+        log(self.vm(), OrderCompleted { orderId: order_id });
+        Ok(())
+    }
+
     pub fn get_order(
         &self,
         order_id: U256,
-    ) -> (Address, Address, B256, U256, U256, U256, u8, bool) {
+    ) -> (Address, Address, B256, U256, U256, U256, u8, bool, u64, u64, u64) {
         let order = self.orders.get(order_id);
         (
             order.buyer.get(),
@@ -799,13 +955,16 @@ impl AlpactoCore {
             order.remaining_usdc.get(),
             u8_of(order.status.get()),
             order.exists.get(),
+            u64_of(order.target_weight_grams.get()),
+            u64_of(order.reserved_weight_grams.get()),
+            u64_of(order.fulfilled_weight_grams.get()),
         )
     }
 
     pub fn get_lot(
         &self,
         lot_id: U256,
-    ) -> (U256, Address, u8, u32, u32, B256, U256, U256, U256, U256, bool) {
+    ) -> (U256, Address, u8, u32, u32, B256, U256, U256, U256, U256, bool, u64) {
         let lot = self.lots.get(lot_id);
         (
             lot.order_id.get(),
@@ -819,6 +978,7 @@ impl AlpactoCore {
             lot.association_usdc.get(),
             lot.platform_usdc.get(),
             lot.exists.get(),
+            u64_of(lot.reserved_weight_grams.get()),
         )
     }
 
@@ -889,6 +1049,90 @@ impl AlpactoCore {
         Ok(self
             .access
             ._check_role(role, self.vm().msg_sender())?)
+    }
+
+    fn reserve_weight(
+        &mut self,
+        order_id: U256,
+        lot_id: U256,
+        weight_grams: u64,
+    ) -> Result<(), Error> {
+        if weight_grams == 0 {
+            return Err(Error::InvalidAmount(InvalidAmount {}));
+        }
+        let order = self.orders.get(order_id);
+        let target = u64_of(order.target_weight_grams.get());
+        let reserved = u64_of(order.reserved_weight_grams.get());
+        let fulfilled = u64_of(order.fulfilled_weight_grams.get());
+        let used = reserved.saturating_add(fulfilled);
+        let available = target.saturating_sub(used);
+        if weight_grams > available {
+            return Err(Error::InsufficientWeightCapacity(InsufficientWeightCapacity {
+                orderId: order_id,
+                available,
+                needed: weight_grams,
+            }));
+        }
+        let new_reserved = reserved + weight_grams;
+        {
+            let mut order = self.orders.setter(order_id);
+            order.reserved_weight_grams.set(U64::from(new_reserved));
+        }
+        self.lots
+            .setter(lot_id)
+            .reserved_weight_grams
+            .set(U64::from(weight_grams));
+
+        log(
+            self.vm(),
+            WeightReserved {
+                orderId: order_id,
+                lotId: lot_id,
+                weightGrams: weight_grams,
+                reservedWeightGrams: new_reserved,
+                fulfilledWeightGrams: fulfilled,
+            },
+        );
+        Ok(())
+    }
+
+    fn release_weight(
+        &mut self,
+        order_id: U256,
+        lot_id: U256,
+        weight_grams: u64,
+    ) -> Result<(), Error> {
+        let order = self.orders.get(order_id);
+        let reserved = u64_of(order.reserved_weight_grams.get());
+        if reserved < weight_grams {
+            return Err(Error::InsufficientWeightCapacity(InsufficientWeightCapacity {
+                orderId: order_id,
+                available: reserved,
+                needed: weight_grams,
+            }));
+        }
+        let new_reserved = reserved - weight_grams;
+        let fulfilled = u64_of(order.fulfilled_weight_grams.get());
+        {
+            let mut order = self.orders.setter(order_id);
+            order.reserved_weight_grams.set(U64::from(new_reserved));
+        }
+        self.lots
+            .setter(lot_id)
+            .reserved_weight_grams
+            .set(U64::from(0u64));
+
+        log(
+            self.vm(),
+            WeightReleased {
+                orderId: order_id,
+                lotId: lot_id,
+                weightGrams: weight_grams,
+                reservedWeightGrams: new_reserved,
+                fulfilledWeightGrams: fulfilled,
+            },
+        );
+        Ok(())
     }
 
     fn apply_fund_order(
@@ -1072,6 +1316,7 @@ mod test {
                 association,
                 policy_hash(),
                 U256::from(1_000_000),
+                50_000,
             )
             .unwrap_err();
         assert!(matches!(
@@ -1091,6 +1336,7 @@ mod test {
             association,
             policy_hash(),
             U256::from(1_000_000),
+            50_000,
         )
         .unwrap();
 
@@ -1158,6 +1404,7 @@ mod test {
             association,
             policy_hash(),
             U256::from(1_000_000),
+            50_000,
         )
         .unwrap();
         vm.set_sender(admin);
@@ -1179,6 +1426,7 @@ mod test {
             association,
             policy_hash(),
             U256::from(1_000_000),
+            50_000,
         )
         .unwrap();
         core.buyer_fund_order(U256::from(1), U256::from(250_000), payment_ref(3))
@@ -1199,6 +1447,7 @@ mod test {
             association,
             policy_hash(),
             U256::from(1_000_000),
+            50_000,
         )
         .unwrap();
         vm.set_sender(admin);
@@ -1221,6 +1470,7 @@ mod test {
             association,
             policy_hash(),
             U256::from(1_000_000),
+            50_000,
         )
         .unwrap();
         vm.set_sender(admin);
@@ -1251,6 +1501,7 @@ mod test {
             association,
             policy_hash(),
             U256::from(1_000_000),
+            50_000,
         )
         .unwrap();
         vm.set_sender(admin);
@@ -1279,6 +1530,7 @@ mod test {
             association,
             policy_hash(),
             U256::from(1_000_000),
+            50_000,
         )
         .unwrap();
         vm.set_sender(admin);
@@ -1319,6 +1571,7 @@ mod test {
             association,
             policy_hash(),
             U256::from(1_000_000),
+            50_000,
         )
         .unwrap();
         vm.set_sender(admin);
@@ -1372,6 +1625,7 @@ mod test {
             association,
             policy_hash(),
             U256::from(100_000),
+            50_000,
         )
         .unwrap();
         vm.set_sender(admin);
@@ -1425,6 +1679,7 @@ mod test {
             association,
             policy_hash(),
             U256::from(1_000_000),
+            50_000,
         )
         .unwrap();
         vm.set_sender(admin);
@@ -1467,5 +1722,210 @@ mod test {
         core.settle_lot(U256::from(10)).unwrap();
         assert_eq!(core.get_lot(U256::from(10)).2, lot_status::SETTLED);
         assert_eq!(core.get_lot(U256::from(10)).3, 2); // current version
+    }
+
+    #[test]
+    fn test_ayni_reserves_weight_blocks_overfill() {
+        let (vm, mut core, admin, buyer, association, inspector, auditor, producer) = setup();
+        let producer2 = Address::from([0xF2; 20]);
+        vm.set_sender(buyer);
+        // 6 kg target
+        core.create_order(
+            U256::from(1),
+            buyer,
+            association,
+            policy_hash(),
+            U256::from(1_000_000),
+            6_000,
+        )
+        .unwrap();
+        vm.set_sender(admin);
+        core.fund_order(U256::from(1), U256::from(1_000_000), payment_ref(1))
+            .unwrap();
+
+        // Martina: 3 kg approved → reserved
+        vm.set_sender(association);
+        core.register_lot(U256::from(1), U256::from(10), producer)
+            .unwrap();
+        vm.set_sender(inspector);
+        core.submit_inspection_reference(U256::from(10), 1, 3_000, 1, B256::from([1; 32]))
+            .unwrap();
+        vm.set_sender(auditor);
+        core.submit_audit_attestation(U256::from(10), 1, B256::from([2; 32]), audit_result::PASS)
+            .unwrap();
+        let order = core.get_order(U256::from(1));
+        assert_eq!(order.9, 3_000); // reserved
+        assert_eq!(order.10, 0); // fulfilled
+
+        // Pepito: 4 kg cannot reserve (only 3 kg free)
+        vm.set_sender(association);
+        core.register_lot(U256::from(1), U256::from(11), producer2)
+            .unwrap();
+        vm.set_sender(inspector);
+        core.submit_inspection_reference(U256::from(11), 1, 4_000, 1, B256::from([3; 32]))
+            .unwrap();
+        vm.set_sender(auditor);
+        let err = core
+            .submit_audit_attestation(U256::from(11), 1, B256::from([4; 32]), audit_result::PASS)
+            .unwrap_err();
+        assert!(matches!(err, crate::Error::InsufficientWeightCapacity(_)));
+    }
+
+    #[test]
+    fn test_reweigh_releases_reservation() {
+        let (vm, mut core, admin, buyer, association, inspector, auditor, producer) = setup();
+        vm.set_sender(buyer);
+        core.create_order(
+            U256::from(1),
+            buyer,
+            association,
+            policy_hash(),
+            U256::from(1_000_000),
+            6_000,
+        )
+        .unwrap();
+        vm.set_sender(admin);
+        core.fund_order(U256::from(1), U256::from(1_000_000), payment_ref(1))
+            .unwrap();
+        vm.set_sender(association);
+        core.register_lot(U256::from(1), U256::from(10), producer)
+            .unwrap();
+        vm.set_sender(inspector);
+        core.submit_inspection_reference(U256::from(10), 1, 3_000, 1, B256::from([1; 32]))
+            .unwrap();
+        vm.set_sender(auditor);
+        core.submit_audit_attestation(U256::from(10), 1, B256::from([2; 32]), audit_result::PASS)
+            .unwrap();
+        assert_eq!(core.get_order(U256::from(1)).9, 3_000);
+
+        vm.set_sender(producer);
+        core.request_reweighing(U256::from(10), B256::from([9; 32]))
+            .unwrap();
+        assert_eq!(core.get_order(U256::from(1)).9, 0);
+        assert_eq!(core.get_lot(U256::from(10)).11, 0);
+    }
+
+    #[test]
+    fn test_withdraw_remainder_after_kg_met() {
+        let (vm, mut core, admin, buyer, association, inspector, auditor, producer) = setup();
+        vm.set_sender(buyer);
+        core.create_order(
+            U256::from(1),
+            buyer,
+            association,
+            policy_hash(),
+            U256::from(1_000_000),
+            3_000,
+        )
+        .unwrap();
+        vm.set_sender(admin);
+        core.fund_order(U256::from(1), U256::from(1_000_000), payment_ref(1))
+            .unwrap();
+        vm.set_sender(association);
+        core.register_lot(U256::from(1), U256::from(10), producer)
+            .unwrap();
+        vm.set_sender(inspector);
+        core.submit_inspection_reference(U256::from(10), 1, 3_000, 1, B256::from([1; 32]))
+            .unwrap();
+        vm.set_sender(auditor);
+        core.submit_audit_attestation(U256::from(10), 1, B256::from([2; 32]), audit_result::PASS)
+            .unwrap();
+        vm.set_sender(producer);
+        core.accept_settlement(
+            U256::from(10),
+            1,
+            B256::from([3; 32]),
+            U256::from(1),
+            U256::from(700_000),
+            U256::from(200_000),
+            U256::ZERO,
+        )
+        .unwrap();
+        core.settle_lot(U256::from(10)).unwrap();
+
+        let order = core.get_order(U256::from(1));
+        assert_eq!(order.5, U256::from(100_000)); // remaining USDC
+        assert_eq!(order.9, 0); // reserved
+        assert_eq!(order.10, 3_000); // fulfilled
+        assert_eq!(order.6, order_status::PARTIALLY_SETTLED);
+
+        vm.set_sender(buyer);
+        core.withdraw_remainder(U256::from(1)).unwrap();
+        let order = core.get_order(U256::from(1));
+        assert_eq!(order.5, U256::ZERO);
+        assert_eq!(order.6, order_status::COMPLETED);
+    }
+
+    #[test]
+    fn test_withdraw_remainder_blocked_while_reserved() {
+        let (vm, mut core, admin, buyer, association, inspector, auditor, producer) = setup();
+        vm.set_sender(buyer);
+        core.create_order(
+            U256::from(1),
+            buyer,
+            association,
+            policy_hash(),
+            U256::from(1_000_000),
+            3_000,
+        )
+        .unwrap();
+        vm.set_sender(admin);
+        core.fund_order(U256::from(1), U256::from(1_000_000), payment_ref(1))
+            .unwrap();
+        vm.set_sender(association);
+        core.register_lot(U256::from(1), U256::from(10), producer)
+            .unwrap();
+        vm.set_sender(inspector);
+        core.submit_inspection_reference(U256::from(10), 1, 3_000, 1, B256::from([1; 32]))
+            .unwrap();
+        vm.set_sender(auditor);
+        core.submit_audit_attestation(U256::from(10), 1, B256::from([2; 32]), audit_result::PASS)
+            .unwrap();
+
+        vm.set_sender(buyer);
+        let err = core.withdraw_remainder(U256::from(1)).unwrap_err();
+        assert!(matches!(err, crate::Error::WeightStillReserved(_)));
+    }
+
+    #[test]
+    fn test_stranger_cannot_settle() {
+        let (vm, mut core, admin, buyer, association, inspector, auditor, producer) = setup();
+        let stranger = Address::from([0x99; 20]);
+        vm.set_sender(buyer);
+        core.create_order(
+            U256::from(1),
+            buyer,
+            association,
+            policy_hash(),
+            U256::from(1_000_000),
+            50_000,
+        )
+        .unwrap();
+        vm.set_sender(admin);
+        core.fund_order(U256::from(1), U256::from(1_000_000), payment_ref(1))
+            .unwrap();
+        vm.set_sender(association);
+        core.register_lot(U256::from(1), U256::from(10), producer)
+            .unwrap();
+        vm.set_sender(inspector);
+        core.submit_inspection_reference(U256::from(10), 1, 100, 1, B256::from([1; 32]))
+            .unwrap();
+        vm.set_sender(auditor);
+        core.submit_audit_attestation(U256::from(10), 1, B256::from([2; 32]), audit_result::PASS)
+            .unwrap();
+        vm.set_sender(producer);
+        core.accept_settlement(
+            U256::from(10),
+            1,
+            B256::from([3; 32]),
+            U256::from(1),
+            U256::from(700_000),
+            U256::from(300_000),
+            U256::ZERO,
+        )
+        .unwrap();
+        vm.set_sender(stranger);
+        let err = core.settle_lot(U256::from(10)).unwrap_err();
+        assert!(matches!(err, crate::Error::Unauthorized(_)));
     }
 }
