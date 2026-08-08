@@ -117,6 +117,32 @@ export async function ensureReweighOnchain(
   });
   onLog(`producer signer kind=${signer.kind}`);
 
+  // Dry-run against AlpactoCore so we fail with a clear Spanish error before paying for a UserOp.
+  try {
+    const { publicClient } = getTreasuryClients();
+    await publicClient.simulateContract({
+      address: core,
+      abi: reweighAbi,
+      functionName: "requestReweighing",
+      args: [lot.onchainLotId, reasonHash],
+      account: producer.smartAccountAddress as Address,
+    });
+  } catch (err) {
+    const raw = err instanceof Error ? err.message : String(err);
+    if (/InvalidLotStatus|invalid lot status/i.test(raw)) {
+      throw new Error(
+        "El lote on-chain no está listo para un nuevo pesaje. Espera a que Ayni registre su veredicto (aprobado o requiere revisión).",
+      );
+    }
+    if (/NotProducer|not producer/i.test(raw)) {
+      throw new Error(
+        "Tu cuenta de productor no coincide con la del lote on-chain. Vuelve a iniciar sesión con Google.",
+      );
+    }
+    // Stylus / RPC may not decode custom errors — still attempt the UserOp if pre-check looked fine.
+    onLog(`simulate requestReweighing warning: ${raw.slice(0, 160)}`);
+  }
+
   const { receipt } = await sendProducerCall({
     signer,
     fundEth: fundEthFromTreasury,

@@ -6,7 +6,7 @@ import { StatusPill } from "~~/components/alpacto/StatusPill";
 import { Badge } from "~~/components/ui/badge";
 import { Button } from "~~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~~/components/ui/card";
-import { formatPen } from "~~/lib/format";
+import { formatCalendarDate, formatPen } from "~~/lib/format";
 import type { ProducerOrderParticipation } from "~~/lib/types";
 
 function orderLabel(participation: ProducerOrderParticipation) {
@@ -15,11 +15,9 @@ function orderLabel(participation: ProducerOrderParticipation) {
 
 function formatCampaignWindow(start: string | null, end: string | null) {
   if (!start && !end) return null;
-  const fmt = (iso: string) =>
-    new Date(iso).toLocaleDateString("es-PE", { month: "short", day: "numeric", year: "numeric" });
-  if (start && end) return `${fmt(start)} – ${fmt(end)}`;
-  if (start) return `Desde ${fmt(start)}`;
-  return `Hasta ${fmt(end!)}`;
+  if (start && end) return `${formatCalendarDate(start)} – ${formatCalendarDate(end)}`;
+  if (start) return `Desde ${formatCalendarDate(start)}`;
+  return `Hasta ${formatCalendarDate(end!)}`;
 }
 
 type Props = {

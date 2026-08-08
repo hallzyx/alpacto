@@ -122,7 +122,9 @@ export async function grantProducerSessionKey(wagmiConfig?: Config | null): Prom
     throw new Error("Tu cuenta de pago no coincide con tu cuenta Alpacto. Vuelve a iniciar sesión con Google.");
   }
 
-  // Owner enable-signature is captured here; first agent UserOp installs the plugin.
+  // Owner enable-signature is captured here. The API warms (no-op UserOp) on
+  // complete so the permission plugin is installed before settle/reweigh —
+  // avoiding a first-call Stylus OOG from under-estimated callGasLimit.
   const serializedSession = await serializePermissionAccount(sessionKeyAccount);
 
   return apiFetch("/auth/producer/session-key/complete", {

@@ -148,6 +148,35 @@ export const kernelVersion = KERNEL_V3_1;
 /** ZeroDev wallet-react Google/OTP Kernels use v3.3. */
 export const producerWalletKernelVersion = KERNEL_V3_3;
 
+/**
+ * Floor gas for Kernel UserOps that touch Stylus AlpactoCore.
+ *
+ * Observed failure (Arbitrum Sepolia): first producer session-key UserOp combined
+ * permission-plugin enable (verification ~595k) with callGasLimit ~52k. Stylus
+ * execution needs ~250k+; the UserOp reverted with ModuleInstalled but no business event.
+ */
+export const MIN_USEROP_CALL_GAS_LIMIT = 500_000n;
+export const MIN_USEROP_VERIFICATION_GAS_LIMIT = 1_000_000n;
+
+/** Apply Stylus-safe floors after estimation (returns a new object). */
+export function applyUserOpGasFloors<
+  T extends {
+    callGasLimit?: bigint;
+    verificationGasLimit?: bigint;
+  },
+>(userOp: T): T {
+  const callGasLimit =
+    userOp.callGasLimit && userOp.callGasLimit > MIN_USEROP_CALL_GAS_LIMIT
+      ? userOp.callGasLimit
+      : MIN_USEROP_CALL_GAS_LIMIT;
+  const verificationGasLimit =
+    userOp.verificationGasLimit &&
+    userOp.verificationGasLimit > MIN_USEROP_VERIFICATION_GAS_LIMIT
+      ? userOp.verificationGasLimit
+      : MIN_USEROP_VERIFICATION_GAS_LIMIT;
+  return { ...userOp, callGasLimit, verificationGasLimit };
+}
+
 export const SUBMIT_AUDIT_ATTESTATION_SELECTOR = toFunctionSelector(
   "submitAuditAttestation(uint256,uint32,bytes32,uint8)",
 );
@@ -342,6 +371,10 @@ export async function sendSponsoredCall(opts: {
   });
 }
 
+/**
+ * Floor gas for Kernel UserOps that touch Stylus AlpactoCore.
+ * (Constants: MIN_USEROP_CALL_GAS_LIMIT / MIN_USEROP_VERIFICATION_GAS_LIMIT.)
+ */
 export async function sendSponsoredCalls(opts: {
   client: Awaited<ReturnType<typeof createSponsoredKernelClient>>;
   calls: Array<{
@@ -363,8 +396,23 @@ export async function sendSponsoredCalls(opts: {
       });
     return { to: c.to, data, value: c.value ?? 0n };
   });
+  const callData = await opts.client.account.encodeCalls(encoded);
+
+  let callGasLimit = MIN_USEROP_CALL_GAS_LIMIT;
+  let verificationGasLimit = MIN_USEROP_VERIFICATION_GAS_LIMIT;
+  try {
+    const estimated = await opts.client.estimateUserOperationGas({ callData });
+    const floored = applyUserOpGasFloors(estimated);
+    callGasLimit = floored.callGasLimit;
+    verificationGasLimit = floored.verificationGasLimit;
+  } catch {
+    // Use floors — estimators often under-shoot on first session-key + Stylus calls.
+  }
+
   const userOpHash = await opts.client.sendUserOperation({
-    callData: await opts.client.account.encodeCalls(encoded),
+    callData,
+    callGasLimit,
+    verificationGasLimit,
   });
   const receipt = await opts.client.waitForUserOperationReceipt({
     hash: userOpHash,
@@ -379,6 +427,73 @@ export async function sendSponsoredCalls(opts: {
     );
   }
   return { userOpHash, receipt };
+}
+
+/**
+ * Send a no-op UserOp so the permission plugin is installed on-chain before the
+ * first business call (settle / reweigh). Safe to call repeatedly once installed.
+ */
+export async function warmProducerSessionKey(opts: {
+  publicClient: PublicClient<Transport, Chain>;
+  config: ZeroDevConfig;
+  serializedSession: string;
+  sessionPrivateKey: Hex;
+  fundEth?: (to: Address) => Promise<void>;
+  kernelVersion?: typeof KERNEL_V3_1 | typeof KERNEL_V3_3;
+}) {
+  const kv = opts.kernelVersion ?? producerWalletKernelVersion;
+  const resolveAccountAddress = async () => {
+    let serialized = normalizeSerializedSessionEip7702Auth(opts.serializedSession);
+    serialized = await stripEip7702AuthIfDelegated(opts.publicClient, serialized);
+    const account = await deserializePermissionAccount(
+      opts.publicClient,
+      entryPoint,
+      kv,
+      serialized,
+      await toECDSASigner({
+        signer: privateKeyToAccount(opts.sessionPrivateKey),
+      }),
+    );
+    return account.address;
+  };
+
+  try {
+    const client = await createSessionKernelClient({
+      publicClient: opts.publicClient,
+      config: opts.config,
+      serializedSession: opts.serializedSession,
+      sessionPrivateKey: opts.sessionPrivateKey,
+      usePaymaster: true,
+      kernelVersion: kv,
+    });
+    return await sendSponsoredCalls({
+      client,
+      calls: [{ to: client.account.address, data: "0x" }],
+    });
+  } catch (err) {
+    if (!shouldFallbackFromPaymaster(err)) {
+      throw err;
+    }
+    console.warn(
+      "⚠️  ZeroDev paymaster rejected session warm UserOp — funding SA with ETH and retrying without paymaster",
+    );
+    const address = await resolveAccountAddress();
+    if (opts.fundEth) {
+      await opts.fundEth(address);
+    }
+    const client = await createSessionKernelClient({
+      publicClient: opts.publicClient,
+      config: opts.config,
+      serializedSession: opts.serializedSession,
+      sessionPrivateKey: opts.sessionPrivateKey,
+      usePaymaster: false,
+      kernelVersion: kv,
+    });
+    return sendSponsoredCalls({
+      client,
+      calls: [{ to: client.account.address, data: "0x" }],
+    });
+  }
 }
 
 export async function trySponsoredThenSelfFundedBatch(opts: {

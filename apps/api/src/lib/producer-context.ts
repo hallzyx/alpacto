@@ -8,6 +8,7 @@ import {
   pricingPolicies,
   type Database,
 } from "@alpacto/database";
+import { toCalendarDateString } from "./calendar-date.js";
 
 const FUNDED_ORDER_STATUSES = new Set([
   "funded",
@@ -119,8 +120,8 @@ export async function buildProducerOrderParticipation(
       name: campaign.name,
       status: campaign.status,
       associationName: org?.name ?? null,
-      startDate: campaign.startDate?.toISOString() ?? null,
-      endDate: campaign.endDate?.toISOString() ?? null,
+      startDate: toCalendarDateString(campaign.startDate),
+      endDate: toCalendarDateString(campaign.endDate),
       pricing,
     },
     lotCount: producerLots.length,

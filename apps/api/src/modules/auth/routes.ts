@@ -28,8 +28,10 @@ import {
   loadZeroDevConfigFromEnv,
   normalizeSerializedSessionEip7702Auth,
   privateKeyToAccount,
+  producerWalletKernelVersion,
   REQUEST_REWEIGHING_SELECTOR,
   SETTLE_LOT_SELECTOR,
+  warmProducerSessionKey,
 } from "@alpacto/zero-dev";
 import { demoLoginSchema } from "@alpacto/shared-schemas";
 import { z } from "zod";
@@ -718,20 +720,96 @@ export async function registerAuthRoutes(
         ),
       );
 
+    const serializedSession = normalizeSerializedSessionEip7702Auth(body.serializedSession);
     const [updated] = await db
       .update(producerSessionKeys)
       .set({
-        serializedSession: normalizeSerializedSessionEip7702Auth(body.serializedSession),
+        serializedSession,
         status: "active",
         updatedAt: new Date(),
       })
       .where(eq(producerSessionKeys.id, pending.id))
       .returning();
 
+    // Install the permission plugin now (no-op UserOp) so the first settle/reweigh
+    // is not install+business with a tiny callGasLimit (Stylus OOG on Sepolia).
+    if (updated?.sessionPrivateKey && serializedSession) {
+      try {
+        const zd = loadZeroDevConfigFromEnv();
+        const publicClient = createAlpactoPublicClient({
+          ...zd,
+          publicRpc: process.env["ARBITRUM_RPC_URL"] || process.env["RPC_URL_SEPOLIA"],
+        });
+        const sessionPrivateKey = (
+          updated.sessionPrivateKey.startsWith("0x")
+            ? updated.sessionPrivateKey
+            : `0x${updated.sessionPrivateKey}`
+        ) as `0x${string}`;
+        await warmProducerSessionKey({
+          publicClient,
+          config: zd,
+          serializedSession,
+          sessionPrivateKey,
+          kernelVersion: producerWalletKernelVersion,
+        });
+      } catch (err) {
+        request.log.warn(
+          { err },
+          "producer session warm UserOp failed — gas floors still protect first business call",
+        );
+      }
+    }
+
     return {
       status: "active" as const,
       sessionPublicAddress: updated!.sessionPublicAddress,
       smartAccountAddress: updated!.smartAccountAddress,
+    };
+  });
+
+  /**
+   * Re-warm an already-active session key (no-op UserOp). Use after redeploy if a
+   * Google producer granted before gas floors / warm-on-complete existed.
+   */
+  app.post("/auth/producer/session-key/warm", { preHandler: authPre }, async (request) => {
+    const authUser = request.user as AuthUser;
+    if (authUser.role !== "producer" && authUser.role !== "admin") {
+      throw new ApiError(403, "Forbidden");
+    }
+    const [active] = await db
+      .select()
+      .from(producerSessionKeys)
+      .where(
+        and(
+          eq(producerSessionKeys.userId, authUser.id),
+          eq(producerSessionKeys.status, "active"),
+        ),
+      )
+      .orderBy(desc(producerSessionKeys.updatedAt))
+      .limit(1);
+    if (!active?.serializedSession || !active.sessionPrivateKey) {
+      throw new ApiError(404, "No active producer session key to warm", "PRODUCER_SESSION_REQUIRED");
+    }
+    const zd = loadZeroDevConfigFromEnv();
+    const publicClient = createAlpactoPublicClient({
+      ...zd,
+      publicRpc: process.env["ARBITRUM_RPC_URL"] || process.env["RPC_URL_SEPOLIA"],
+    });
+    const sessionPrivateKey = (
+      active.sessionPrivateKey.startsWith("0x")
+        ? active.sessionPrivateKey
+        : `0x${active.sessionPrivateKey}`
+    ) as `0x${string}`;
+    const { receipt } = await warmProducerSessionKey({
+      publicClient,
+      config: zd,
+      serializedSession: active.serializedSession,
+      sessionPrivateKey,
+      kernelVersion: producerWalletKernelVersion,
+    });
+    return {
+      warmed: true,
+      txHash: receipt.receipt.transactionHash,
     };
   });
 

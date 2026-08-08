@@ -20,6 +20,7 @@ import {
   resolveOrderByIdOrRef,
   shortId,
 } from "./ayni-role-scope.js";
+import { toCalendarDateString } from "./calendar-date.js";
 import type { AyniToolHandlers } from "./ayni-producer-tools.js";
 
 export const AYNI_ASSOCIATION_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
@@ -189,8 +190,8 @@ export function createAyniAssociationToolHandlers(opts: {
           name: c.name,
           status: c.status,
           buyerName: c.buyerName,
-          startDate: c.startDate?.toISOString() ?? null,
-          endDate: c.endDate?.toISOString() ?? null,
+          startDate: toCalendarDateString(c.startDate),
+          endDate: toCalendarDateString(c.endDate),
         })),
       };
     },

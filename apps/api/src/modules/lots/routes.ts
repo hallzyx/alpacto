@@ -457,8 +457,9 @@ export async function registerLotRoutes(
           throw new ApiError(409, err.message, err.code);
         }
         const raw = err instanceof Error ? err.message : "Failed to request reweigh on-chain";
-        const msg =
-          /eip7702Auth|zd_sponsorUserOperation|Validation error|HTTP request failed|viem@/i.test(raw)
+        const msg = /UserOperation reverted/i.test(raw)
+          ? "No se pudo confirmar el nuevo pesaje on-chain. Si Ayni ya terminó su revisión, vuelve a intentarlo en unos segundos."
+          : /eip7702Auth|zd_sponsorUserOperation|Validation error|HTTP request failed|viem@/i.test(raw)
             ? "No se pudo confirmar el nuevo pesaje ahora. Espera unos segundos e inténtalo de nuevo."
             : raw.slice(0, 280);
         throw new ApiError(502, msg, "ONCHAIN_REWEIGH_FAILED");

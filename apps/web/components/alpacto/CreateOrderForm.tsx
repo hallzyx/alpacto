@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { CampaignDetails } from "./CampaignDetails";
 import { ErrorBanner } from "./ErrorBanner";
@@ -124,9 +124,14 @@ export function CreateOrderForm({ existingOrders = [], onCreated, redirectToDeta
     };
   }, []);
 
+  // Seed once with the next ALP-YYYY-NNN suggestion. Do not re-fill when the
+  // buyer clears the field — they need an empty input for a custom reference.
+  const seededExternalRef = useRef(false);
   useEffect(() => {
-    if (!externalRef && suggestedRef) setExternalRef(suggestedRef);
-  }, [suggestedRef, externalRef]);
+    if (seededExternalRef.current || !suggestedRef) return;
+    seededExternalRef.current = true;
+    setExternalRef(suggestedRef);
+  }, [suggestedRef]);
 
   const submit = async () => {
     if (!campaignId) return;

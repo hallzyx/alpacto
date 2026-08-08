@@ -8,10 +8,10 @@ export const demoLoginSchema = z.object({
 const optionalCalendarDate = z
   .string()
   .min(1)
-  .refine(
-    (v) => !Number.isNaN(Date.parse(v.includes("T") ? v : `${v}T00:00:00.000Z`)),
-    "Invalid date",
-  )
+  .refine((v) => {
+    const day = v.includes("T") ? v.slice(0, 10) : v.trim();
+    return /^\d{4}-\d{2}-\d{2}$/.test(day) && !Number.isNaN(Date.parse(`${day}T12:00:00.000Z`));
+  }, "Invalid date")
   .optional();
 
 export const createCampaignSchema = z.object({

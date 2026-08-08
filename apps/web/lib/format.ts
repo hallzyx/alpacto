@@ -19,6 +19,36 @@ export function formatUsdCents(cents: string | number | bigint | null | undefine
   return `$${(n / 100).toFixed(2)}`;
 }
 
+/**
+ * Calendar day (campaign start/end). Uses UTC so `YYYY-MM-DD` / midnight-UTC
+ * ISO strings do not shift to the previous day in Peru (UTC−5).
+ */
+export function formatCalendarDate(
+  value: string | null | undefined,
+  opts?: { month?: "short" | "long" | "numeric"; day?: "numeric" | "2-digit" },
+): string {
+  if (!value) return "—";
+  const day = value.includes("T") ? value.slice(0, 10) : value.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+    const [y, m, d] = day.split("-").map(Number);
+    const date = new Date(Date.UTC(y!, m! - 1, d!));
+    return date.toLocaleDateString("es-PE", {
+      timeZone: "UTC",
+      year: "numeric",
+      month: opts?.month ?? "short",
+      day: opts?.day ?? "numeric",
+    });
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "—";
+  return parsed.toLocaleDateString("es-PE", {
+    timeZone: "UTC",
+    year: "numeric",
+    month: opts?.month ?? "short",
+    day: opts?.day ?? "numeric",
+  });
+}
+
 /** Format weight grams as kg with one decimal. */
 export function formatKg(grams: string | number | bigint | null | undefined): string {
   if (grams === null || grams === undefined || grams === "") return "—";

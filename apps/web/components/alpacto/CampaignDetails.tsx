@@ -3,17 +3,8 @@
 import { StatusPill } from "./StatusPill";
 import { PricingPolicyHelpButton } from "./PricingPolicyHelp";
 import { Card, CardContent, CardHeader, CardTitle } from "~~/components/ui/card";
-import { formatPen } from "~~/lib/format";
+import { formatCalendarDate, formatPen } from "~~/lib/format";
 import type { Campaign } from "~~/lib/types";
-
-function formatDay(iso: string | null | undefined): string {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("es-PE", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
 
 type CampaignDetailsProps = {
   campaign: Campaign;
@@ -53,7 +44,7 @@ export function CampaignDetails({ campaign, compact = false }: CampaignDetailsPr
           <div className="flex justify-between gap-4">
             <dt className="text-muted-foreground">Ventana</dt>
             <dd className="font-medium">
-              {formatDay(campaign.startDate)} → {formatDay(campaign.endDate)}
+              {formatCalendarDate(campaign.startDate)} → {formatCalendarDate(campaign.endDate)}
             </dd>
           </div>
           {feePct ? (

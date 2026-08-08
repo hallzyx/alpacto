@@ -12,13 +12,14 @@ import { createCampaignSchema } from "@alpacto/shared-schemas";
 import type { AuthUser } from "../../plugins/auth.js";
 import { ApiError } from "../../lib/errors.js";
 import { resolveAssociationOrgIds } from "../../lib/ayni-role-scope.js";
+import { parseCalendarDate, toCalendarDateString } from "../../lib/calendar-date.js";
 
-function parseCalendarDate(value: string | undefined): Date | null {
-  if (!value) return null;
-  const iso = value.includes("T") ? value : `${value}T00:00:00.000Z`;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) throw new ApiError(400, "Invalid date");
-  return d;
+function campaignDateOrThrow(value: string | undefined, field: string): Date | null {
+  try {
+    return parseCalendarDate(value);
+  } catch {
+    throw new ApiError(400, `Invalid ${field}`);
+  }
 }
 
 function serializeCampaignBase(row: typeof campaigns.$inferSelect) {
@@ -27,8 +28,8 @@ function serializeCampaignBase(row: typeof campaigns.$inferSelect) {
     organizationId: row.organizationId,
     buyerId: row.buyerId,
     name: row.name,
-    startDate: row.startDate?.toISOString() ?? null,
-    endDate: row.endDate?.toISOString() ?? null,
+    startDate: toCalendarDateString(row.startDate),
+    endDate: toCalendarDateString(row.endDate),
     status: row.status,
     pricingPolicyId: row.pricingPolicyId,
     createdAt: row.createdAt.toISOString(),
@@ -231,8 +232,8 @@ export async function registerCampaignRoutes(
         buyerId,
         name: body.name,
         pricingPolicyId: body.pricingPolicyId,
-        startDate: parseCalendarDate(body.startDate),
-        endDate: parseCalendarDate(body.endDate),
+        startDate: campaignDateOrThrow(body.startDate, "startDate"),
+        endDate: campaignDateOrThrow(body.endDate, "endDate"),
         status: "active",
       })
       .returning();
