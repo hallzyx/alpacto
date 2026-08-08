@@ -49,7 +49,7 @@ There is no `NEXT_PUBLIC_ALCHEMY_API_KEY` or WalletConnect project id in the cur
 | --- | ---: | --- | --- |
 | `S3_ENDPOINT` | Yes | Internal MinIO (`http://minio:9000` in Docker) | API, Ayni |
 | `S3_PUBLIC_ENDPOINT` | Yes for browser uploads | Host/public MinIO URL; defaults to `S3_ENDPOINT` if unset | API (presign rewrite) |
-| `S3_CORS_ORIGINS` | For browser PUT | Comma-separated web origins; empty → `APP_URL` + `http://localhost:3000` | `minio-init` |
+| `S3_CORS_ORIGINS` | For browser PUT | Comma-separated web origins on `minio` (`MINIO_API_CORS_ALLOW_ORIGIN`); empty → `*` | `minio` service |
 | `S3_BUCKET` | Yes | `alpacto-evidence` | API, Ayni |
 | `S3_ACCESS_KEY` / `S3_SECRET_KEY` | Yes | Demo defaults `alpacto` / `alpacto123` — change on VPS | API, Ayni, MinIO |
 | `S3_REGION` | No | `us-east-1` | API, Ayni |

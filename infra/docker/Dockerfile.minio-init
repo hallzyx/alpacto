@@ -1,0 +1,8 @@
+# minio/mc:latest is distroless (no shell) — use Alpine + mc binary for init script.
+FROM alpine:3.20
+RUN apk add --no-cache ca-certificates curl \
+  && curl -fsSL "https://dl.min.io/client/mc/release/linux-amd64/mc" -o /usr/local/bin/mc \
+  && chmod +x /usr/local/bin/mc
+COPY minio-init.sh /minio-init.sh
+RUN chmod +x /minio-init.sh
+ENTRYPOINT ["/bin/sh", "/minio-init.sh"]
