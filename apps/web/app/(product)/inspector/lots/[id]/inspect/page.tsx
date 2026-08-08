@@ -82,14 +82,15 @@ function InspectInner() {
             sizeBytes: String(file.size),
           },
         });
-        try {
-          await fetch(upload.uploadUrl, {
-            method: "PUT",
-            body: file,
-            headers: { "Content-Type": file.type || "image/jpeg" },
-          });
-        } catch {
-          setNote("URL de carga obtenida; subida al storage puede fallar en local — se vincula el evidenceId.");
+        const putRes = await fetch(upload.uploadUrl, {
+          method: "PUT",
+          body: file,
+          headers: { "Content-Type": file.type || "image/jpeg" },
+        });
+        if (!putRes.ok) {
+          throw new Error(
+            `No se pudo subir la evidencia a storage (HTTP ${putRes.status}). Revisa S3_PUBLIC_ENDPOINT y CORS en MinIO.`,
+          );
         }
         evidenceFileIds.push(upload.evidenceId);
       }

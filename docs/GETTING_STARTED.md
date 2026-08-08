@@ -156,7 +156,7 @@ Follow [Demo](DEMO.md) for the five-minute UI path (buyer fund → lot → inspe
 
 - Set `S3_PUBLIC_ENDPOINT` to a URL the browser can open (not `http://minio:9000`)
 - Keep `S3_ENDPOINT` as the internal MinIO URL for API/Ayni
-- Browser **CORS error** on the presigned `PUT`: set `S3_CORS_ORIGINS` on the **minio** service (e.g. `https://alpacto.arroz.dev`) and redeploy. Empty defaults to `*` for demo.
+- Browser **CORS error** on the presigned `PUT`: set `S3_CORS_ORIGINS` to your **web app** origin (e.g. `https://alpacto.arroz.dev`, not the MinIO subdomain). The API presigns with `S3_PUBLIC_ENDPOINT` so the signature matches the browser host. Redeploy **api** after changing `S3_PUBLIC_*`.
 
 ## Next step
 
