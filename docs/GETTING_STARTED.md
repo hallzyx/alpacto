@@ -154,9 +154,8 @@ Follow [Demo](DEMO.md) for the five-minute UI path (buyer fund → lot → inspe
 
 ### Evidence upload fails in the browser
 
-- Set `S3_PUBLIC_ENDPOINT` to a URL the browser can open (not `http://minio:9000`)
-- Keep `S3_ENDPOINT` as the internal MinIO URL for API/Ayni
-- Browser **CORS error** on the presigned `PUT`: set `S3_CORS_ORIGINS` to your **web app** origin (e.g. `https://alpacto.arroz.dev`, not the MinIO subdomain). The API presigns with `S3_PUBLIC_ENDPOINT` so the signature matches the browser host. Redeploy **api** after changing `S3_PUBLIC_*`.
+- Evidence uploads go **browser → API → MinIO** (`POST /evidence/upload`) so Dokploy/Cloudflare on the MinIO host cannot block them. Keep `S3_ENDPOINT=http://minio:9000` for API/Ayni.
+- Browser **CORS error** on a legacy presigned `PUT` to `S3_PUBLIC_ENDPOINT`: prefer the API upload path above; or set `S3_CORS_ORIGINS` to your web origin and avoid Cloudflare proxy on the MinIO subdomain.
 
 ## Next step
 

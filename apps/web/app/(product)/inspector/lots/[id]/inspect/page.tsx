@@ -71,27 +71,30 @@ function InspectInner() {
     try {
       const evidenceFileIds: string[] = [];
       if (file) {
+        const mimeType = (file.type || "image/jpeg") as "image/jpeg" | "image/png" | "image/webp" | "application/pdf";
+        const fileBase64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = String(reader.result ?? "");
+            const comma = result.indexOf(",");
+            resolve(comma >= 0 ? result.slice(comma + 1) : result);
+          };
+          reader.onerror = () => reject(new Error("No se pudo leer el archivo"));
+          reader.readAsDataURL(file);
+        });
+
         const upload = await apiFetch<{
           evidenceId: string;
-          uploadUrl: string;
-        }>("/evidence/upload-url", {
+          storageKey: string;
+        }>("/evidence/upload", {
           method: "POST",
           body: {
             type: "scale_photo",
-            mimeType: file.type || "image/jpeg",
+            mimeType,
             sizeBytes: String(file.size),
+            fileBase64,
           },
         });
-        const putRes = await fetch(upload.uploadUrl, {
-          method: "PUT",
-          body: file,
-          headers: { "Content-Type": file.type || "image/jpeg" },
-        });
-        if (!putRes.ok) {
-          throw new Error(
-            `No se pudo subir la evidencia a storage (HTTP ${putRes.status}). Revisa S3_PUBLIC_ENDPOINT y CORS en MinIO.`,
-          );
-        }
         evidenceFileIds.push(upload.evidenceId);
       }
 

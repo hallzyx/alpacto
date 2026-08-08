@@ -1,9 +1,9 @@
 import {
   CreateBucketCommand,
   HeadBucketCommand,
+  PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
-import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { randomUUID } from "node:crypto";
 import { config } from "../config.js";
@@ -20,6 +20,9 @@ function buildS3Client(endpoint: string): S3Client {
       secretAccessKey: config.s3.secretKey,
     },
     forcePathStyle: true,
+    // AWS SDK v3 flexible checksums break some MinIO / Cloudflare paths on PUT.
+    requestChecksumCalculation: "WHEN_REQUIRED",
+    responseChecksumValidation: "WHEN_REQUIRED",
   });
 }
 
@@ -49,6 +52,21 @@ export async function ensureBucket(): Promise<void> {
   }
 }
 
+export async function putEvidenceObject(opts: {
+  storageKey: string;
+  body: Buffer;
+  mimeType: string;
+}): Promise<void> {
+  await getS3Client().send(
+    new PutObjectCommand({
+      Bucket: config.s3.bucket,
+      Key: opts.storageKey,
+      Body: opts.body,
+      ContentType: opts.mimeType,
+    }),
+  );
+}
+
 export async function createPresignedUploadUrl(input: {
   mimeType: string;
   type: string;
@@ -67,4 +85,8 @@ export async function createPresignedUploadUrl(input: {
 
 export function publicEvidenceUrl(storageKey: string): string {
   return `${config.s3.publicEndpoint}/${config.s3.bucket}/${storageKey}`;
+}
+
+export function newEvidenceStorageKey(type: string): string {
+  return `evidence/${type}/${randomUUID()}`;
 }

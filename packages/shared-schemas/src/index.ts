@@ -124,6 +124,12 @@ export const evidenceUploadUrlSchema = z.object({
   inspectionId: z.string().uuid().optional(),
 });
 
+/** Browser → API → MinIO (avoids CORS/Cloudflare on public S3 host). */
+export const evidenceUploadSchema = evidenceUploadUrlSchema.extend({
+  /** Raw file bytes as base64 (no data: URL prefix). Max ~10 MiB decoded. */
+  fileBase64: z.string().min(1).max(14_000_000),
+});
+
 export type DemoLoginInput = z.infer<typeof demoLoginSchema>;
 export type CreateCampaignInput = z.infer<typeof createCampaignSchema>;
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;

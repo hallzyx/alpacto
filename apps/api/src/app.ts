@@ -35,7 +35,11 @@ export type AppDeps = {
 };
 
 export async function buildApp(deps: AppDeps = {}) {
-  const app = Fastify({ logger: true });
+  const app = Fastify({
+    logger: true,
+    // Evidence uploads go browser → API as base64 JSON (~10 MiB file → ~14 MiB payload).
+    bodyLimit: 15 * 1024 * 1024,
+  });
   await app.register(cors, { origin: true });
 
   const { db, pool } = createDb(config.databaseUrl);
