@@ -24,7 +24,7 @@ const reweighAbi = parseAbi([
   "function requestReweighing(uint256 lotId, bytes32 reasonHash)",
 ]);
 
-/** On-chain statuses that allow requestReweighing. */
+/** On-chain statuses that allow requestReweighing (must match AlpactoCore lot_status). */
 const ONCHAIN_READY_FOR_REVIEW = 3;
 const ONCHAIN_REVIEW_REQUIRED = 4;
 

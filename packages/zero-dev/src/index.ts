@@ -369,6 +369,15 @@ export async function sendSponsoredCalls(opts: {
   const receipt = await opts.client.waitForUserOperationReceipt({
     hash: userOpHash,
   });
+  // Bundler tx can mine while the UserOp itself reverts (success: false).
+  // Treat that as failure so callers do not persist a fake "on-chain" hash.
+  if (receipt.success === false) {
+    const txHash = receipt.receipt.transactionHash;
+    throw new Error(
+      `UserOperation reverted on-chain (userOpHash=${userOpHash}, tx=${txHash}). ` +
+        `Check Arbiscan AA Transactions / Logs — AlpactoCore may have rejected the call (status/role) or the session key failed.`,
+    );
+  }
   return { userOpHash, receipt };
 }
 

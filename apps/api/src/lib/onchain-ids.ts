@@ -53,16 +53,17 @@ export async function readLotOnchain(onchainLotId: bigint) {
   };
 }
 
-/** On-chain lot status codes from AlpactoCore. */
+/** On-chain lot status codes from AlpactoCore (`lot_status` in alpacto-core). */
 export const ONCHAIN_LOT_STATUS = {
   Registered: 0,
-  Inspected: 1,
-  Attested: 2,
+  InspectionSubmitted: 1,
+  Auditing: 2,
   ReadyForReview: 3,
-  ReweighingRequested: 4,
-  AuditFailed: 5,
+  ReviewRequired: 4,
+  ReweighingRequested: 5,
   ProducerAccepted: 6,
   Settled: 7,
+  Cancelled: 8,
 } as const;
 
 export async function attestationExistsOnchain(
