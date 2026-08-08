@@ -54,6 +54,7 @@ services:
     restart: unless-stopped
     networks: [alpacto]
 
+  # Creates bucket + CORS so the web origin can PUT evidence via presigned URLs.
   minio-init:
     image: minio/mc:latest
     container_name: alpacto-minio-init
@@ -61,15 +62,16 @@ services:
       minio:
         condition: service_started
     environment:
+      S3_ENDPOINT: ${S3_ENDPOINT:-http://minio:9000}
       S3_ACCESS_KEY: ${S3_ACCESS_KEY:-alpacto}
       S3_SECRET_KEY: ${S3_SECRET_KEY:-alpacto123}
       S3_BUCKET: ${S3_BUCKET:-alpacto-evidence}
-    entrypoint: >
-      /bin/sh -c "
-      until mc alias set local http://minio:9000 \"$$S3_ACCESS_KEY\" \"$$S3_SECRET_KEY\"; do sleep 1; done;
-      mc mb --ignore-existing local/$$S3_BUCKET;
-      exit 0;
-      "
+      APP_URL: ${APP_URL:-http://localhost:3000}
+      # Comma-separated browser origins (presigned PUT from inspector). Falls back to APP_URL + localhost.
+      S3_CORS_ORIGINS: ${S3_CORS_ORIGINS:-}
+    volumes:
+      - ./minio-init.sh:/minio-init.sh:ro
+    entrypoint: ["/bin/sh", "/minio-init.sh"]
     restart: "no"
     networks: [alpacto]
 

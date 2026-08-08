@@ -271,3 +271,25 @@ export type OnchainActivityResponse = {
   explorerName: string;
   activities: OnchainActivity[];
 };
+
+export type AdminWalletOrigin = "demo_seed" | "live" | "none";
+
+export type AdminUserRow = {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  status: string;
+  smartAccountAddress: string | null;
+  walletOrigin: AdminWalletOrigin;
+  usdcUnits: string | null;
+  explorerUrl: string | null;
+  createdAt: string;
+};
+
+export type AdminUsersResponse = {
+  chainId: number;
+  usdcToken: string | null;
+  explorerName: string;
+  users: AdminUserRow[];
+};

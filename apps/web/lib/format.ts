@@ -42,6 +42,12 @@ export function formatEscrowUsd(usdcUnits: string | number | bigint | null | und
   return `$${usd.toFixed(2)}`;
 }
 
+/** Shorten a 0x address for display. */
+export function shortAddress(address: string | null | undefined): string {
+  if (!address || address.length < 12) return address ?? "—";
+  return `${address.slice(0, 6)}…${address.slice(-4)}`;
+}
+
 /** Shorten a 0x transaction hash for display. */
 export function shortTxHash(hash: string | null | undefined): string {
   if (!hash || hash.length < 12) return hash ?? "—";

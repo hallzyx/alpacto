@@ -14,6 +14,7 @@ import {
   Package,
   ShoppingCart,
   UserCircle,
+  Users,
   FilePlus2,
   CalendarRange,
   BookOpenText,
@@ -123,7 +124,10 @@ const ROLE_NAV: Record<UserRole, { label: string; items: NavItem[] }> = {
   },
   admin: {
     label: "Admin",
-    items: [{ href: "/admin", label: "On-chain", icon: Activity }],
+    items: [
+      { href: "/admin", label: "On-chain", icon: Activity },
+      { href: "/admin/users", label: "Users", icon: Users },
+    ],
   },
 };
 
@@ -169,8 +173,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarGroupLabel>{nav.label}</SidebarGroupLabel>
             <SidebarMenu>
               {nav.items.map(item => {
-                const isDashboardRoot = ["/association", "/buyer", "/producer"].includes(item.href);
-                const active = isDashboardRoot
+                const isExactOnly = ["/association", "/buyer", "/producer", "/admin"].includes(item.href);
+                const active = isExactOnly
                   ? pathname === item.href
                   : pathname === item.href || pathname.startsWith(`${item.href}/`);
                 return (

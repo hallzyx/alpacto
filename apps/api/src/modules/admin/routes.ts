@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { desc, eq, isNotNull } from "drizzle-orm";
+import { asc, desc, eq, isNotNull } from "drizzle-orm";
 import {
   auditRuns,
   fundingIntents,
@@ -8,11 +8,77 @@ import {
   orders,
   reweighRequests,
   settlements,
+  users,
   type Database,
 } from "@alpacto/database";
+import {
+  createPublicClient,
+  http,
+  parseAbi,
+  type Address,
+} from "viem";
+import { arbitrumSepolia } from "viem/chains";
 import type { AuthUser } from "../../plugins/auth.js";
 import { ApiError } from "../../lib/errors.js";
 import { config } from "../../config.js";
+
+const erc20BalanceAbi = parseAbi([
+  "function balanceOf(address) view returns (uint256)",
+]);
+
+function explorerAddressUrl(chainId: number, address: string): string {
+  if (chainId === 421614) return `https://sepolia.arbiscan.io/address/${address}`;
+  if (chainId === 42161) return `https://arbiscan.io/address/${address}`;
+  return `https://sepolia.arbiscan.io/address/${address}`;
+}
+
+/** Soft label for jury demos — not a hard security claim. */
+function walletOriginHint(email: string, smartAccount: string | null): "demo_seed" | "live" | "none" {
+  if (!smartAccount) return "none";
+  if (email.trim().toLowerCase().endsWith("@demo.alpacto")) return "demo_seed";
+  return "live";
+}
+
+async function readUsdcBalances(
+  addresses: Address[],
+): Promise<Map<string, string | null>> {
+  const out = new Map<string, string | null>();
+  const token = (config.chain.usdcToken || "").trim() as Address;
+  const rpc = config.chain.rpcUrl;
+  if (!token || !rpc || addresses.length === 0) {
+    for (const a of addresses) out.set(a.toLowerCase(), null);
+    return out;
+  }
+
+  const publicClient = createPublicClient({
+    chain: arbitrumSepolia,
+    transport: http(rpc),
+  });
+
+  const chunkSize = 12;
+  for (let i = 0; i < addresses.length; i += chunkSize) {
+    const chunk = addresses.slice(i, i + chunkSize);
+    const results = await Promise.allSettled(
+      chunk.map((address) =>
+        publicClient.readContract({
+          address: token,
+          abi: erc20BalanceAbi,
+          functionName: "balanceOf",
+          args: [address],
+        }),
+      ),
+    );
+    results.forEach((result, idx) => {
+      const key = chunk[idx]!.toLowerCase();
+      if (result.status === "fulfilled") {
+        out.set(key, result.value.toString());
+      } else {
+        out.set(key, null);
+      }
+    });
+  }
+  return out;
+}
 
 export type OnchainActivityType =
   | "order_funded"
@@ -59,6 +125,46 @@ export async function registerAdminRoutes(
   db: Database,
   authenticate: (req: unknown, reply: unknown) => Promise<void>,
 ) {
+  app.get("/admin/users", { preHandler: authenticate }, async (request) => {
+    const user = request.user as AuthUser;
+    if (user.role !== "admin") {
+      throw new ApiError(403, "Forbidden");
+    }
+
+    const rows = await db.select().from(users).orderBy(asc(users.role), asc(users.email));
+
+    const addresses = rows
+      .map((r) => r.smartAccountAddress)
+      .filter((a): a is string => Boolean(a && a.startsWith("0x") && a.length === 42))
+      .map((a) => a as Address);
+
+    const uniqueAddresses = [...new Map(addresses.map((a) => [a.toLowerCase(), a])).values()];
+    const balances = await readUsdcBalances(uniqueAddresses);
+
+    return {
+      chainId: config.chain.chainId,
+      usdcToken: config.chain.usdcToken || null,
+      explorerName: config.chain.chainId === 421614 ? "Arbiscan Sepolia" : "Arbiscan",
+      users: rows.map((row) => {
+        const address = row.smartAccountAddress;
+        const balanceKey = address?.toLowerCase() ?? "";
+        const usdcUnits = address ? (balances.get(balanceKey) ?? null) : null;
+        return {
+          id: row.id,
+          email: row.email,
+          name: row.name,
+          role: row.role,
+          status: row.status,
+          smartAccountAddress: address,
+          walletOrigin: walletOriginHint(row.email, address),
+          usdcUnits,
+          explorerUrl: address ? explorerAddressUrl(config.chain.chainId, address) : null,
+          createdAt: row.createdAt.toISOString(),
+        };
+      }),
+    };
+  });
+
   app.get("/admin/onchain-activity", { preHandler: authenticate }, async (request) => {
     const user = request.user as AuthUser;
     if (user.role !== "admin") {

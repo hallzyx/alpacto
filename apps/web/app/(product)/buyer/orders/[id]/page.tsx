@@ -109,9 +109,12 @@ function BuyerOrderInner() {
 
   useEffect(() => {
     if (!order) return;
-    if (!["payment_pending", "funding"].includes(order.status) && funding?.intent?.status !== "pending") {
-      return;
-    }
+    const orderBusy = ["payment_pending", "payment_confirmed", "onchain_funding_pending", "funding"].includes(
+      order.status,
+    );
+    const intentBusy = ["pending", "paid", "funding"].includes(funding?.intent?.status ?? "");
+    if (!orderBusy && !intentBusy) return;
+
     const t = setInterval(() => {
       void load();
     }, 4000);
