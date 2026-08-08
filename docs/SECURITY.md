@@ -47,11 +47,13 @@ Revoke via admin: `POST /admin/ayni/session-key/revoke` when rotating keys.
 
 ## Vision privacy
 
-Before sending images to OpenAI:
+The demo **always** runs the vision extraction step (fixture or live OpenAI).
 
-- validate MIME type and size at upload-url time;
+Before sending images to OpenAI (live mode only):
+
+- validate MIME type and size at `POST /evidence/upload`;
 - avoid attaching unnecessary PII from the DB to vision prompts;
-- use `AYNI_USE_FIXTURE_VISION=true` for demos without external vision calls.
+- use `AYNI_USE_FIXTURE_VISION=true` for demos that must not call OpenAI (fixtures still fulfill the required vision step).
 
 ## Docker / VPS exposure (MVP)
 

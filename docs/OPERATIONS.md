@@ -26,7 +26,7 @@ flowchart LR
 | --- | --- |
 | `postgres` | Primary database volume `alpacto_pg_data` |
 | `redis` | BullMQ |
-| `minio` / `minio-init` | Evidence bucket |
+| `minio` / `minio-init` | Evidence bucket; `minio-init` is Alpine+mc (creates bucket); CORS via `MINIO_API_CORS_ALLOW_ORIGIN` |
 | `migrate` | One-shot Drizzle migrate |
 | `bootstrap` | First-boot `db:seed` + `seed:wallets` (or skip) |
 | `stripe-whsec` | Writes CLI webhook signing secret to a shared volume |
@@ -137,19 +137,27 @@ Dokploy / public URLs are for **browsers**. Inside Compose, services use Docker 
 | Variable | Reachable from |
 | --- | --- |
 | `NEXT_PUBLIC_API_URL` | Browser (rebuild web if changed) |
-| `S3_PUBLIC_ENDPOINT` | Browser |
+| `S3_PUBLIC_ENDPOINT` | Optional (console / legacy); uploads use API → `S3_ENDPOINT` |
 | `S3_ENDPOINT` | Containers (`http://minio:9000`) |
 | `DATABASE_URL` / `REDIS_URL` | Containers |
 
 ### Stripe webhooks (MVP automatic)
 
-With `STRIPE_SECRET_KEY` set, `STRIPE_WEBHOOK_SECRET` empty, and `STRIPE_USE_CLI=1`:
+With `STRIPE_SECRET_KEY` set, `STRIPE_WEBHOOK_SECRET` empty, and `STRIPE_USE_CLI=1` (Compose default — you do not need to set it explicitly):
 
 1. `stripe-whsec` runs `stripe listen --print-secret`
 2. API loads that `whsec` from the shared volume
 3. `stripe` forwards events to `http://api:4000/webhooks/stripe`
 
-No manual copy/paste. Keep **test** keys for the MVP.
+No manual copy/paste. Keep **test** keys for the MVP. Do **not** paste a Dashboard `whsec` while CLI mode is on (signature mismatch).
+
+### Evidence uploads
+
+Inspector UI uses `POST /evidence/upload` (API writes to MinIO). If audits fail with `NoSuchKey`, the object never landed in the bucket — check API logs for storage errors and that `S3_*` keys match across `api`, `ayni`, and `minio`.
+
+### Admin Users
+
+Admin → **Users** lists emails, Kernel addresses, wallet-origin hint, and on-chain USDC for jury verification of seed vs live wallets.
 
 Dashboard endpoint later:
 

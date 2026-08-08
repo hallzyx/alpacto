@@ -58,7 +58,7 @@
 ## 2026-08-03 — Phase 5 Ayni
 
 - **Orchestrator:** DeepSeek `deepseek-v4-flash` (OpenAI-compatible API) with thinking disabled; closed tool loop.
-- **Vision:** OpenAI `gpt-5.6-luna` for scale/doc OCR; `AYNI_USE_FIXTURE_VISION=true` for deterministic local demos.
+- **Vision:** Required for demos. OpenAI `gpt-5.6-luna` for live scale/doc OCR; `AYNI_USE_FIXTURE_VISION=true` for deterministic fixture OCR (still a vision step).
 - **Worker:** `apps/ayni-worker` consumes BullMQ `alpacto-ayni-audit`; API enqueues via `POST /lots/:id/audits`.
 - **Compare:** `@alpacto/domain` `compareAuditValues` — weight delta > 1% → `review_required` + `WEIGHT_MISMATCH`.
 - **Settlement gate:** `POST /lots/:id/settlement/accept` rejects unless audit is `pass` or `warning`.
@@ -102,3 +102,11 @@
 - **Seed path unchanged:** If derived seed Kernel address matches DB → ECDSA owner key; no grant UX (`needsGrant: false`, `signerKind: seed`).
 - **Missing grant:** API returns **409** `PRODUCER_SESSION_REQUIRED` (not opaque Kernel mismatch). Web shows one-time grant banner / retry on settle + reweigh.
 - **MVP secret storage:** `sessionPrivateKey` stored plaintext in Postgres (not in git). Acceptable for demo; encrypt at rest before production. Buyer/association/inspector Google session keys out of scope.
+
+## 2026-08-08 — Evidence via API + admin Users + MinIO init
+
+- **Evidence uploads:** Product UI uses `POST /evidence/upload` (browser → API → MinIO over Docker DNS). Avoids Cloudflare/CORS failures on public MinIO host for presigned PUTs. Legacy `upload-url` remains for local-only paths.
+- **minio-init:** Alpine image with `mc` binary (`Dockerfile.minio-init`) — `minio/mc:latest` is distroless and cannot run `/bin/sh` (exit 127). Bucket CORS also set via `MINIO_API_CORS_ALLOW_ORIGIN` / `S3_CORS_ORIGINS`.
+- **Vision:** Required for demos. `AYNI_USE_FIXTURE_VISION=true` still runs extract tools with fixtures; live OpenAI is an alternate mode, not “vision optional.”
+- **Admin Users:** `GET /admin/users` + `/admin/users` UI — emails, Kernel addresses, soft origin hint, on-chain USDC for jury verification.
+- **Demo gates:** `DEMO_FUNDING_PASSWORD` (Stripe funding), `ADMIN_AYNI_REVOKE_PASSWORD` (Ayni revoke).

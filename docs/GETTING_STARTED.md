@@ -36,11 +36,14 @@ ALPACTO_CONTRACT_ADDRESS=0x3d9c424814a9038ba7d4dd39c1e6a1bb58a3fc5f
 TREASURY_PRIVATE_KEY=...
 ARBITRUM_RPC_URL=https://sepolia-rollup.arbitrum.io/rpc
 
-# Optional for Checkout / audits
+# Stripe test Checkout (Compose auto-loads CLI whsec when STRIPE_WEBHOOK_SECRET is empty)
 STRIPE_SECRET_KEY=sk_test_...
-# leave STRIPE_WEBHOOK_SECRET empty when STRIPE_USE_CLI=1
+# leave STRIPE_WEBHOOK_SECRET empty when STRIPE_USE_CLI=1 (Compose default)
+
+# Ayni — vision step is required for the demo
+AYNI_USE_FIXTURE_VISION=true
+# OPENAI_API_KEY=...   # only if AYNI_USE_FIXTURE_VISION=false
 DEEPSEEK_API_KEY=...
-OPENAI_API_KEY=...
 AYNI_SESSION_KEY=...
 AYNI_SMART_ACCOUNT=...
 AYNI_SERIALIZED_SESSION=...
@@ -154,8 +157,16 @@ Follow [Demo](DEMO.md) for the five-minute UI path (buyer fund → lot → inspe
 
 ### Evidence upload fails in the browser
 
-- Evidence uploads go **browser → API → MinIO** (`POST /evidence/upload`) so Dokploy/Cloudflare on the MinIO host cannot block them. Keep `S3_ENDPOINT=http://minio:9000` for API/Ayni.
-- Browser **CORS error** on a legacy presigned `PUT` to `S3_PUBLIC_ENDPOINT`: prefer the API upload path above; or set `S3_CORS_ORIGINS` to your web origin and avoid Cloudflare proxy on the MinIO subdomain.
+- Product path: **browser → API → MinIO** (`POST /evidence/upload`). Rebuild/redeploy **api** + **web** after related changes.
+- Keep `S3_ENDPOINT=http://minio:9000` and identical `S3_ACCESS_KEY` / `S3_SECRET_KEY` on `api`, `ayni`, and `minio` (MinIO root credentials are set on first volume create).
+- If Network still shows a PUT to `S3_PUBLIC_ENDPOINT` with CORS / Failed to fetch, the UI is on an old build — it should only call `/evidence/upload`.
+- Ayni `NoSuchKey` means the audit job cannot find the evidence object (empty bucket or wrong key) — re-upload after storage works, or use `AYNI_USE_FIXTURE_VISION=true` for the OCR values (vision step still runs).
+
+### Ayni vision / audit
+
+- Vision extraction is **required** for the demo (`extract_scale_evidence` / classification).
+- Demo default: `AYNI_USE_FIXTURE_VISION=true` (deterministic mismatch story without OpenAI).
+- Live OCR: `AYNI_USE_FIXTURE_VISION=false` + `OPENAI_API_KEY`.
 
 ## Next step
 

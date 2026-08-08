@@ -26,7 +26,7 @@ For local Node instead of Compose app containers, run `yarn api:dev`, `yarn ayni
 | `DEMO_WALLET_SEED` | Empty → `alpacto-local-demo-wallet-seed-v1` (same addresses across machines) |
 | `ALPACTO_CONTRACT_ADDRESS` | Sepolia core — see [Arbitrum](ARBITRUM.md) |
 | Stripe test | Compose Stripe CLI or local `stripe listen` |
-| Ayni | Worker up; fixture vision OK for OCR mismatch story |
+| Ayni | Worker up; **vision required** — fixture mode (`AYNI_USE_FIXTURE_VISION=true`) for OCR mismatch story, or live OpenAI |
 
 ## Seed wallets
 

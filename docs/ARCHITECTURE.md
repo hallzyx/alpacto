@@ -66,7 +66,7 @@ The API:
 
 ### Ayni worker
 
-Ayni is a **read-and-attest** agent. It loads lot context, runs vision extraction (fixture or OpenAI), compares declared vs observed values with deterministic domain math, persists an audit report, and submits `submitAuditAttestation` when an on-chain lot id exists. It never transfers USDC or ETH.
+Ayni is a **read-and-attest** agent. It loads lot context, runs **required** vision extraction (fixture or OpenAI — never skipped in the demo path), compares declared vs observed values with deterministic domain math, persists an audit report, and submits `submitAuditAttestation` when an on-chain lot id exists. It never transfers USDC or ETH.
 
 ### Web
 
@@ -84,11 +84,15 @@ Product routes live under `(fullscreen)` (landing, login, producer auth) and `(p
 
 ### Inspection → Ayni audit
 
-1. Inspector submits weight, category, and evidence hashes (MinIO uploads via presigned URLs).
+1. Inspector uploads evidence via `POST /evidence/upload` (API `PutObject` to MinIO) and submits weight + category.
 2. API stores inspection and enqueues an audit job.
-3. Ayni extracts OCR values, compares with 1% weight tolerance, writes `audit_runs` / findings.
+3. Ayni runs **required** vision extractors, compares with 1% weight tolerance, writes `audit_runs` / findings.
 4. If on-chain lot exists, Ayni session key submits `submitAuditAttestation`.
 5. Lot moves to `ready_for_review` or `review_required` (or similar DB statuses mapped from audit result).
+
+### Admin Users (demo verification)
+
+`GET /admin/users` (admin role) lists registered emails, roles, Kernel `smart_account_address`, a soft wallet-origin hint (`demo_seed` vs `live`), and on-chain USDC balances. UI: **Admin → Users** (`/admin/users`).
 
 ### Producer settlement
 

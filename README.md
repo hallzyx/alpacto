@@ -79,8 +79,8 @@ API (Fastify :4000) ──── PostgreSQL :5432
         │                   MinIO :9000
         │ BullMQ
         ▼
-Ayni worker ──────────── OpenAI vision (optional) + DeepSeek orchestrator
-        │
+Ayni worker ──────────── Vision (required for demo) + DeepSeek orchestrator
+        │                 fixture mode or live OpenAI OCR
         ├── ZeroDev bundler / paymaster ──► Arbitrum Sepolia
         └── AlpactoCore (Stylus) + Circle test USDC
 ```
@@ -139,7 +139,8 @@ The repository is a production-shaped MVP. Current scope includes:
 
 - role-based product UX and demo seed logins;
 - Stripe test Checkout → buyer Kernel → Sepolia escrow;
-- inspection evidence + Ayni audit attestation (fixture or live vision);
+- inspection evidence (browser → API → MinIO) + Ayni audit with **required** vision step (fixture or live OpenAI);
+- admin Users directory (emails, Kernel addresses, on-chain USDC) for demo verification;
 - producer settlement accept / reweigh with session keys or seed Kernel;
 - full Docker Compose deploy with first-boot bootstrap.
 

@@ -48,11 +48,13 @@ There is no `NEXT_PUBLIC_ALCHEMY_API_KEY` or WalletConnect project id in the cur
 | Variable | Required | Default / notes | Used by |
 | --- | ---: | --- | --- |
 | `S3_ENDPOINT` | Yes | Internal MinIO (`http://minio:9000` in Docker) | API, Ayni |
-| `S3_PUBLIC_ENDPOINT` | Yes for browser uploads | Host/public MinIO URL; defaults to `S3_ENDPOINT` if unset | API (presign rewrite) |
-| `S3_CORS_ORIGINS` | For browser PUT | Comma-separated web origins on `minio` (`MINIO_API_CORS_ALLOW_ORIGIN`); empty → `*` | `minio` service |
+| `S3_PUBLIC_ENDPOINT` | Recommended on VPS | Public MinIO URL (console / legacy presign); API uploads use `S3_ENDPOINT` | API |
+| `S3_CORS_ORIGINS` | Optional | Passed to MinIO as `MINIO_API_CORS_ALLOW_ORIGIN`; empty → `*` | `minio` service |
 | `S3_BUCKET` | Yes | `alpacto-evidence` | API, Ayni |
-| `S3_ACCESS_KEY` / `S3_SECRET_KEY` | Yes | Demo defaults `alpacto` / `alpacto123` — change on VPS | API, Ayni, MinIO |
+| `S3_ACCESS_KEY` / `S3_SECRET_KEY` | Yes | Demo defaults `alpacto` / `alpacto123` — change on VPS; **must match** across api, ayni, minio | API, Ayni, MinIO |
 | `S3_REGION` | No | `us-east-1` | API, Ayni |
+
+Product evidence uploads use **`POST /evidence/upload`** (browser → API → MinIO). Keep `S3_ENDPOINT` as Docker DNS. Align all three services on the same access/secret keys (MinIO root credentials are fixed at first volume boot).
 
 ### Stripe
 
@@ -60,7 +62,7 @@ There is no `NEXT_PUBLIC_ALCHEMY_API_KEY` or WalletConnect project id in the cur
 | --- | ---: | --- | --- |
 | `STRIPE_SECRET_KEY` | For Checkout | `sk_test_…` for MVP | API, Stripe CLI containers |
 | `STRIPE_WEBHOOK_SECRET` | For verify | Empty + `STRIPE_USE_CLI=1` → auto from CLI; or Dashboard `whsec_…` | API |
-| `STRIPE_USE_CLI` | No | `1` in Docker MVP | Compose Stripe services |
+| `STRIPE_USE_CLI` | No | Default `1` in Compose — leave unset or `1` for CLI forwarding | Compose Stripe services |
 | `STRIPE_PRICE_MODE` | No | `demo` | API |
 
 ### Chain and ZeroDev
@@ -72,13 +74,13 @@ There is no `NEXT_PUBLIC_ALCHEMY_API_KEY` or WalletConnect project id in the cur
 | `ALPACTO_CONTRACT_ADDRESS` | For on-chain | Current Sepolia core in [Arbitrum](ARBITRUM.md) | API, Ayni, scripts |
 | `USDC_TOKEN_ADDRESS` | No | Circle test USDC `0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d` | API / scripts |
 | `TREASURY_PRIVATE_KEY` | For funding / grants | EOA with Sepolia ETH (+ USDC for top-ups) | API, scripts |
-| `ZERODEV_PROJECT_ID` | For Kernel | Dashboard project | API, Ayni, `seed:wallets` |
+| `ZERODEV_PROJECT_ID` | For Kernel | Dashboard project (allowlist VPS IP + web origin) | API, Ayni, `seed:wallets` |
 | `ZERODEV_BUNDLER_RPC` | For Kernel | From ZeroDev dashboard | API, Ayni, scripts |
 | `ZERODEV_PAYMASTER_RPC` | Recommended | Gas sponsorship | API, Ayni, scripts |
 | `AYNI_SESSION_KEY` | For attest | From `yarn ayni:session` / phase3 flow | Ayni |
 | `AYNI_SMART_ACCOUNT` | For attest | Ayni Kernel address | Ayni |
 | `AYNI_SERIALIZED_SESSION` | For attest | Permission session blob | Ayni |
-| `AYNI_USE_FIXTURE_VISION` | No | `true` = repo fixtures (no OpenAI) | Ayni |
+| `AYNI_USE_FIXTURE_VISION` | **Yes for demo** | `true` = fixture vision (default demo); `false` = live OpenAI. Vision step is always required. | Ayni |
 
 ### AI
 
@@ -86,7 +88,7 @@ There is no `NEXT_PUBLIC_ALCHEMY_API_KEY` or WalletConnect project id in the cur
 | --- | ---: | --- | --- |
 | `DEEPSEEK_API_KEY` | For Ayni chat / orchestrator | — | API, Ayni |
 | `DEEPSEEK_MODEL` | No | `deepseek-v4-flash` | API, Ayni |
-| `OPENAI_API_KEY` | When vision not fixture | — | Ayni |
+| `OPENAI_API_KEY` | When `AYNI_USE_FIXTURE_VISION=false` | Required for live OCR only | Ayni |
 | `OPENAI_VISION_MODEL` | No | `gpt-5.6-luna` | Ayni |
 
 ### Demo wallets and bootstrap
@@ -98,6 +100,8 @@ There is no `NEXT_PUBLIC_ALCHEMY_API_KEY` or WalletConnect project id in the cur
 | `DEMO_ASSOCIATION_SMART_ACCOUNT` | Optional fallback | Written by `seed:wallets` | API |
 | `DEMO_MAX_FUNDING_USDC` | No | `10000` | API |
 | `DEMO_LOCAL_PAYOUT_ENABLED` | No | `true` (simulates local payout UX) | API |
+| `DEMO_FUNDING_PASSWORD` | Recommended on public demo | Gates Stripe funding ceremony | API |
+| `ADMIN_AYNI_REVOKE_PASSWORD` | Recommended on public demo | Gates Ayni session revoke | API |
 | `SKIP_BOOTSTRAP` | No | `0`; set `1` to skip first-boot seed/wallets | Compose bootstrap |
 
 ### Compose host ports
@@ -115,8 +119,8 @@ There is no `NEXT_PUBLIC_ALCHEMY_API_KEY` or WalletConnect project id in the cur
 | Variable | Must be reachable from |
 | --- | --- |
 | `NEXT_PUBLIC_API_URL` | User browser |
-| `S3_PUBLIC_ENDPOINT` | User browser (presigned uploads) |
-| `S3_ENDPOINT` | Containers only |
+| `S3_PUBLIC_ENDPOINT` | Optional public MinIO host (console / legacy presign) |
+| `S3_ENDPOINT` | Containers only (`http://minio:9000`) — API evidence upload + Ayni download |
 | `DATABASE_URL` / `REDIS_URL` | Containers only |
 
 Rebuild the **web** image after changing any `NEXT_PUBLIC_*` value.
